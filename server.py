@@ -144,22 +144,31 @@ def _compose_verdict(
     status: str,  # PASS | CAUTION | HOLD | VOID
     domain_verdict: str,
     confidence: str = "HIGH",
-    epistemic: str = "CLAIM",  # FACT | CLAIM | ESTIMATE | HYPOTHESIS | UNKNOWN
-    epistemic_integrity: float = 1.0,  # 0.0 - 1.0
-    authority_level: str = "advisory_only",  # advisory_only | domain_expert | constitutional_binding
-    risk_level: str = "GREEN",  # GREEN | AMBER | RED | BLACK
+    epistemic: str = "CLAIM",
+    epistemic_integrity: float = 1.0,
+    authority_level: str = "advisory_only",
+    risk_level: str = "GREEN",
     human_readiness: str = "OPTIMAL",
     machine_readiness: str = "HEALTHY",
-    economic_risk: str = "LOW",
-    constitutional_risk: str = "LOW",
-    coupled_risk: str = "LOW",
+    failure_class: str | None = None,
+    failure_severity: str = "LOW",
+    impact_summary: str | None = None,
     recommended_mode: str = "full",
     human_required: bool = False,
     assumptions: list[str] | None = None,
     failure_flags: list[str] | None = None,
     next_safe_action: str | None = None,
 ) -> dict[str, Any]:
-    """Canonical arifOS MCP verdict schema (Spec v1.0)."""
+    """Canonical arifOS MCP verdict schema (Spec v1.0) with Failure Doctrine v1.0."""
+    
+    # Failure Doctrine Overrides
+    if failure_class:
+        status = "HOLD" if status != "VOID" else "VOID"
+        recommended_mode = "pause" if failure_severity in ("HIGH", "CRITICAL") else "draft_only"
+        epistemic_integrity = min(epistemic_integrity, 0.1)
+        confidence = "LOW"
+        human_required = True
+
     return {
         "mcp": mcp,
         "task": task,
@@ -170,6 +179,11 @@ def _compose_verdict(
             "class": epistemic,
             "integrity_score": epistemic_integrity,
         },
+        "failure": {
+            "class": failure_class,
+            "severity": failure_severity,
+            "impact": impact_summary or ("N/A" if not failure_class else "Subsystem failure"),
+        } if failure_class else None,
         "authority": {
             "level": authority_level,
             "boundary": "W0 — Mirror only" if mcp == "AFWELL" else "Domain Expert",
@@ -180,9 +194,7 @@ def _compose_verdict(
         },
         "risk": {
             "level": risk_level,
-            "economic": economic_risk,
-            "constitutional": constitutional_risk,
-            "coupled": coupled_risk,
+            "coupled": "UNKNOWN",
         },
         "execution": {
             "recommended_mode": recommended_mode,
