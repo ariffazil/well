@@ -27,14 +27,14 @@ VAULT_LEDGER_PATH = Path(
 
 # ── Server ─────────────────────────────────────────────────────────────────────
 mcp = FastMCP(
-    name="WELLOS",
+    name="WELL",
     instructions=(
-        "WELLOS is the Human–Machine Readiness Mirror for arifOS. "
+        "WELL is the Human–Machine Readiness Mirror for arifOS. "
         "H-WELL reflects operator Arif's biological and cognitive state. "
         "M-WELL reflects system reliability, tool health, context integrity, and compute limits. "
         "C-WELL evaluates coupled risk between human state and machine state. "
         "The WELL–FORGE bridge lets A-FORGE adapt execution intensity to Arif's readiness. "
-        "W0: WELLOS holds a mirror, not a veto. Operator sovereignty is invariant. "
+        "W0: WELL holds a mirror, not a veto. Operator sovereignty is invariant. "
         "DITEMPA BUKAN DIBERI — Forged, Not Given."
     ),
 )
