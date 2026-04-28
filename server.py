@@ -138,6 +138,66 @@ def readiness_score(metrics: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _compose_verdict(
+    mcp: str,
+    task: str,
+    status: str,  # PASS | CAUTION | HOLD | VOID
+    domain_verdict: str,
+    confidence: str = "HIGH",
+    epistemic: str = "CLAIM",  # FACT | CLAIM | ESTIMATE | HYPOTHESIS | UNKNOWN
+    epistemic_integrity: float = 1.0,  # 0.0 - 1.0
+    authority_level: str = "advisory_only",  # advisory_only | domain_expert | constitutional_binding
+    risk_level: str = "GREEN",  # GREEN | AMBER | RED | BLACK
+    human_readiness: str = "OPTIMAL",
+    machine_readiness: str = "HEALTHY",
+    economic_risk: str = "LOW",
+    constitutional_risk: str = "LOW",
+    coupled_risk: str = "LOW",
+    recommended_mode: str = "full",
+    human_required: bool = False,
+    assumptions: list[str] | None = None,
+    failure_flags: list[str] | None = None,
+    next_safe_action: str | None = None,
+) -> dict[str, Any]:
+    """Canonical arifOS MCP verdict schema (Spec v1.0)."""
+    return {
+        "mcp": mcp,
+        "task": task,
+        "status": status,
+        "domain_verdict": domain_verdict,
+        "confidence": confidence,
+        "epistemic": {
+            "class": epistemic,
+            "integrity_score": epistemic_integrity,
+        },
+        "authority": {
+            "level": authority_level,
+            "boundary": "W0 — Mirror only" if mcp == "AFWELL" else "Domain Expert",
+        },
+        "readiness": {
+            "human": human_readiness,
+            "machine": machine_readiness,
+        },
+        "risk": {
+            "level": risk_level,
+            "economic": economic_risk,
+            "constitutional": constitutional_risk,
+            "coupled": coupled_risk,
+        },
+        "execution": {
+            "recommended_mode": recommended_mode,
+            "human_confirmation_required": human_required,
+            "next_safe_action": next_safe_action or "Consult arifOS 888_JUDGE",
+        },
+        "assumptions": assumptions or [],
+        "failure_flags": failure_flags or [],
+        "reversibility": "REVERSIBLE" if task.startswith("read") or "check" in task else "UNKNOWN",
+        "final_authority": "Arif",
+        "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
+        "receipt_hash": hashlib.sha256(str(datetime.datetime.now()).encode()).hexdigest()[:16]
+    }
+
+
 # ── Tools ──────────────────────────────────────────────────────────────────────
 
 @mcp.tool()
@@ -341,40 +401,41 @@ def well_readiness(ctx: Context | None = None) -> dict[str, Any]:
     metrics = state.get("metrics", {})
 
     if violations:
-        verdict = "DEGRADED"
+        verdict_str = "DEGRADED"
+        status = "HOLD"
         message = f"Substrate flagging: {', '.join(violations)}. Strategic forge bandwidth throttled."
-        bandwidth = "RESTRICTED"
+        risk = "RED"
+        mode = "draft_only"
     elif score >= 80:
-        verdict = "OPTIMAL"
+        verdict_str = "OPTIMAL"
+        status = "PASS"
         message = "Substrate stable and high-capacity. Full forge bandwidth available."
-        bandwidth = "FULL"
+        risk = "GREEN"
+        mode = "full"
     elif score >= 60:
-        verdict = "FUNCTIONAL"
+        verdict_str = "FUNCTIONAL"
+        status = "PASS"
         message = "Substrate functional. Normal forge operations permitted."
-        bandwidth = "NORMAL"
+        risk = "GREEN"
+        mode = "structured"
     else:
-        verdict = "LOW_CAPACITY"
+        verdict_str = "LOW_CAPACITY"
+        status = "CAUTION"
         message = "Substrate low-capacity. Recommend rest before strategic decisions."
-        bandwidth = "REDUCED"
+        risk = "AMBER"
+        mode = "draft_only"
 
-    # SABAR protocol — Phase 1 advisory
-    sabar_advisory = score < 60 or bool(violations)
-
-    return {
-        "ok": True,
-        "verdict": verdict,
-        "well_score": score,
-        "bandwidth": bandwidth,
-        "floors_violated": violations,
-        "sabar_advisory": sabar_advisory,
-        "message": message,
-        "snapshot": {
-            "sleep_hours": metrics.get("sleep", {}).get("last_night_hours"),
-            "clarity": metrics.get("cognitive", {}).get("clarity"),
-            "stress_load": metrics.get("stress", {}).get("subjective_load"),
-        },
-        "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
-    }
+    return _compose_verdict(
+        mcp="AFWELL",
+        task="readiness_reflection",
+        status=status,
+        domain_verdict=verdict_str,
+        confidence="HIGH",
+        risk_level=risk,
+        recommended_mode=mode,
+        human_required=score < 60 or bool(violations),
+        next_safe_action=message
+    )
 
 
 @mcp.tool()
@@ -513,17 +574,21 @@ def well_check_floors(ctx: Context | None = None) -> dict[str, Any]:
         floors["W5"]["status"] = "VIOLATED"
 
     violated = [k for k, v in floors.items() if v["status"] == "VIOLATED"]
-    score = state.get("well_score", 50)
+    
+    status = "PASS" if not violated else "HOLD"
+    risk = "GREEN" if not violated else "RED"
 
-    return {
-        "ok": True,
-        "floors": floors,
-        "violated": violated,
-        "well_score": score,
-        "verdict": "FLOORS_CLEAR" if not violated else "FLOORS_VIOLATED",
-        "bandwidth_recommendation": "RESTRICTED" if violated else "NORMAL",
-        "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
-    }
+    return _compose_verdict(
+        mcp="AFWELL",
+        task="floor_integrity_check",
+        status=status,
+        domain_verdict=f"{len(violated)} floors violated" if violated else "All floors clear",
+        confidence="HIGH",
+        risk_level=risk,
+        recommended_mode="full" if not violated else "draft_only",
+        human_required=bool(violated),
+        failure_flags=violated
+    )
 
 
 # ── Phase 2 Tools (Expanded Surface) ───────────────────────────────────────────
@@ -576,26 +641,64 @@ def well_get_readiness(ctx: Context | None = None) -> dict[str, Any]:
 @mcp.tool("well_check_floor")
 def well_check_floor(floor_id: str | None = None, ctx: Context | None = None) -> dict[str, Any]:
     """
-    Check specific W-floor (W1/W5/W6) — return PASS/FAIL.
-    If floor_id is None, checks all floors.
+    Check specific W-floor (W1/W5/W6) — return Canonical Verdict.
+    If floor_id is None, checks all floors via well_check_floors.
     """
-    res = well_check_floors(ctx=ctx)
     if not floor_id:
-        return res
+        return well_check_floors(ctx=ctx)
 
-    floor_id = floor_id.upper()
-    floors = res.get("floors", {})
-    if floor_id not in floors:
-        return {"ok": False, "error": f"Unknown floor: {floor_id}"}
+    fid = floor_id.upper()
+    state = _load_state()
+    metrics = state.get("metrics", {})
+    sleep = metrics.get("sleep", {})
+    cognitive = metrics.get("cognitive", {})
 
-    floor = floors[floor_id]
-    return {
-        "ok": True,
-        "floor": floor_id,
-        "status": floor["status"],
-        "passed": floor["status"] == "OK",
-        "w0": "OPERATOR_VETO_INTACT",
-    }
+    passed = True
+    status = "OK"
+    detail = ""
+
+    if fid == "W1":
+        debt = sleep.get("sleep_debt_days", 0)
+        passed = debt <= 2
+        status = "OK" if passed else "VIOLATED"
+        detail = f"Sleep debt: {debt} days (Limit: 2)"
+    elif fid == "W5":
+        clarity = cognitive.get("clarity", 10)
+        passed = clarity >= 4
+        status = "OK" if passed else "VIOLATED"
+        detail = f"Clarity: {clarity}/10 (Limit: 4)"
+    elif fid == "W6":
+        violations = state.get("floors_violated", [])
+        passed = "W6_METABOLIC_PAUSE" not in violations
+        status = "OK" if passed else "VIOLATED"
+        detail = "Metabolic Pause active" if not passed else "Incentive decoupling clear"
+    elif fid == "W0":
+        status = "INVARIANT"
+        detail = "Operator sovereignty is absolute."
+    else:
+        return {"ok": False, "error": f"Unknown floor: {fid}"}
+
+    return _compose_verdict(
+        mcp="AFWELL",
+        task=f"floor_check: {fid}",
+        status="PASS" if passed else "HOLD",
+        domain_verdict=status,
+        confidence="HIGH",
+        risk_level="GREEN" if passed else "RED",
+        recommended_mode="full" if passed else "draft_only",
+        human_required=not passed,
+        next_safe_action=detail
+    )
+
+
+@mcp.tool()
+def well_forge_mode_recommend(ctx: Context | None = None) -> dict[str, Any]:
+    """
+    Returns current forge mode recommendation for A-FORGE.
+    Based on H-WELL + M-WELL + C-WELL state using Canonical Verdict.
+    """
+    res = well_forge_precheck(task_description="general_forge_recommendation", ctx=ctx)
+    return res
 
 
 @mcp.tool("well_list_log")
@@ -1667,15 +1770,19 @@ def well_coupled_readiness(ctx: Context | None = None) -> dict[str, Any]:
     if risk_count >= 3 or (h_verdict == "LOW_CAPACITY" and m_verdict in ("DEGRADED", "CRITICAL")):
         coupled_risk = "RED"
         recommended_mode = "suspended"
+        status = "HOLD"
     elif risk_count >= 1 or (h_verdict == "DEGRADED" and m_verdict != "HEALTHY"):
         coupled_risk = "AMBER"
         recommended_mode = "draft_only"
+        status = "CAUTION"
     elif h_verdict == "OPTIMAL" and m_verdict == "HEALTHY":
         coupled_risk = "GREEN"
         recommended_mode = "full"
+        status = "PASS"
     else:
         coupled_risk = "AMBER"
         recommended_mode = "normal"
+        status = "CAUTION"
 
     human_confirmation = (
         coupled_risk == "RED" or
@@ -1683,30 +1790,18 @@ def well_coupled_readiness(ctx: Context | None = None) -> dict[str, Any]:
         risk_count >= 2
     )
 
-    return {
-        "ok": True,
-        "human_readiness": h_verdict,
-        "human_score": h_score,
-        "machine_readiness": m_verdict,
-        "machine_score": m_score,
-        "coupled_risk": coupled_risk,
-        "recommended_mode": recommended_mode,
-        "human_confirmation_required": human_confirmation,
-        "risks_found": risks_found if risks_found else ["none"],
-        "human_state_summary": {
-            "decision_fatigue": h_vals["decision_fatigue"],
-            "clarity": h_vals["clarity"],
-            "stress_load": h_vals["stress_load"],
-            "sleep_debt_days": h_vals["sleep_debt_days"],
-        },
-        "machine_state_summary": {
-            "model_reliability": m_metrics.get("model_reliability", 0),
-            "tool_availability": m_metrics.get("tool_availability", 0),
-            "context_pressure": m_metrics.get("context_length_pressure", 0),
-            "api_failure_rate": m_metrics.get("api_failure_rate", 0),
-        },
-        "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT — C-WELL evaluates, Arif decides",
-    }
+    return _compose_verdict(
+        mcp="AFWELL",
+        task="coupled_readiness_check",
+        status=status,
+        domain_verdict=f"Human {h_verdict} | Machine {m_verdict}",
+        confidence="HIGH",
+        risk_level=coupled_risk,
+        recommended_mode=recommended_mode,
+        human_required=human_confirmation,
+        failure_flags=risks_found if risks_found else None,
+        next_safe_action="Step away if RED; Draft if AMBER." if coupled_risk != "GREEN" else "Proceed with Forge."
+    )
 
 
 @mcp.tool()
@@ -1892,7 +1987,33 @@ def well_forge_precheck(
 
     # Coupled risk
     c_state = well_coupled_readiness(ctx=None)
-    coupled_risk = c_state.get("coupled_risk", "AMBER")
+    coupled_risk = c_state.get("risk_level", "AMBER")
+    c_mode = c_state.get("recommended_mode", "draft_only")
+
+    # FORGE MODE DETERMINATION (Conservative wins)
+    # 1. Base readiness
+    if h_score >= 80 and m_verdict == "HEALTHY" and not h_violations:
+        base_mode = "full"
+        max_task_size = "large"
+        h_verdict = "OPTIMAL"
+    elif h_score >= 60 and m_verdict in ("HEALTHY", "FUNCTIONAL"):
+        base_mode = "structured"
+        max_task_size = "medium"
+        h_verdict = "FUNCTIONAL"
+    elif h_score >= 40:
+        base_mode = "draft_only"
+        max_task_size = "small"
+        h_verdict = "DEGRADED"
+    else:
+        base_mode = "pause"
+        max_task_size = "minimal"
+        h_verdict = "LOW_CAPACITY"
+
+    # 2. Apply C-WELL override
+    mode_priority = {"full": 3, "structured": 2, "draft_only": 1, "pause": 0, "suspended": 0}
+    final_mode_val = min(mode_priority.get(base_mode, 0), mode_priority.get(c_mode, 0))
+    # Map back to canonical modes
+    final_mode = "full" if final_mode_val == 3 else "structured" if final_mode_val == 2 else "draft_only" if final_mode_val == 1 else "pause"
 
     # Human reconfirmation threshold
     human_confirmation = (
@@ -1901,21 +2022,20 @@ def well_forge_precheck(
         (decision_class and decision_class >= "C4")
     )
 
-    return {
-        "ok": True,
-        "readiness": h_verdict,
-        "forge_mode": forge_mode,
-        "max_task_size": max_task_size,
-        "avoid": avoid if avoid else ["none"],
-        "recovery_first": recovery_first,
-        "human_confirmation_required": human_confirmation,
-        "coupled_risk": coupled_risk,
-        "human_score": h_score,
-        "machine_score": m_score,
-        "task": task_description or "unspecified",
-        "decision_class": decision_class or "unknown",
-        "w0": "WELL recommends. arifOS governs. Arif decides. — DITEMPA BUKAN DIBERI",
-    }
+    status = "PASS" if coupled_risk == "GREEN" and final_mode == "full" else "HOLD" if final_mode == "pause" else "CAUTION"
+
+    return _compose_verdict(
+        mcp="AFWELL",
+        task=f"forge_precheck: {task_description or 'unspecified'}",
+        status=status,
+        domain_verdict=f"Mode: {final_mode} | Risk: {coupled_risk}",
+        confidence="HIGH",
+        risk_level=coupled_risk,
+        recommended_mode=final_mode,
+        human_required=human_confirmation,
+        failure_flags=h_violations + c_state.get("failure_flags", []),
+        next_safe_action=f"Adopt {final_mode} mode; respect {max_task_size} task ceiling."
+    )
 
 
 @mcp.tool()
