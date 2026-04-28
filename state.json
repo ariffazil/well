@@ -1,0 +1,46 @@
+{
+  "timestamp": "2026-04-28T22:00:00.000000+00:00",
+  "operator_id": "arif",
+  "metrics": {
+    "sleep": {
+      "last_night_hours": 8,
+      "sleep_debt_days": 0,
+      "quality_score": 9
+    },
+    "stress": {
+      "subjective_load": 2,
+      "restlessness": 1
+    },
+    "cognitive": {
+      "clarity": 10,
+      "decision_fatigue": 2.1,
+      "focus_durability": 9,
+      "pressure_sources": {}
+    },
+    "metabolic": {
+      "fasting_window_hours": 0,
+      "perceived_stability": 10,
+      "hydration_status": "STABLE"
+    },
+    "structural": {
+      "pain_map": [],
+      "movement_frequency_daily": 5
+    }
+  },
+  "well_score": 93.8,
+  "floors_violated": [],
+  "m_machine": {
+    "model_reliability": 1.0,
+    "tool_availability": 1.0,
+    "latency_ms": 200,
+    "context_length_pressure": 0.0,
+    "memory_integrity": 1.0,
+    "api_failure_rate": 0.0,
+    "data_freshness": 1.0,
+    "compute_budget_pct": 100.0,
+    "token_budget_pct": 100.0,
+    "security_flags": [],
+    "vault_status": "ok",
+    "schema_valid": true
+  }
+}

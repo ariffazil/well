@@ -1,0 +1,16 @@
+__pycache__/
+*.pyc
+.env
+.venv/
+venv/
+*.egg-info/
+dist/
+build/
+.mypy_cache/
+.pytest_cache/
+.DS_Store
+*.swp
+*.swo
+events.jsonl
+vault_ledger.jsonl
+state.json
