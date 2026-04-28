@@ -16,5 +16,6 @@
     "port": 8083,
     "path": "/mcp",
     "log_level": "INFO"
-  }
+  },
+  "name": "AFWELL"
 }

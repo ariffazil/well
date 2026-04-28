@@ -27,7 +27,7 @@ VAULT_LEDGER_PATH = Path(
 
 # ── Server ─────────────────────────────────────────────────────────────────────
 mcp = FastMCP(
-    name="WELL",
+    name="AFWELL",
     instructions=(
         "WELL is the Human–Machine Readiness Mirror for arifOS. "
         "H-WELL reflects operator Arif's biological and cognitive state. "
