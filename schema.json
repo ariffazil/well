@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "WELL State Schema",
-  "description": "Biological telemetry for the Human Substrate Governance Layer.",
+  "title": "AFWELL State Schema",
+  "description": "Biological and Machine telemetry for the Human-Machine Readiness Mirror.",
   "type": "object",
   "properties": {
     "timestamp": { "type": "string", "format": "date-time" },
@@ -38,7 +38,8 @@
           "properties": {
             "clarity": { "type": "number", "minimum": 0, "maximum": 10 },
             "decision_fatigue": { "type": "number", "minimum": 0, "maximum": 10 },
-            "focus_durability": { "type": "number", "minimum": 0, "maximum": 10 }
+            "focus_durability": { "type": "number", "minimum": 0, "maximum": 10 },
+            "pressure_sources": { "type": "object" }
           }
         },
         "structural": {
@@ -48,6 +49,23 @@
             "movement_frequency_daily": { "type": "number" }
           }
         }
+      }
+    },
+    "m_machine": {
+      "type": "object",
+      "properties": {
+        "model_reliability": { "type": "number", "minimum": 0, "maximum": 1 },
+        "tool_availability": { "type": "number", "minimum": 0, "maximum": 1 },
+        "latency_ms": { "type": "number" },
+        "context_length_pressure": { "type": "number", "minimum": 0, "maximum": 1 },
+        "memory_integrity": { "type": "number", "minimum": 0, "maximum": 1 },
+        "api_failure_rate": { "type": "number", "minimum": 0, "maximum": 1 },
+        "data_freshness": { "type": "number", "minimum": 0, "maximum": 1 },
+        "compute_budget_pct": { "type": "number", "minimum": 0, "maximum": 100 },
+        "token_budget_pct": { "type": "number", "minimum": 0, "maximum": 100 },
+        "security_flags": { "type": "array", "items": { "type": "string" } },
+        "vault_status": { "type": "string" },
+        "schema_valid": { "type": "boolean" }
       }
     },
     "well_score": { "type": "number", "minimum": 0, "maximum": 100 },
