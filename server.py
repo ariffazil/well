@@ -2279,6 +2279,15 @@ def well_forge_closeout(
 
 if __name__ == "__main__":
     import uvicorn
-    mcp.run(transport="http")
 
 
+    from starlette.responses import JSONResponse
+    host = _os.environ.get("HOST", "0.0.0.0")
+    port = int(_os.environ.get("PORT", 8083))
+    app = mcp.http_app(path="/mcp")
+
+    async def health_handler(request):
+        return JSONResponse({"status": "healthy", "service": "well-mcp", "version": "2026.04.29"})
+
+    app.add_route("/health", health_handler, methods=["GET"])
+    uvicorn.run(app, host=host, port=port, log_level=_os.environ.get("LOG_LEVEL", "info"))

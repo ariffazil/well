@@ -14,6 +14,8 @@ RUN uv pip install --system fastmcp>=2.0 uvicorn
 # WELL env vars
 ENV WELL_VAULT_PATH=/root/arifOS/core/vault999/well_ledger.jsonl
 ENV WELL_STATE_PATH=/root/WELL/state.json
+ENV HOST=0.0.0.0
+ENV PORT=8083
 ENV LOG_LEVEL=info
 
 EXPOSE 8083
