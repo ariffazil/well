@@ -1,71 +1,139 @@
-# 🧬 AFWELL — Human–Machine Readiness Mirror
+# AFWELL — Biological Substrate Governance
 
-**Body is the Substrate. Mind is the Operator. AFWELL is the Sovereign Mirror.**
+> **Body is the substrate. Mind is the operator. AFWELL is the sovereign mirror.**
+> **DITEMPA BUKAN DIBERI — Forged, Not Given.**
 
-AFWELL is the Human–Machine Substrate Governance Layer for **arifOS**. It provides high-signal biological and technical readiness telemetry to ensure that intent is verified before it is forged into action.
-
----
-
-## 🏛 Constitutional Foundation (W0)
-
-- **Axiom W0:** AFWELL holds a mirror, not a veto. It informs the **arifOS JUDGE**, but the Operator (Arif) retains final authority.
-- **Hierarchy:** `AFWELL` (Informs) → `arifOS` (Judges) → `A-FORGE` (Executes).
-- **DITEMPA BUKAN DIBERI:** Capacity is forged through discipline, not granted by default.
+[![AFWELL](https://img.shields.io/badge/AFWELL-v2026.04.29-00D4AA?style=flat-square)](https://github.com/ariffazil/well)
+[![MCP](https://img.shields.io/badge/MCP-FastMCP-7C3AED?style=flat-square)](https://github.com/ariffazil/well)
+[![arifOS](https://img.shields.io/badge/arifOS-F1%E2%80%93F13_Governed-FF6B00?style=flat-square)](https://github.com/ariffazil/arifOS)
+[![License](https://img.shields.io/badge/License-AGPL_V3-4EAF0C?style=flat-square)](./LICENSE)
 
 ---
 
-## 🛠 Tool Surface (31 Prisms)
+## What AFWELL Is
 
-AFWELL exposes 31 specialized MCP tools across four capability layers:
+AFWELL is the **Human–Machine Substrate Governance Layer** for arifOS. It provides high-signal biological and technical readiness telemetry to ensure that intent is verified before it is forged into action.
+
+AFWELL is the **mirror** — it reflects the state of the human and machine substrate so arifOS can judge whether the current configuration is safe for the decision class at hand. It does not veto. It informs.
+
+> *W0 Sovereignty Invariant: AFWELL holds a mirror, not a veto. It informs the arifOS JUDGE, but the Operator (Arif) retains final authority.*
+
+---
+
+## Position in the arifOS Trinity
+
+```
+Operator (Arif) → WELL (Mirror) → arifOS (Judge) → A-FORGE (Execute)
+                    ↑
+              YOU ARE HERE
+```
+
+AFWELL sits between the human and the constitutional kernel. It answers the question: *"Is the human substrate in a state capable of giving reliable consent for the class of decision being proposed?"*
+
+---
+
+## Current Source of Truth
+
+| Field | Value |
+|-------|-------|
+| Canonical repository | `https://github.com/ariffazil/well` |
+| Version | `v2026.04.29` |
+| Governing kernel | `arifOS F1–F13` |
+| Framework | FastMCP |
+| Entry point | `server.py` |
+| State | `/root/well/state.json` |
+| Events | `/root/well/events.jsonl` |
+| Vault ledger | `/root/well/vault_ledger.jsonl` |
+
+---
+
+## Tool Surface — 31 Prisms Across 4 Layers
 
 ### 1. H-WELL (Human Substrate)
 Tracks biological telemetry: sleep, stress, clarity, and metabolic state.
-- `well_log_state`: Log core biological metrics.
-- `well_get_readiness`: Return 0.0–1.0 readiness score with color tiering (GREEN/AMBER/RED).
-- `well_daily_brief`: Morning pre-session substrate overview.
+
+| Tool | Purpose |
+|------|---------|
+| `well_log_state` | Log core biological metrics |
+| `well_get_readiness` | Return 0.0–1.0 readiness score with color tiering |
+| `well_daily_brief` | Morning pre-session substrate overview |
 
 ### 2. M-WELL (Machine Substrate)
 Tracks instrument reliability: model health, context pressure, and tool availability.
-- `well_machine_state`: Read current technical reliability metrics.
-- `well_machine_log`: Log machine telemetry (latency, context use, errors).
+
+| Tool | Purpose |
+|------|---------|
+| `well_machine_state` | Read current technical reliability metrics |
+| `well_machine_log` | Log machine telemetry (latency, context use, errors) |
 
 ### 3. C-WELL (Coupled Readiness)
 Evaluates the interaction risk between Human and Machine.
-- `well_coupled_readiness`: Identify risks like "context overload + high fatigue".
-- `well_decision_bandwidth`: Validate if a task (C0-C5) is safe for the current pair.
+
+| Tool | Purpose |
+|------|---------|
+| `well_coupled_readiness` | Identify risks like "context overload + high fatigue" |
+| `well_decision_bandwidth` | Validate if a task (C0–C5) is safe for the current pair |
 
 ### 4. FORGE Bridge
 Couples AFWELL to the execution plane.
-- `well_forge_precheck`: Handshake before forge to determine safe mode.
-- `well_forge_pressure_update`: Signal cognitive load during active forging.
+
+| Tool | Purpose |
+|------|---------|
+| `well_forge_precheck` | Handshake before forge to determine safe mode |
+| `well_forge_pressure_update` | Signal cognitive load during active forging |
 
 ---
 
-## 🚦 Readiness Tiers
+## Readiness Tiers
 
 | Tier | Score | Bandwidth | Protocol |
-| :--- | :--- | :--- | :--- |
-| **🟢 GREEN** | ≥ 0.7 | **FULL** | Optimal capacity. All decision classes (C0-C5) open. |
-| **🟡 AMBER** | 0.4 - 0.69 | **RESTRICTED** | Soft warning. Recommend drafting and reversible tasks. |
-| **🔴 RED** | < 0.4 | **LOCKED** | Hard veto recommendation. strategic actions suspended. |
+|:-----|:-----:|:---------:|---------|
+| 🟢 **GREEN** | ≥ 0.7 | **FULL** | Optimal capacity. All decision classes (C0–C5) open. |
+| 🟡 **AMBER** | 0.4–0.69 | **RESTRICTED** | Soft warning. Recommend drafting and reversible tasks. |
+| 🔴 **RED** | < 0.4 | **LOCKED** | Hard veto recommendation. Strategic actions suspended. |
 
 ---
 
-## 📐 Governance Floors (W-Floors)
+## Governance Floors (W-Floors)
 
-- **W1 — Sleep Integrity:** Trigger RED if sleep debt > 2 days.
-- **W5 — Cognitive Entropy:** Trigger RED if clarity < 4/10.
-- **W6 — Metabolic Pause:** Enforce 15-minute pause if high-frequency intent loops detected.
-
----
-
-## 🚀 Deployment
-
-- **Container:** `ghcr.io/ariffazil/well:latest`
-- **Network:** `arifos_core_network`
-- **Endpoint:** `https://well.arif-fazil.com/mcp`
-- **Bridge:** `/root/WELL/state.json` (Production Ledger)
+| Floor | Name | Trigger |
+|-------|------|---------|
+| **W1** | Sleep Integrity | RED if sleep debt > 2 days |
+| **W5** | Cognitive Entropy | RED if clarity < 4/10 |
+| **W6** | Metabolic Pause | Enforce 15-min pause if high-frequency intent loops detected |
 
 ---
 
-**DITEMPA BUKAN DIBERI — 999 SEAL ALIVE**
+## Constitutional Hierarchy
+
+```
+AFWELL (Informs)  →  arifOS (Judges)  →  A-FORGE (Executes)
+      ↑                   ↑                    ↑
+   H/M substrate      F1–F13 verdict      Constitutional gate
+```
+
+**W0 is non-negotiable:** AFWELL informs. It never overrides arifOS or the Operator. The chain of authority is invariant under all conditions.
+
+---
+
+## Sibling Organ READMEs
+
+| Organ | One-liner |
+|-------|----------|
+| [`arifOS`](https://github.com/ariffazil/arifOS) | Constitutional kernel — F1–F13 floors, 13 tools, VAULT999 |
+| [`AAA`](https://github.com/ariffazil/AAA) | Identity, A2A federation gateway, and operator control plane |
+| [`A-FORGE`](https://github.com/ariffazil/A-FORGE) | Execution shell, orchestration, and operator observability |
+| [`GEOX`](https://github.com/ariffazil/geox) | Governed earth intelligence — seismic, petrophysics, basin analysis |
+| [`WEALTH`](https://github.com/ariffazil/wealth) | Capital intelligence — NPV, IRR, EMV, crisis triage |
+
+---
+
+## Live Sites
+
+| Surface | URL |
+|---------|-----|
+| arifOS | https://arifosmcp.arif-fazil.com/ |
+| Human | https://arif-fazil.com/ |
+
+*The mirror does not decide. It reflects. Reflection is the prerequisite to judgment.*
+*DITEMPA BUKAN DIBERI — Readiness is forged through discipline, not granted by default.*
