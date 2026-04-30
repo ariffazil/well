@@ -1,22 +1,22 @@
-# AFWELL — Biological Substrate Governance
+# WELL — Biological Mirror
 
-> **Body is the substrate. Mind is the operator. AFWELL is the sovereign mirror.**
-> **DITEMPA BUKAN DIBERI — Forged, Not Given.**
+> **Substrate intelligence for the arifOS Constitutional Federation.**
+> **DITEMPA BUKAN DIBERI — Intelligence is forged, not given.**
 
-[![AFWELL](https://img.shields.io/badge/AFWELL-v2026.04.29-00D4AA?style=flat-square)](https://github.com/ariffazil/well)
+[![WELL](https://img.shields.io/badge/WELL-v1.0.0-00D4AA?style=flat-square)](https://github.com/ariffazil/well)
 [![MCP](https://img.shields.io/badge/MCP-FastMCP-7C3AED?style=flat-square)](https://github.com/ariffazil/well)
 [![arifOS](https://img.shields.io/badge/arifOS-F1%E2%80%93F13_Governed-FF6B00?style=flat-square)](https://github.com/ariffazil/arifOS)
 [![License](https://img.shields.io/badge/License-AGPL_V3-4EAF0C?style=flat-square)](./LICENSE)
 
 ---
 
-## What AFWELL Is
+## What WELL Is
 
-AFWELL is the **Human–Machine Substrate Governance Layer** for arifOS. It provides high-signal biological and technical readiness telemetry to ensure that intent is verified before it is forged into action.
+WELL is the **Human–Machine Substrate Governance Layer** for arifOS. It provides high-signal biological and technical readiness telemetry to ensure that intent is verified before it is forged into action.
 
-AFWELL is the **mirror** — it reflects the state of the human and machine substrate so arifOS can judge whether the current configuration is safe for the decision class at hand. It does not veto. It informs.
+WELL is the **mirror** — it reflects the state of the human and machine substrate so arifOS can judge whether the current configuration is safe for the decision class at hand. It does not veto. It informs.
 
-> *W0 Sovereignty Invariant: AFWELL holds a mirror, not a veto. It informs the arifOS JUDGE, but the Operator (Arif) retains final authority.*
+> *W0 Sovereignty Invariant: WELL holds a mirror, not a veto. It informs the arifOS JUDGE, but the Operator (Arif) retains final authority.*
 
 ---
 
@@ -28,7 +28,7 @@ Operator (Arif) → WELL (Mirror) → arifOS (Judge) → A-FORGE (Execute)
               YOU ARE HERE
 ```
 
-AFWELL sits between the human and the constitutional kernel. It answers the question: *"Is the human substrate in a state capable of giving reliable consent for the class of decision being proposed?"*
+WELL sits between the human and the constitutional kernel. It answers the question: *"Is the human substrate in a state capable of giving reliable consent for the class of decision being proposed?"*
 
 ---
 
@@ -37,8 +37,8 @@ AFWELL sits between the human and the constitutional kernel. It answers the ques
 | Field | Value |
 |-------|-------|
 | Canonical repository | `https://github.com/ariffazil/well` |
-| Version | `v2026.04.29` |
-| Governing kernel | `arifOS F1–F13` |
+| Package version | `1.0.0` |
+| Git commit | `v2026.04.29` |
 | Framework | FastMCP |
 | Entry point | `server.py` |
 | State | `/root/well/state.json` |
@@ -75,7 +75,7 @@ Evaluates the interaction risk between Human and Machine.
 | `well_decision_bandwidth` | Validate if a task (C0–C5) is safe for the current pair |
 
 ### 4. FORGE Bridge
-Couples AFWELL to the execution plane.
+Couples WELL to the execution plane.
 
 | Tool | Purpose |
 |------|---------|
@@ -107,12 +107,12 @@ Couples AFWELL to the execution plane.
 ## Constitutional Hierarchy
 
 ```
-AFWELL (Informs)  →  arifOS (Judges)  →  A-FORGE (Executes)
+WELL (Informs)  →  arifOS (Judges)  →  A-FORGE (Executes)
       ↑                   ↑                    ↑
    H/M substrate      F1–F13 verdict      Constitutional gate
 ```
 
-**W0 is non-negotiable:** AFWELL informs. It never overrides arifOS or the Operator. The chain of authority is invariant under all conditions.
+**W0 is non-negotiable:** WELL informs. It never overrides arifOS or the Operator. The chain of authority is invariant under all conditions.
 
 ---
 
