@@ -3,7 +3,7 @@
 > **Biological readiness mirror for the arifOS Constitutional Federation.**
 > **DITEMPA BUKAN DIBERI — Intelligence is forged, not given.**
 
-[![WELL](https://img.shields.io/badge/WELL-v1.1.0-00D4AA?style=flat-square)](https://github.com/ariffazil/well)
+[![WELL](https://img.shields.io/badge/WELL-v1.1.0--KANON-00D4AA?style=flat-square)](https://github.com/ariffazil/well)
 [![MCP](https://img.shields.io/badge/MCP-FastMCP-7C3AED?style=flat-square)](https://github.com/ariffazil/well)
 [![arifOS](https://img.shields.io/badge/arifOS-F1%E2%80%93F13_Governed-FF6B00?style=flat-square)](https://github.com/ariffazil/arifOS)
 [![License](https://img.shields.io/badge/License-AGPL_V3-4EAF0C?style=flat-square)](./LICENSE)
