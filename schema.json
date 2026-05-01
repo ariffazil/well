@@ -3,17 +3,27 @@
   "title": "AFWELL State Schema",
   "description": "Biological and Machine telemetry for the Human-Machine Readiness Mirror.",
   "type": "object",
+  "required": ["timestamp", "metrics", "well_score", "identity", "role", "authority", "delta_s", "peace2", "kappa_r", "rasa", "amanah"],
+  "additionalProperties": true,
   "properties": {
     "timestamp": { "type": "string", "format": "date-time" },
     "operator_id": { "type": "string", "default": "arif" },
+    "identity": { "type": "string", "enum": ["WELL"] },
+    "role": { "type": "string", "enum": ["Body", "Body / Human Intelligence", "Biological Substrate Governance"] },
+    "authority": { "type": "string", "enum": ["REFLECT_ONLY"] },
+    "delta_s": { "type": "number", "minimum": 0 },
+    "peace2": { "type": "number", "minimum": 1.0 },
+    "kappa_r": { "type": "number", "minimum": 0.95, "maximum": 1.0 },
+    "rasa": { "type": "boolean" },
+    "amanah": { "type": "string", "enum": ["LOCK", "🔐"] },
     "metrics": {
       "type": "object",
       "properties": {
         "sleep": {
           "type": "object",
           "properties": {
-            "last_night_hours": { "type": "number", "minimum": 0 },
-            "sleep_debt_days": { "type": "number", "minimum": 0 },
+            "last_night_hours": { "type": "number", "minimum": 0, "maximum": 24 },
+            "sleep_debt_days": { "type": "number", "minimum": 0, "maximum": 30 },
             "quality_score": { "type": "number", "minimum": 0, "maximum": 10 }
           }
         },
@@ -28,7 +38,7 @@
         "metabolic": {
           "type": "object",
           "properties": {
-            "fasting_window_hours": { "type": "number" },
+            "fasting_window_hours": { "type": "number", "minimum": 0, "maximum": 72 },
             "perceived_stability": { "type": "number", "minimum": 0, "maximum": 10 },
             "hydration_status": { "type": "string", "enum": ["DEHYDRATED", "STABLE", "HYDRATED"] }
           }
@@ -46,7 +56,7 @@
           "type": "object",
           "properties": {
             "pain_map": { "type": "array", "items": { "type": "string" } },
-            "movement_frequency_daily": { "type": "number" }
+            "movement_frequency_daily": { "type": "number", "minimum": 0 }
           }
         }
       }
@@ -56,7 +66,7 @@
       "properties": {
         "model_reliability": { "type": "number", "minimum": 0, "maximum": 1 },
         "tool_availability": { "type": "number", "minimum": 0, "maximum": 1 },
-        "latency_ms": { "type": "number" },
+        "latency_ms": { "type": "number", "minimum": 0 },
         "context_length_pressure": { "type": "number", "minimum": 0, "maximum": 1 },
         "memory_integrity": { "type": "number", "minimum": 0, "maximum": 1 },
         "api_failure_rate": { "type": "number", "minimum": 0, "maximum": 1 },
@@ -70,6 +80,5 @@
     },
     "well_score": { "type": "number", "minimum": 0, "maximum": 100 },
     "floors_violated": { "type": "array", "items": { "type": "string" } }
-  },
-  "required": ["timestamp", "metrics", "well_score"]
+  }
 }

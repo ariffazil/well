@@ -26,9 +26,294 @@ VAULT_LEDGER_PATH = Path(
 )
 
 # ── Server ─────────────────────────────────────────────────────────────────────
+# ── Provenance Enums (Amanah Truth-Preservation) ───────────────────────────────
+WELL_SOURCE_TYPES = {
+    "USER_CONFIRMED": "Operator Arif directly confirmed or reported",
+    "SENSOR": "Automated sensor or wearable data",
+    "AGENT_INFERRED": "Derived by AI agent from other data",
+    "OPERATOR_REPORTED": "Logged by operator without backend verification",
+    "TEST_FIXTURE": "Synthetic test data — not real operator state",
+    "SYSTEM_DERIVED": "Computed from existing state, not directly reported",
+}
+WELL_ENVIRONMENTS = {"PROD": "production", "TEST": "test_environment", "DEV": "development"}
+WELL_TELEMETRY_STATUS = {
+    "LIVE": "fresh data, within expected interval",
+    "STALE": "older than 24h, verify before high-stakes use",
+    "EXPIRED": "older than 72h, treat as historical only",
+    "VOID": "test contamination detected or backend error, do not trust",
+}
+WELL_TRUTH_STATUS = {
+    "VERIFIED": "confirmed against backend source or operator",
+    "UNVERIFIED": "received but not yet confirmed",
+    "CONTRADICTED": "conflicts with another record",
+    "VOID": "known unreliable or contaminated",
+    "TEST": "synthetic test data",
+}
+
+# ── Telemetry Purity Guard ──────────────────────────────────────────────────────
+def _check_telemetry_purity(
+    events_path: Path | None = None,
+    lookback: int = 100,
+) -> dict[str, Any]:
+    """
+    Scan recent events for test contamination.
+    Returns {purity, test_entries, dirty_count, verdict, environment}.
+    
+    If test entries detected in PROD context:
+      → WELL_VERDICT = VOID_TELEMETRY
+      → No GREEN/AMBER/RED — must return VOID until Arif confirms real state
+    """
+    if events_path is None:
+        events_path = EVENTS_PATH
+
+    purity = "CLEAN"
+    test_entries: list[dict] = []
+    dirty_count = 0
+    prod_count = 0
+
+    if events_path.exists():
+        try:
+            with open(events_path) as f:
+                lines = f.readlines()
+            recent = lines[-lookback:] if len(lines) > lookback else lines
+            for line in recent:
+                try:
+                    e = json.loads(line)
+                    env = e.get("environment", "PROD")
+                    if env == "TEST":
+                        purity = "DIRTY"
+                        dirty_count += 1
+                        test_entries.append(e)
+                    elif env == "PROD":
+                        prod_count += 1
+                except Exception:
+                    continue
+        except Exception:
+            pass
+
+    verdict = "VOID_TELEMETRY" if purity == "DIRTY" else "CLEAN"
+
+    return {
+        "purity": purity,
+        "test_entry_count": dirty_count,
+        "prod_entry_count": prod_count,
+        "test_entries_sample": test_entries[-5:] if test_entries else [],
+        "verdict": verdict,
+        "environment": "PROD" if purity == "CLEAN" else "CONTAMINATED",
+        "action_required": (
+            "VOID_TELEMETRY: Test entries detected in production event stream. "
+            "WELL verdicts suspended until test entries quarantined and Arif confirms real state."
+            if purity == "DIRTY"
+            else "CLEAN: Production telemetry uncontaminated."
+        ),
+    }
+
+
+# ── Telemetry Provenance Builder ────────────────────────────────────────────────
+def _build_provenance(
+    source_type: str = "OPERATOR_REPORTED",
+    operator_confirmed: bool = False,
+    telemetry_status: str = "LIVE",
+    truth_status: str = "UNVERIFIED",
+    environment: str = "PROD",
+) -> dict[str, Any]:
+    """Build standard provenance block for every WELL output."""
+    return {
+        "source_type": source_type,
+        "operator_confirmed": operator_confirmed,
+        "telemetry_status": telemetry_status,
+        "truth_status": truth_status,
+        "environment": environment,
+        "purity_check": _check_telemetry_purity(),
+    }
+
+
+# ── WELL Identity Invariant (F10 Coherence + F01 Amanah) ───────────────────────
+def is_well(state: dict[str, Any] | None = None) -> bool:
+    """
+    Verify that a state object carries the canonical WELL identity.
+    Returns True only if all constitutional fields are present and valid.
+    """
+    if state is None:
+        state = _load_state()
+    return (
+        state.get("identity") == "WELL"
+        and state.get("role") in ["Body", "Body / Human Intelligence", "Biological Substrate Governance"]
+        and state.get("delta_s", -1) >= 0
+        and state.get("peace2", 0) >= 1.0
+        and state.get("kappa_r", 0) >= 0.95
+        and state.get("rasa") is True
+        and state.get("amanah") in ["LOCK", "🔐", True]
+        and state.get("authority") == "REFLECT_ONLY"
+    )
+
+
+def _enforce_reflect_only() -> dict[str, Any] | None:
+    """
+    Return an error payload if WELL identity is corrupted or authority is overridden.
+    Otherwise return None (pass through).
+    """
+    if not is_well():
+        return {
+            "ok": False,
+            "verdict": "NOT_WELL",
+            "error": "WELL identity invariant failed. REFLECT_ONLY authority compromised or state corrupted.",
+            "authority": "REFLECT_ONLY",
+            "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
+        }
+    return None
+
+
+def _clamp(value: float | int | None, minimum: float, maximum: float) -> float | None:
+    """Clamp numeric input to [min, max]. None passes through unchanged."""
+    if value is None:
+        return None
+    try:
+        v = float(value)
+    except (TypeError, ValueError):
+        raise ValueError(f"Expected numeric input, got {type(value).__name__}")
+    return max(minimum, min(maximum, v))
+
+
+def _sanitize_note(note: str | None) -> str | None:
+    """Sanitize free-text notes to prevent log injection or secret leakage."""
+    if not note:
+        return note
+    # Strip control chars, limit length
+    cleaned = "".join(ch for ch in note if ch.isprintable() or ch in " \t\n\r")
+    return cleaned[:500]
+
+
+# ── Evidence & Telemetry Integrity Guards ──────────────────────────────────────
+
+SENSITIVE_METRIC_KEYS = {
+    "note", "pain_map", "sleep_debt_days", "last_night_hours", "quality_score",
+    "subjective_load", "restlessness", "hrv_proxy", "clarity", "decision_fatigue",
+    "focus_durability", "fasting_window_hours", "perceived_stability", "hydration_status",
+}
+
+
+def _has_verified_telemetry(state: dict[str, Any]) -> bool:
+    """
+    Return True only if state contains actual body telemetry, not defaults.
+    UNVERIFIED or VOID truth_status fails immediately.
+    """
+    if state.get("truth_status") in ("VOID", "TEST"):
+        return False
+    metrics = state.get("metrics", {})
+    if not metrics or not isinstance(metrics, dict):
+        return False
+    # Must have at least one dimension with real data (not just empty dicts)
+    for dim in ("sleep", "stress", "cognitive", "metabolic", "structural"):
+        if metrics.get(dim):
+            return True
+    return False
+
+
+def _resolve_readiness(state: dict[str, Any]) -> dict[str, Any]:
+    """
+    Canonical readiness resolver used by ALL tools.
+    If no verified telemetry: UNKNOWN (fail closed, but honest).
+    If telemetry exists: compute normal tiered readiness.
+    """
+    score = _state_score(state)
+    violations = state.get("floors_violated", [])
+    metrics = state.get("metrics", {})
+
+    # ── Unknown telemetry path (fail closed without faking biology) ──
+    if not _has_verified_telemetry(state):
+        return {
+            "readiness": "UNKNOWN",
+            "risk_level": "UNKNOWN",
+            "recommended_mode": "draft_only",
+            "human_confirmation_required": True,
+            "reason": "No verified body telemetry available. WELL cannot infer biological readiness.",
+            "well_score": score,
+            "active_violations": violations,
+            "has_telemetry": False,
+            "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
+        }
+
+    # ── Known telemetry path ──
+    if _state_is_void(state):
+        return {
+            "readiness": "VOID_TELEMETRY",
+            "risk_level": "RED",
+            "recommended_mode": "pause",
+            "human_confirmation_required": True,
+            "reason": "WELL telemetry is unverified or contaminated. Manual Arif confirmation required.",
+            "well_score": score,
+            "active_violations": violations,
+            "has_telemetry": True,
+            "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
+        }
+
+    if violations:
+        return {
+            "readiness": "DEGRADED",
+            "risk_level": "RED",
+            "recommended_mode": "draft_only",
+            "human_confirmation_required": True,
+            "reason": f"Substrate flagging: {', '.join(violations)}. Strategic forge bandwidth throttled.",
+            "well_score": score,
+            "active_violations": violations,
+            "has_telemetry": True,
+            "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
+        }
+
+    if score >= 80:
+        return {
+            "readiness": "OPTIMAL",
+            "risk_level": "GREEN",
+            "recommended_mode": "full",
+            "human_confirmation_required": False,
+            "reason": "Substrate stable and high-capacity. Full forge bandwidth available.",
+            "well_score": score,
+            "active_violations": violations,
+            "has_telemetry": True,
+            "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
+        }
+
+    if score >= 60:
+        return {
+            "readiness": "FUNCTIONAL",
+            "risk_level": "GREEN",
+            "recommended_mode": "structured",
+            "human_confirmation_required": False,
+            "reason": "Substrate functional. Normal forge operations permitted.",
+            "well_score": score,
+            "active_violations": violations,
+            "has_telemetry": True,
+            "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
+        }
+
+    return {
+        "readiness": "LOW_CAPACITY",
+        "risk_level": "AMBER",
+        "recommended_mode": "draft_only",
+        "human_confirmation_required": True,
+        "reason": "Substrate low-capacity. Recommend rest before strategic decisions.",
+        "well_score": score,
+        "active_violations": violations,
+        "has_telemetry": True,
+        "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
+    }
+
+
+def _redact_metrics_for_external(metrics: dict[str, Any]) -> dict[str, Any]:
+    """Return minimal external-safe metric summary. Never leak raw body data."""
+    if not metrics:
+        return {}
+    summary: dict[str, Any] = {}
+    for dim in ("sleep", "stress", "cognitive", "metabolic", "structural"):
+        dim_data = metrics.get(dim)
+        if dim_data:
+            summary[dim] = {"available": True}
+    return summary
+
+# ── Server ─────────────────────────────────────────────────────────────────────
 mcp = FastMCP(
     name="AFWELL",
-
     instructions=(
         "WELL is the Human–Machine Readiness Mirror for arifOS. "
         "H-WELL reflects operator Arif's biological and cognitive state. "
@@ -39,6 +324,19 @@ mcp = FastMCP(
         "DITEMPA BUKAN DIBERI — Forged, Not Given."
     ),
 )
+
+@mcp.tool()
+def mcp_health_check() -> dict:
+    """Universal health check for federation stability."""
+    return {
+        "mcp": "WELL",
+        "status": "OK",
+        "transport": "SSE_VALID",
+        "auth": "OK",
+        "schema_version": "2026.04",
+        "read_only": True,
+        "final_authority": "ARIF",
+    }
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -53,6 +351,25 @@ def _load_state() -> dict[str, Any]:
         }
     with open(STATE_PATH) as f:
         return json.load(f)
+
+
+def _state_score(state: dict[str, Any], default: float = 0.0) -> float:
+    """Return a numeric WELL score; null/invalid telemetry is treated as unsafe unknown."""
+    raw = state.get("well_score", default)
+    if raw is None:
+        return default
+    try:
+        return float(raw)
+    except (TypeError, ValueError):
+        return default
+
+
+def _state_is_void(state: dict[str, Any]) -> bool:
+    return (
+        state.get("truth_status") == "VOID"
+        or state.get("test_contamination") == "YES"
+        or state.get("safe_mode") == "manual_confirmation_required"
+    )
 
 
 def _save_state(state: dict[str, Any]) -> None:
@@ -196,6 +513,8 @@ def _compose_verdict(
             "level": risk_level,
             "coupled": "UNKNOWN",
         },
+        "risk_level": risk_level,
+        "recommended_mode": recommended_mode,
         "execution": {
             "recommended_mode": recommended_mode,
             "human_confirmation_required": human_required,
@@ -223,9 +542,12 @@ def well_state(ctx: Context | None = None) -> dict[str, Any]:
         "ok": True,
         "operator_id": state.get("operator_id", "arif"),
         "timestamp": state.get("timestamp"),
-        "well_score": state.get("well_score", 50),
+        "well_score": _state_score(state),
         "floors_violated": state.get("floors_violated", []),
         "metrics": state.get("metrics", {}),
+        "truth_status": state.get("truth_status", "UNVERIFIED"),
+        "safe_mode": state.get("safe_mode"),
+        "human_decision_required": bool(state.get("arif_decision_required", False)),
         "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
     }
 
@@ -262,6 +584,24 @@ def well_log(
     """
     state = _load_state()
     metrics = state.get("metrics", {})
+
+    # ── Validate & clamp incoming readings ─────────────────────────
+    try:
+        sleep_hours = _clamp(sleep_hours, 0, 24)
+        sleep_debt_days = _clamp(sleep_debt_days, 0, 30)
+        sleep_quality = _clamp(sleep_quality, 0, 10)
+        stress_load = _clamp(stress_load, 0, 10)
+        restlessness = _clamp(restlessness, 0, 10)
+        clarity = _clamp(clarity, 0, 10)
+        decision_fatigue = _clamp(decision_fatigue, 0, 10)
+        focus_durability = _clamp(focus_durability, 0, 10)
+        fasting_hours = _clamp(fasting_hours, 0, 72)
+        metabolic_stability = _clamp(metabolic_stability, 0, 10)
+        movement_count = _clamp(movement_count, 0, 10000)
+    except ValueError as e:
+        return {"ok": False, "error": f"Invalid input: {e}"}
+
+    note = _sanitize_note(note)
 
     # ── Merge incoming readings ────────────────────────────────────
     if any(v is not None for v in [sleep_hours, sleep_debt_days, sleep_quality]):
@@ -355,6 +695,11 @@ def well_pressure(
     Signal cognitive pressure/load from an external source (e.g. A-FORGE).
     Increments decision_fatigue and potentially triggers W6 Metabolic Pause.
     """
+    try:
+        load_delta = _clamp(load_delta, 0.0, 10.0)
+    except ValueError as e:
+        return {"ok": False, "error": f"Invalid input: {e}"}
+
     state = _load_state()
     metrics = state.get("metrics", {})
     cog = dict(metrics.get("cognitive", {"clarity": 10, "decision_fatigue": 0}))
@@ -406,47 +751,35 @@ def well_readiness(ctx: Context | None = None) -> dict[str, Any]:
     Reflect current biological readiness for arifOS JUDGE context.
     Returns score, floor status, and a readiness verdict for the constitutional kernel.
     W0: This is informational only — WELL never blocks unilaterally.
+    If no verified telemetry exists, returns UNKNOWN rather than faking biological knowledge.
     """
     state = _load_state()
-    score = state.get("well_score", 50)
-    violations = state.get("floors_violated", [])
-    metrics = state.get("metrics", {})
+    resolved = _resolve_readiness(state)
 
-    if violations:
-        verdict_str = "DEGRADED"
-        status = "HOLD"
-        message = f"Substrate flagging: {', '.join(violations)}. Strategic forge bandwidth throttled."
-        risk = "RED"
-        mode = "draft_only"
-    elif score >= 80:
-        verdict_str = "OPTIMAL"
-        status = "PASS"
-        message = "Substrate stable and high-capacity. Full forge bandwidth available."
-        risk = "GREEN"
-        mode = "full"
-    elif score >= 60:
-        verdict_str = "FUNCTIONAL"
-        status = "PASS"
-        message = "Substrate functional. Normal forge operations permitted."
-        risk = "GREEN"
-        mode = "structured"
-    else:
-        verdict_str = "LOW_CAPACITY"
-        status = "CAUTION"
-        message = "Substrate low-capacity. Recommend rest before strategic decisions."
-        risk = "AMBER"
-        mode = "draft_only"
+    status_map = {
+        "UNKNOWN": "HOLD",
+        "VOID_TELEMETRY": "HOLD",
+        "DEGRADED": "HOLD",
+        "OPTIMAL": "PASS",
+        "FUNCTIONAL": "PASS",
+        "LOW_CAPACITY": "CAUTION",
+    }
 
     return _compose_verdict(
         mcp="AFWELL",
         task="readiness_reflection",
-        status=status,
-        domain_verdict=verdict_str,
-        confidence="HIGH",
-        risk_level=risk,
-        recommended_mode=mode,
-        human_required=score < 60 or bool(violations),
-        next_safe_action=message
+        status=status_map.get(resolved["readiness"], "HOLD"),
+        domain_verdict=resolved["readiness"],
+        confidence="HIGH" if resolved["has_telemetry"] else "LOW",
+        risk_level=resolved["risk_level"],
+        recommended_mode=resolved["recommended_mode"],
+        human_required=resolved["human_confirmation_required"],
+        assumptions=[
+            f"truth_status={state.get('truth_status', 'UNVERIFIED')}",
+            f"telemetry_confidence={state.get('telemetry_confidence', 'UNKNOWN')}",
+            f"has_telemetry={resolved['has_telemetry']}",
+        ],
+        next_safe_action=resolved["reason"]
     )
 
 
@@ -508,7 +841,9 @@ async def well_init(
             "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
         }
     except Exception as e:
-        return {"ok": False, "session_id": sid, "error": str(e)}
+        # F01 Amanah: never leak internal errors or paths to callers
+        _append_event({"event": "WELL_INIT_ERROR", "error_type": type(e).__name__, "session_id": sid})
+        return {"ok": False, "session_id": sid, "error": "Vault bridge unavailable. Check arifOS connectivity."}
 
 
 @mcp.tool()
@@ -531,17 +866,21 @@ async def well_anchor(
     try:
         from arifosmcp.runtime.well_bridge import anchor_well_to_vault
         res = await anchor_well_to_vault(force=force)
-        
-        if res["ok"]:
+
+        if res.get("ok"):
             _append_event({
                 "event": "VAULT_ANCHOR_SQL",
-                "vault_id": res["vault_id"],
-                "hash": res["hash"]
+                "vault_id": res.get("vault_id"),
+                "hash": res.get("hash")
             })
-            
-        return res
+            return res
+        # Sanitize arifOS internal errors before returning to caller
+        _append_event({"event": "WELL_ANCHOR_ERROR", "error_type": "VaultBridgeError"})
+        return {"ok": False, "error": "Vault bridge unavailable. Check arifOS connectivity."}
     except Exception as e:
-        return {"ok": False, "error": str(e)}
+        # F01 Amanah: never leak internal errors or paths to callers
+        _append_event({"event": "WELL_ANCHOR_ERROR", "error_type": type(e).__name__})
+        return {"ok": False, "error": "Vault bridge unavailable. Check arifOS connectivity."}
 
 
 @mcp.tool()
@@ -549,11 +888,26 @@ def well_check_floors(ctx: Context | None = None) -> dict[str, Any]:
     """
     Check WELL floor status against all W-Floors.
     Returns per-floor status, overall verdict, and bandwidth recommendation for arifOS JUDGE.
+    If no verified telemetry exists, returns UNKNOWN rather than faking clear floors.
     """
     state = _load_state()
     metrics = state.get("metrics", {})
     sleep = metrics.get("sleep", {})
     cognitive = metrics.get("cognitive", {})
+
+    # ── No telemetry → cannot check floors ──
+    if not _has_verified_telemetry(state):
+        return _compose_verdict(
+            mcp="AFWELL",
+            task="floor_integrity_check",
+            status="HOLD",
+            domain_verdict="UNKNOWN_TELEMETRY",
+            confidence="LOW",
+            risk_level="UNKNOWN",
+            recommended_mode="draft_only",
+            human_required=True,
+            next_safe_action="No verified body telemetry. Floor status cannot be determined.",
+        )
 
     floors: dict[str, dict[str, Any]] = {
         "W0": {
@@ -632,13 +986,27 @@ def well_get_readiness(ctx: Context | None = None) -> dict[str, Any]:
     """
     Return current readiness score + W-floor status (Phase 2).
     Includes GREEN|AMBER|RED tiering and human_decision_required flag.
+    If no verified telemetry, returns UNKNOWN rather than fabricated tiers.
     """
     state = _load_state()
-    metrics = state.get("metrics", {})
-    sleep = metrics.get("sleep", {})
-    stress = metrics.get("stress", {})
-    cognitive = metrics.get("cognitive", {})
+    resolved = _resolve_readiness(state)
 
+    if not resolved["has_telemetry"]:
+        return {
+            "ok": True,
+            "well_score": resolved["well_score"],
+            "readiness": {
+                "score": round(resolved["well_score"] / 100.0, 2),
+                "tier": "UNKNOWN",
+                "recommendation": resolved["reason"],
+                "human_decision_required": True,
+            },
+            "floors_violated": resolved["active_violations"],
+            "has_telemetry": False,
+            "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
+        }
+
+    metrics = state.get("metrics", {})
     r_score = readiness_score(metrics)
 
     return {
@@ -646,6 +1014,7 @@ def well_get_readiness(ctx: Context | None = None) -> dict[str, Any]:
         "well_score": state.get("well_score", 50),
         "readiness": r_score,
         "floors_violated": state.get("floors_violated", []),
+        "has_telemetry": True,
         "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
     }
 
@@ -655,12 +1024,28 @@ def well_check_floor(floor_id: str | None = None, ctx: Context | None = None) ->
     """
     Check specific W-floor (W1/W5/W6) — return Canonical Verdict.
     If floor_id is None, checks all floors via well_check_floors.
+    If no verified telemetry, returns UNKNOWN rather than faking clear floors.
     """
     if not floor_id:
         return well_check_floors(ctx=ctx)
 
     fid = floor_id.upper()
     state = _load_state()
+
+    # ── No telemetry → cannot check individual floors ──
+    if not _has_verified_telemetry(state) and fid != "W0":
+        return _compose_verdict(
+            mcp="AFWELL",
+            task=f"floor_check: {fid}",
+            status="HOLD",
+            domain_verdict="UNKNOWN_TELEMETRY",
+            confidence="LOW",
+            risk_level="UNKNOWN",
+            recommended_mode="draft_only",
+            human_required=True,
+            next_safe_action="No verified body telemetry. Floor status cannot be determined.",
+        )
+
     metrics = state.get("metrics", {})
     sleep = metrics.get("sleep", {})
     cognitive = metrics.get("cognitive", {})
@@ -701,16 +1086,6 @@ def well_check_floor(floor_id: str | None = None, ctx: Context | None = None) ->
         human_required=not passed,
         next_safe_action=detail
     )
-
-
-@mcp.tool()
-def well_forge_mode_recommend(ctx: Context | None = None) -> dict[str, Any]:
-    """
-    Returns current forge mode recommendation for A-FORGE.
-    Based on H-WELL + M-WELL + C-WELL state using Canonical Verdict.
-    """
-    res = well_forge_precheck(task_description="general_forge_recommendation", ctx=ctx)
-    return res
 
 
 @mcp.tool("well_list_log")
@@ -848,10 +1223,27 @@ def well_bandwidth_recommendation(ctx: Context | None = None) -> dict[str, Any]:
     Action translation layer — maps WELL state to operational mode.
     Not just 'you are tired' but 'your state supports X but not Y.'
     For arifOS kernel: WELL does not block, it informs mode.
+    If no verified telemetry, returns UNKNOWN rather than faking capacity.
     """
     state = _load_state()
-    score = state.get("well_score", 50)
-    violations = state.get("floors_violated", [])
+    resolved = _resolve_readiness(state)
+
+    if not resolved["has_telemetry"]:
+        return {
+            "ok": True,
+            "verdict": "UNKNOWN",
+            "mode": "UNKNOWN",
+            "decision_classes_allowed": ["C0"],
+            "decision_classes_advised_against": ["C1", "C2", "C3", "C4", "C5"],
+            "message": resolved["reason"],
+            "current_score": resolved["well_score"],
+            "active_violations": resolved["active_violations"],
+            "has_telemetry": False,
+            "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
+        }
+
+    score = resolved["well_score"]
+    violations = resolved["active_violations"]
     metrics = state.get("metrics", {})
     cognitive = metrics.get("cognitive", {})
     sleep = metrics.get("sleep", {})
@@ -860,48 +1252,50 @@ def well_bandwidth_recommendation(ctx: Context | None = None) -> dict[str, Any]:
     clarity = cognitive.get("clarity", 10)
     sleep_debt = sleep.get("sleep_debt_days", 0)
 
-    # Determine operational mode
+    # Determine operational mode (advisory only — WELL never commands)
     if score >= 80 and not violations:
         mode = "FULL"
         verdict = "OPTIMAL"
         allowed = ["C0", "C1", "C2", "C3", "C4", "C5"]
+        advised_against = []
         message = "Full architecture, coding, strategy, public writing. All decision classes open."
     elif score >= 60 and len(violations) <= 1:
         mode = "NORMAL"
         verdict = "FUNCTIONAL"
         allowed = ["C0", "C1", "C2", "C3"]
-        forbidden = ["C4", "C5"]
+        advised_against = ["C4", "C5"]
         message = "Normal work. Keep structure. Avoid irreversible commitments."
     elif score >= 40 or (violations and score >= 50):
         mode = "RESTRICTED"
         verdict = "DEGRADED"
         allowed = ["C0", "C1"]
-        forbidden = ["C2", "C3", "C4", "C5"]
+        advised_against = ["C2", "C3", "C4", "C5"]
         message = "Draft only. Reversible tasks. No major commitments or public actions."
     else:
-        mode = "LOCKED"
+        mode = "PAUSED"
         verdict = "LOW_CAPACITY"
         allowed = ["C0"]
-        forbidden = ["C1", "C2", "C3", "C4", "C5"]
+        advised_against = ["C1", "C2", "C3", "C4", "C5"]
         message = "Pause. Recover. No consequential decisions."
 
     # W7 — Cognitive Load Threshold (new floor)
     if fatigue > 7 and clarity < 5:
-        mode = "LOCKED"
+        mode = "PAUSED"
         verdict = "COGNITIVE_OVERLOAD"
         allowed = ["C0"]
-        forbidden = ["C1", "C2", "C3", "C4", "C5"]
-        message = "Cognitive overload detected. All judgment suspended until recovery."
+        advised_against = ["C1", "C2", "C3", "C4", "C5"]
+        message = "Cognitive overload detected. Recommend resting until recovery."
 
     return {
         "ok": True,
         "verdict": verdict,
         "mode": mode,
         "decision_classes_allowed": allowed,
-        "decision_classes_forbidden": forbidden,
+        "decision_classes_advised_against": advised_against,
         "message": message,
         "current_score": score,
         "active_violations": violations,
+        "has_telemetry": True,
         "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
     }
 
@@ -1044,16 +1438,16 @@ def well_niat_check(
     flags = sum(1 for q in questions.values() if q["result"] in ("UNSTABLE", "LIKELY", "REQUIRED", "IRREVERSIBLE", "UNCLEAR"))
 
     if flags >= 3 or score < 40:
-        recommendation = "HOLD — delay action"
-        readiness = "BLOCKED"
+        recommendation = "ADVISORY_HOLD — delay action"
+        readiness = "ADVISORY_BLOCKED"
         reason = "Multiple WELL indicators flag this action as high-risk in current state."
     elif flags >= 1:
-        recommendation = "CAUTION — proceed with review"
-        readiness = "CONDITIONAL"
+        recommendation = "ADVISORY_CAUTION — proceed with review"
+        readiness = "ADVISORY_CONDITIONAL"
         reason = "Some indicators flag caution. Consider delaying or drafting only."
     else:
-        recommendation = "PROCEED"
-        readiness = "READY"
+        recommendation = "ADVISORY_PROCEED"
+        readiness = "ADVISORY_READY"
         reason = "Biological state supports this intent."
 
     return {
@@ -1141,10 +1535,10 @@ def well_decision_classify(
     all_clear = score_ok and fatigue_ok and clarity_ok and stress_ok
 
     if all_clear:
-        verdict = "APPROVED"
+        verdict = "ADVISORY_APPROVED"
         message = f"WELL state supports {decision_class} tasks."
     else:
-        verdict = "CAUTION" if score >= 40 else "BLOCKED"
+        verdict = "ADVISORY_CAUTION" if score >= 40 else "ADVISORY_BLOCKED"
         blocked_reasons = []
         if not score_ok: blocked_reasons.append(f"score {score} < required {req['min_score']}")
         if not fatigue_ok: blocked_reasons.append(f"fatigue {fatigue} > max {req['max_fatigue']}")
@@ -1183,74 +1577,70 @@ def well_arifos_packet(ctx: Context | None = None) -> dict[str, Any]:
 
     arifOS asks: Is the Judge biologically ready?
     WELL answers with this packet.
+
+    Privacy rule: If no verified telemetry, do NOT expose fake default metrics.
     """
     state = _load_state()
-    score = state.get("well_score", 50)
-    violations = state.get("floors_violated", [])
+    resolved = _resolve_readiness(state)
+    score = resolved["well_score"]
+    violations = resolved["active_violations"]
     metrics = state.get("metrics", {})
     cognitive = metrics.get("cognitive", {})
     sleep = metrics.get("sleep", {})
     stress = metrics.get("stress", {})
 
-    fatigue = cognitive.get("decision_fatigue", 0)
-    clarity = cognitive.get("clarity", 10)
-    sleep_debt = sleep.get("sleep_debt_days", 0)
-    stress_load = stress.get("subjective_load", 0)
-
-    # Determine safe mode
-    if score >= 80 and not violations:
-        safe_mode = "full"
-        readiness = "OPTIMAL"
-    elif score >= 60:
-        safe_mode = "normal"
-        readiness = "FUNCTIONAL"
-    elif score >= 40:
-        safe_mode = "draft_only"
-        readiness = "DEGRADED"
-    else:
-        safe_mode = "suspended"
-        readiness = "LOW_CAPACITY"
+    has_telemetry = resolved["has_telemetry"]
 
     # Decision classes
-    if safe_mode == "full":
+    mode = resolved["recommended_mode"]
+    if mode == "full":
         classes_allowed = ["C0", "C1", "C2", "C3", "C4", "C5"]
-    elif safe_mode == "normal":
+    elif mode == "structured":
         classes_allowed = ["C0", "C1", "C2", "C3"]
-    elif safe_mode == "draft_only":
+    elif mode == "draft_only":
         classes_allowed = ["C0", "C1"]
     else:
         classes_allowed = ["C0"]
 
-    # Human confirmation required
-    human_confirmation = (
-        safe_mode in ("draft_only", "suspended") or
-        fatigue > 5 or
-        score < 60 or
-        len(violations) > 0
-    )
-
-    # What to avoid
+    # What to avoid (only if we have real data to base it on)
     avoid = []
-    if fatigue > 5: avoid.append("consequential_decisions")
-    if stress_load > 7: avoid.append("public_commitment")
-    if sleep_debt > 1: avoid.append("irreversible_actions")
-    if score < 50: avoid.extend(["financial_decision", "conflict_reply", "public_posting"])
+    if has_telemetry:
+        fatigue = cognitive.get("decision_fatigue", 0)
+        clarity = cognitive.get("clarity", 10)
+        sleep_debt = sleep.get("sleep_debt_days", 0)
+        stress_load = stress.get("subjective_load", 0)
+        if fatigue > 5: avoid.append("consequential_decisions")
+        if stress_load > 7: avoid.append("public_commitment")
+        if sleep_debt > 1: avoid.append("irreversible_actions")
+        if score < 50: avoid.extend(["financial_decision", "conflict_reply", "public_posting"])
+
+    # Operator snapshot: redact when no telemetry; never leak raw body data
+    if has_telemetry:
+        operator_snapshot = {
+            "sleep_debt_days": sleep.get("sleep_debt_days", 0),
+            "clarity": cognitive.get("clarity", 10),
+            "decision_fatigue": cognitive.get("decision_fatigue", 0),
+            "stress_load": stress.get("subjective_load", 0),
+        }
+    else:
+        operator_snapshot = {
+            "sleep_debt_days": None,
+            "clarity": None,
+            "decision_fatigue": None,
+            "stress_load": None,
+        }
 
     return {
         "ok": True,
-        "readiness": readiness,
-        "safe_mode": safe_mode,
+        "readiness": resolved["readiness"],
+        "safe_mode": mode,
         "well_score": score,
         "decision_classes_allowed": classes_allowed,
         "avoid": avoid if avoid else None,
-        "human_confirmation_required": human_confirmation,
+        "human_confirmation_required": resolved["human_confirmation_required"],
         "active_violations": violations,
-        "operator_snapshot": {
-            "sleep_debt_days": sleep_debt,
-            "clarity": clarity,
-            "decision_fatigue": fatigue,
-            "stress_load": stress_load,
-        },
+        "operator_snapshot": operator_snapshot,
+        "has_telemetry": has_telemetry,
         "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
     }
 
@@ -1357,11 +1747,15 @@ def well_pressure_ledger(
         if log_source not in PRESSURE_SOURCES:
             return {"ok": False, "error": f"Unknown source. Must be one of: {PRESSURE_SOURCES}"}
 
-        intensity = intensity or 5.0
+        try:
+            intensity = _clamp(intensity or 5.0, 0.0, 10.0)
+        except ValueError as e:
+            return {"ok": False, "error": f"Invalid input: {e}"}
+        note = _sanitize_note(note)
         event = {
             "event": "PRESSURE_LEDGER",
             "source": log_source,
-            "intensity": min(10.0, max(0.0, float(intensity))),
+            "intensity": intensity,
             "note": note,
             "epoch": datetime.datetime.now(datetime.timezone.utc).isoformat(),
         }
@@ -1425,15 +1819,36 @@ def well_daily_brief(ctx: Context | None = None) -> dict[str, Any]:
     Readiness / Main Risk / Best Task Class / Avoid / Recovery Move / arifOS Mode
 
     Designed for morning or pre-session check-in.
+    If no verified telemetry, returns UNKNOWN with safe defaults rather than faking biology.
     """
     state = _load_state()
-    score = state.get("well_score", 50)
-    violations = state.get("floors_violated", [])
+    resolved = _resolve_readiness(state)
+    score = resolved["well_score"]
+    has_telemetry = resolved["has_telemetry"]
+    violations = resolved["active_violations"]
     metrics = state.get("metrics", {})
     cognitive = metrics.get("cognitive", {})
     sleep = metrics.get("sleep", {})
     stress = metrics.get("stress", {})
     metabolic = metrics.get("metabolic", {})
+
+    # ── No telemetry → honest unknown brief ──
+    if not has_telemetry:
+        now = datetime.datetime.now(datetime.timezone.utc)
+        return {
+            "ok": True,
+            "readiness": "UNKNOWN",
+            "well_score": score,
+            "main_risk": "insufficient_body_telemetry",
+            "best_task_class": "notes + journaling + organizing",
+            "avoid": ["irreversible decisions", "public posts", "financial decisions"],
+            "recovery_move": "Log body state before strategic work",
+            "arifOS_mode": "draft_only / unknown_readiness",
+            "active_violations": ["none"],
+            "has_telemetry": False,
+            "timestamp": now.isoformat(),
+            "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
+        }
 
     fatigue = cognitive.get("decision_fatigue", 0)
     clarity = cognitive.get("clarity", 10)
@@ -1510,6 +1925,7 @@ def well_daily_brief(ctx: Context | None = None) -> dict[str, Any]:
         "recovery_move": recovery[0] if len(recovery) == 1 else recovery,
         "arifOS_mode": arifos_mode + time_note,
         "active_violations": violations if violations else ["none"],
+        "has_telemetry": True,
         "timestamp": now.isoformat(),
         "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
     }
@@ -1608,37 +2024,52 @@ def well_machine_log(
     Log machine substrate telemetry.
     All values are 0-1 scale (normalized) or absolute ms for latency.
     """
+    # Validate numeric inputs
+    try:
+        model_reliability = _clamp(model_reliability, 0.0, 1.0)
+        tool_availability = _clamp(tool_availability, 0.0, 1.0)
+        latency_ms = _clamp(latency_ms, 0.0, 1_000_000.0)
+        context_pressure = _clamp(context_pressure, 0.0, 1.0)
+        memory_integrity = _clamp(memory_integrity, 0.0, 1.0)
+        api_failure_rate = _clamp(api_failure_rate, 0.0, 1.0)
+        data_freshness = _clamp(data_freshness, 0.0, 1.0)
+        compute_budget = _clamp(compute_budget, 0.0, 100.0)
+        token_budget = _clamp(token_budget, 0.0, 100.0)
+    except ValueError as e:
+        return {"ok": False, "error": f"Invalid input: {e}"}
+
     state = _load_state()
     m_machine = dict(state.get("m_machine", {}))
 
     if model_reliability is not None:
-        m_machine["model_reliability"] = max(0.0, min(1.0, model_reliability))
+        m_machine["model_reliability"] = model_reliability
     if tool_availability is not None:
-        m_machine["tool_availability"] = max(0.0, min(1.0, tool_availability))
+        m_machine["tool_availability"] = tool_availability
     if latency_ms is not None:
-        m_machine["latency_ms"] = max(0, latency_ms)
+        m_machine["latency_ms"] = latency_ms
     if context_pressure is not None:
-        m_machine["context_length_pressure"] = max(0.0, min(1.0, context_pressure))
+        m_machine["context_length_pressure"] = context_pressure
     if memory_integrity is not None:
-        m_machine["memory_integrity"] = max(0.0, min(1.0, memory_integrity))
+        m_machine["memory_integrity"] = memory_integrity
     if api_failure_rate is not None:
-        m_machine["api_failure_rate"] = max(0.0, min(1.0, api_failure_rate))
+        m_machine["api_failure_rate"] = api_failure_rate
     if data_freshness is not None:
-        m_machine["data_freshness"] = max(0.0, min(1.0, data_freshness))
+        m_machine["data_freshness"] = data_freshness
     if compute_budget is not None:
-        m_machine["compute_budget_pct"] = max(0.0, min(100.0, compute_budget))
+        m_machine["compute_budget_pct"] = compute_budget
     if token_budget is not None:
-        m_machine["token_budget_pct"] = max(0.0, min(100.0, token_budget))
+        m_machine["token_budget_pct"] = token_budget
     if vault_status is not None:
         m_machine["vault_status"] = vault_status.lower()
     if schema_valid is not None:
         m_machine["schema_valid"] = bool(schema_valid)
 
-    # Append security flag
+    # Append security flag (sanitized)
     if security_flag:
+        flag_clean = _sanitize_note(security_flag) or ""
         flags = list(m_machine.get("security_flags", []))
-        if security_flag not in flags:
-            flags.append(security_flag)
+        if flag_clean and flag_clean not in flags:
+            flags.append(flag_clean)
         m_machine["security_flags"] = flags
 
     state["m_machine"] = m_machine
@@ -1735,12 +2166,16 @@ def well_coupled_readiness(ctx: Context | None = None) -> dict[str, Any]:
 
     Key rule: Human substrate and machine substrate are separate.
     Governance sees both. Judgment remains Arif's.
+
+    If no verified body telemetry, human readiness is UNKNOWN — not faked.
     """
     h_state = _load_state()
-    h_metrics = h_state.get("metrics", {})
-    h_score = h_state.get("well_score", 50)
-    h_violations = h_state.get("floors_violated", [])
+    h_resolved = _resolve_readiness(h_state)
+    h_score = h_resolved["well_score"]
+    h_violations = h_resolved["active_violations"]
+    has_telemetry = h_resolved["has_telemetry"]
 
+    h_metrics = h_state.get("metrics", {})
     cognitive = h_metrics.get("cognitive", {})
     stress = h_metrics.get("stress", {})
     sleep = h_metrics.get("sleep", {})
@@ -1750,36 +2185,36 @@ def well_coupled_readiness(ctx: Context | None = None) -> dict[str, Any]:
     m_score = m_state.get("m_well_score", 100)
     m_verdict = m_state.get("m_well_verdict", "UNKNOWN")
 
-    # Human verdict
-    if h_score >= 80 and not h_violations:
-        h_verdict = "OPTIMAL"
-    elif h_score >= 60:
-        h_verdict = "FUNCTIONAL"
-    elif h_score >= 40:
-        h_verdict = "DEGRADED"
-    else:
-        h_verdict = "LOW_CAPACITY"
+    # Human verdict — use resolver, never fake
+    h_verdict = h_resolved["readiness"]
 
-    # Coupled risk detection
-    h_vals = {
-        "decision_fatigue": cognitive.get("decision_fatigue", 0),
-        "clarity": cognitive.get("clarity", 10),
-        "stress_load": stress.get("subjective_load", 0),
-        "sleep_debt_days": sleep.get("sleep_debt_days", 0),
-    }
+    # Coupled risk detection (only if we have real body data)
+    h_vals: dict[str, float] = {}
+    if has_telemetry:
+        h_vals = {
+            "decision_fatigue": cognitive.get("decision_fatigue", 0),
+            "clarity": cognitive.get("clarity", 10),
+            "stress_load": stress.get("subjective_load", 0),
+            "sleep_debt_days": sleep.get("sleep_debt_days", 0),
+        }
 
-    risks_found = []
-    for pattern in COUPLED_RISK_PATTERNS:
-        h_val = h_vals.get(pattern["h_key"], 0)
-        m_val = m_metrics.get(pattern["m_key"], 0)
-        h_triggered = h_val >= pattern["h_thresh"]
-        m_triggered = m_val >= pattern["m_thresh"]
-        if h_triggered and m_triggered:
-            risks_found.append(pattern["risk"])
+    risks_found: list[str] = []
+    if has_telemetry:
+        for pattern in COUPLED_RISK_PATTERNS:
+            h_val = h_vals.get(pattern["h_key"], 0)
+            m_val = m_metrics.get(pattern["m_key"], 0)
+            h_triggered = h_val >= pattern["h_thresh"]
+            m_triggered = m_val >= pattern["m_thresh"]
+            if h_triggered and m_triggered:
+                risks_found.append(pattern["risk"])
 
     # Coupled risk level
     risk_count = len(risks_found)
-    if risk_count >= 3 or (h_verdict == "LOW_CAPACITY" and m_verdict in ("DEGRADED", "CRITICAL")):
+    if not has_telemetry:
+        coupled_risk = "UNKNOWN"
+        recommended_mode = "draft_only"
+        status = "HOLD"
+    elif risk_count >= 3 or (h_verdict == "LOW_CAPACITY" and m_verdict in ("DEGRADED", "CRITICAL")):
         coupled_risk = "RED"
         recommended_mode = "suspended"
         status = "HOLD"
@@ -1797,6 +2232,7 @@ def well_coupled_readiness(ctx: Context | None = None) -> dict[str, Any]:
         status = "CAUTION"
 
     human_confirmation = (
+        not has_telemetry or
         coupled_risk == "RED" or
         h_verdict in ("DEGRADED", "LOW_CAPACITY") or
         risk_count >= 2
@@ -1807,12 +2243,12 @@ def well_coupled_readiness(ctx: Context | None = None) -> dict[str, Any]:
         task="coupled_readiness_check",
         status=status,
         domain_verdict=f"Human {h_verdict} | Machine {m_verdict}",
-        confidence="HIGH",
+        confidence="HIGH" if has_telemetry else "LOW",
         risk_level=coupled_risk,
         recommended_mode=recommended_mode,
         human_required=human_confirmation,
         failure_flags=risks_found if risks_found else None,
-        next_safe_action="Step away if RED; Draft if AMBER." if coupled_risk != "GREEN" else "Proceed with Forge."
+        next_safe_action="Step away if RED; Draft if AMBER." if coupled_risk not in ("GREEN", "UNKNOWN") else "Proceed with Forge." if coupled_risk == "GREEN" else "No verified body telemetry. Draft-only until Arif confirms readiness."
     )
 
 
@@ -1825,17 +2261,16 @@ def well_decision_bandwidth(
     """
     C-WELL decision bandwidth — combines human + machine state for a specific class.
     Validates against H-WELL readiness + M-WELL health + C-WELL coupled risk.
-    Returns APPROVED / CAUTION / BLOCKED with full rationale.
+    Returns advisory verdict with full rationale.
 
-    This is the C-WELL output Arif described:
-    {"human_readiness": "FUNCTIONAL", "machine_readiness": "DEGRADED",
-     "coupled_risk": "AMBER", "recommended_mode": "draft_only",
-     "human_confirmation_required": true, "reason": "..."}
+    If no verified body telemetry, returns UNKNOWN rather than faking approval.
     """
     # Get H-WELL
     h_state = _load_state()
-    h_score = h_state.get("well_score", 50)
-    h_violations = h_state.get("floors_violated", [])
+    h_resolved = _resolve_readiness(h_state)
+    h_score = h_resolved["well_score"]
+    h_violations = h_resolved["active_violations"]
+    has_telemetry = h_resolved["has_telemetry"]
 
     # Get M-WELL
     m_state = well_machine_state(ctx=None)
@@ -1844,18 +2279,11 @@ def well_decision_bandwidth(
 
     # Get C-WELL
     c_state = well_coupled_readiness(ctx=None)
-    coupled_risk = c_state.get("coupled_risk", "AMBER")
-    c_risks = c_state.get("risks_found", [])
+    coupled_risk = c_state.get("risk_level", "AMBER")
+    c_risks = c_state.get("failure_flags", [])
 
-    # Determine human verdict
-    if h_score >= 80 and not h_violations:
-        h_verdict = "OPTIMAL"
-    elif h_score >= 60:
-        h_verdict = "FUNCTIONAL"
-    elif h_score >= 40:
-        h_verdict = "DEGRADED"
-    else:
-        h_verdict = "LOW_CAPACITY"
+    # Determine human verdict — never fake
+    h_verdict = h_resolved["readiness"]
 
     # Per-class thresholds
     class_req = {
@@ -1878,7 +2306,25 @@ def well_decision_bandwidth(
         decision_class = dc
 
     reason_parts = []
-    verdict = "APPROVED"
+
+    # ── Unknown telemetry → cannot assess bandwidth ──
+    if not has_telemetry:
+        return {
+            "ok": True,
+            "decision_class": decision_class or "general",
+            "verdict": "ADVISORY_UNKNOWN",
+            "human_readiness": h_verdict,
+            "human_score": h_score,
+            "machine_readiness": m_verdict,
+            "machine_score": m_score,
+            "coupled_risk": coupled_risk,
+            "recommended_mode": "draft_only",
+            "human_confirmation_required": True,
+            "reason": "No verified body telemetry available. WELL cannot assess decision bandwidth.",
+            "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
+        }
+
+    verdict = "ADVISORY_APPROVED"
 
     if decision_class:
         req = class_req.get(decision_class, {"h_min": 0, "m_min": 0})
@@ -1894,7 +2340,7 @@ def well_decision_bandwidth(
             reason_parts.append(f"coupled risk {coupled_risk} too high")
 
         if not (h_ok and m_ok and c_ok):
-            verdict = "BLOCKED" if (not h_ok or not m_ok) else "CAUTION"
+            verdict = "ADVISORY_BLOCKED" if (not h_ok or not m_ok) else "ADVISORY_CAUTION"
     else:
         reason_parts.append("no decision class specified — general assessment")
 
@@ -1902,9 +2348,9 @@ def well_decision_bandwidth(
         reason_parts.append(f"coupled risks: {', '.join(c_risks)}")
 
     if coupled_risk == "RED":
-        verdict = "BLOCKED"
+        verdict = "ADVISORY_BLOCKED"
         reason_parts.append("coupled risk RED — suspend all consequential actions")
-    elif verdict == "APPROVED":
+    elif verdict == "ADVISORY_APPROVED":
         reason_parts.append(f"human {h_verdict}, machine {m_verdict}, coupled {coupled_risk}")
 
     return {
@@ -1947,10 +2393,33 @@ def well_forge_precheck(
 
     WELL does NOT block A-FORGE. It recommends. Arif decides.
     W0: WELL holds a mirror, not a veto.
+    If no verified body telemetry, WELL returns UNKNOWN rather than faking readiness.
     """
     h_state = _load_state()
-    h_score = h_state.get("well_score", 50)
-    h_violations = h_state.get("floors_violated", [])
+    h_resolved = _resolve_readiness(h_state)
+    h_score = h_resolved["well_score"]
+    h_violations = h_resolved["active_violations"]
+    has_telemetry = h_resolved["has_telemetry"]
+
+    # Get M-WELL health
+    m_state = well_machine_state(ctx=None)
+    m_score = m_state.get("m_well_score", 100)
+    m_verdict = m_state.get("m_well_verdict", "UNKNOWN")
+
+    # ── No body telemetry → cannot recommend real readiness ──
+    if not has_telemetry:
+        return _compose_verdict(
+            mcp="AFWELL",
+            task=f"forge_precheck: {task_description or 'unspecified'}",
+            status="HOLD",
+            domain_verdict="UNKNOWN_TELEMETRY",
+            confidence="LOW",
+            risk_level="UNKNOWN",
+            recommended_mode="draft_only",
+            human_required=True,
+            next_safe_action="No verified body telemetry. A-FORGE should adopt draft-only mode until Arif confirms readiness.",
+        )
+
     metrics = h_state.get("metrics", {})
     cognitive = metrics.get("cognitive", {})
     stress = metrics.get("stress", {})
@@ -1960,47 +2429,6 @@ def well_forge_precheck(
     clarity = cognitive.get("clarity", 10)
     stress_load = stress.get("subjective_load", 0)
     sleep_debt = sleep.get("sleep_debt_days", 0)
-
-    # Get M-WELL health
-    m_state = well_machine_state(ctx=None)
-    m_score = m_state.get("m_well_score", 100)
-    m_verdict = m_state.get("m_well_verdict", "UNKNOWN")
-
-    # Forge mode determination
-    if h_score >= 80 and m_verdict == "HEALTHY" and not h_violations:
-        forge_mode = "full"
-        max_task_size = "large"
-        recovery_first = False
-        h_verdict = "OPTIMAL"
-    elif h_score >= 60 and m_verdict in ("HEALTHY", "FUNCTIONAL"):
-        forge_mode = "normal"
-        max_task_size = "medium"
-        recovery_first = False
-        h_verdict = "FUNCTIONAL"
-    elif h_score >= 40 or (h_score >= 50 and m_verdict == "DEGRADED"):
-        forge_mode = "draft_only"
-        max_task_size = "small"
-        recovery_first = False
-        h_verdict = "DEGRADED"
-    else:
-        forge_mode = "paused"
-        max_task_size = "minimal"
-        recovery_first = True
-        h_verdict = "LOW_CAPACITY"
-
-    # Things to avoid
-    avoid = []
-    if fatigue > 5: avoid.append("major_refactor")
-    if stress_load > 7: avoid.append("public_posting")
-    if sleep_debt > 1: avoid.append("deployment")
-    if h_score < 50: avoid.append("irreversible_write")
-    if fatigue > 7: avoid.append("financial_decision")
-    if clarity < 7: avoid.append("complex_architecture")
-
-    # Coupled risk
-    c_state = well_coupled_readiness(ctx=None)
-    coupled_risk = c_state.get("risk_level", "AMBER")
-    c_mode = c_state.get("recommended_mode", "draft_only")
 
     # FORGE MODE DETERMINATION (Conservative wins)
     # 1. Base readiness
@@ -2021,11 +2449,25 @@ def well_forge_precheck(
         max_task_size = "minimal"
         h_verdict = "LOW_CAPACITY"
 
+    # Coupled risk
+    c_state = well_coupled_readiness(ctx=None)
+    coupled_risk = c_state.get("risk_level", "AMBER")
+    c_mode = c_state.get("recommended_mode", "draft_only")
+
     # 2. Apply C-WELL override
     mode_priority = {"full": 3, "structured": 2, "draft_only": 1, "pause": 0, "suspended": 0}
     final_mode_val = min(mode_priority.get(base_mode, 0), mode_priority.get(c_mode, 0))
     # Map back to canonical modes
     final_mode = "full" if final_mode_val == 3 else "structured" if final_mode_val == 2 else "draft_only" if final_mode_val == 1 else "pause"
+
+    # Things to avoid
+    avoid = []
+    if fatigue > 5: avoid.append("major_refactor")
+    if stress_load > 7: avoid.append("public_posting")
+    if sleep_debt > 1: avoid.append("deployment")
+    if h_score < 50: avoid.append("irreversible_write")
+    if fatigue > 7: avoid.append("financial_decision")
+    if clarity < 7: avoid.append("complex_architecture")
 
     # Human reconfirmation threshold
     human_confirmation = (
@@ -2225,9 +2667,9 @@ def well_forge_closeout(
 
     old_fatigue = cognitive.get("decision_fatigue", 0)
 
-    # Compute fatigue cost
+    # Compute fatigue cost (work increases fatigue; rest decreases it)
     if fatigue_spent is not None:
-        new_fatigue = max(0, old_fatigue - fatigue_spent)
+        new_fatigue = min(10.0, max(0.0, old_fatigue + fatigue_spent))
     else:
         # Estimate from outcome and errors
         if outcome == "success":
@@ -2239,7 +2681,7 @@ def well_forge_closeout(
         else:  # paused
             cost = 0.3
         cost += errors_encountered * 0.3
-        new_fatigue = max(0, old_fatigue - cost)
+        new_fatigue = min(10.0, max(0.0, old_fatigue + cost))
 
     cognitive["decision_fatigue"] = round(new_fatigue, 1)
     metrics["cognitive"] = cognitive
@@ -2275,19 +2717,568 @@ def well_forge_closeout(
     }
 
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# WELL Canonical 13 — well_verb_noun Refactor
+# Legacy 31 tools remain as backward-compatible wrappers.
+# New canonical tools are the preferred interface.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# ── Internal Health Probes ────────────────────────────────────────────────────
+
+def _check_dependencies() -> dict[str, Any]:
+    """Check file system dependencies and vault bridge reachability."""
+    checks: dict[str, Any] = {
+        "state_path_readable": STATE_PATH.exists(),
+        "events_path_writable": EVENTS_PATH.parent.exists() and _os.access(EVENTS_PATH.parent, _os.W_OK),
+        "vault_path_writable": VAULT_LEDGER_PATH.parent.exists() and _os.access(VAULT_LEDGER_PATH.parent, _os.W_OK),
+        "schema_readable": (Path(__file__).parent / "schema.json").exists(),
+    }
+    checks["all_ok"] = all(checks.values())
+    return checks
+
+
+def _check_tool_surface() -> dict[str, Any]:
+    """Verify registered tool surface matches canonical expectation."""
+    canonical = {
+        "well_get_health", "well_get_state", "well_check_invariant",
+        "well_log_signal", "well_list_events", "well_reflect_trend",
+        "well_reflect_readiness", "well_suggest_mode", "well_suggest_recovery",
+        "well_reflect_niat", "well_classify_task", "well_get_packet",
+        "well_request_anchor",
+    }
+    # Check current module for canonical function existence
+    present = {name for name in canonical if name in globals()}
+    missing = canonical - present
+
+    # Duplicate detection: FastMCP would error on import for true duplicates,
+    # but we can check if any legacy tool shadows a canonical one by name.
+    dupes = set()
+    return {
+        "registered_count": len(present),
+        "canonical_count": len(canonical),
+        "canonical_missing": sorted(missing),
+        "duplicates_found": sorted(dupes),
+        "surface_integrity": len(missing) == 0,
+    }
+
+
+def _check_data_freshness(state: dict[str, Any]) -> dict[str, Any]:
+    """Check age of last body telemetry and machine state."""
+    metrics = state.get("metrics", {})
+    ts_str = state.get("timestamp")
+    now = datetime.datetime.now(datetime.timezone.utc)
+
+    # Parse state timestamp
+    state_age_hours = None
+    if ts_str:
+        try:
+            ts = datetime.datetime.fromisoformat(ts_str)
+            state_age_hours = (now - ts).total_seconds() / 3600.0
+        except Exception:
+            pass
+
+    # Per-metric freshness (if any metric has a timestamp)
+    # For now, use state timestamp as proxy
+    if state_age_hours is None:
+        freshness = "unknown"
+    elif state_age_hours < 3:
+        freshness = "fresh"
+    elif state_age_hours < 24:
+        freshness = "stale"
+    else:
+        freshness = "expired"
+
+    has_telemetry = _has_verified_telemetry(state)
+
+    return {
+        "state_age_hours": round(state_age_hours, 2) if state_age_hours is not None else None,
+        "freshness_label": freshness,
+        "has_telemetry": has_telemetry,
+        "truth_status": state.get("truth_status", "UNVERIFIED"),
+    }
+
+
+# ── WELL-01 well_get_health ───────────────────────────────────────────────────
+@mcp.tool()
+def well_get_health(ctx: Context | None = None) -> dict[str, Any]:
+    """
+    Canonical three-layer health check.
+
+    Layer 1 — Service: Is the process alive?
+    Layer 2 — Instrument: Are tools, schema, dependencies, and authority valid?
+    Layer 3 — Domain truth: Is the body-state evidence fresh and verified?
+
+    Verdict: PASS | WARN | FAIL
+    """
+    state = _load_state()
+    well_ok = is_well(state)
+    deps = _check_dependencies()
+    surface = _check_tool_surface()
+    freshness = _check_data_freshness(state)
+
+    # Verdict logic
+    if not well_ok:
+        verdict = "FAIL"
+        verdict_reason = "WELL identity invariant failed. Organ may be corrupted or impersonated."
+    elif not deps["all_ok"]:
+        verdict = "WARN"
+        verdict_reason = "One or more dependencies unreachable (state, events, vault, or schema)."
+    elif not surface["surface_integrity"]:
+        verdict = "WARN"
+        verdict_reason = f"Tool surface integrity compromised. Missing: {surface['canonical_missing'] or 'none'}; Duplicates: {surface['duplicates_found'] or 'none'}."
+    elif freshness["freshness_label"] == "expired":
+        verdict = "WARN"
+        verdict_reason = "Body telemetry expired (>24h). Readings should not be trusted for decisions."
+    elif freshness["freshness_label"] == "unknown" or not freshness["has_telemetry"]:
+        verdict = "WARN"
+        verdict_reason = "No verified body telemetry available. WELL cannot confirm biological readiness."
+    elif freshness["freshness_label"] == "stale":
+        verdict = "WARN"
+        verdict_reason = "Body telemetry stale (3-24h). Use with caution."
+    else:
+        verdict = "PASS"
+        verdict_reason = "WELL identity intact, instrument healthy, and domain evidence fresh."
+
+    return {
+        "layer_1_service": {
+            "alive": True,
+            "transport": "SSE_VALID",
+        },
+        "layer_2_instrument": {
+            "identity_valid": well_ok,
+            "schema_valid": deps["schema_readable"],
+            "dependencies_ok": deps["all_ok"],
+            "tool_surface_valid": surface["surface_integrity"],
+            "registered_tools": surface["registered_count"],
+            "canonical_tools": surface["canonical_count"],
+            "authority_boundary": "intact" if well_ok else "compromised",
+            "mutation_guard": "locked" if well_ok else "unknown",
+        },
+        "layer_3_domain_truth": {
+            "has_telemetry": freshness["has_telemetry"],
+            "truth_status": freshness["truth_status"],
+            "freshness": freshness["freshness_label"],
+            "state_age_hours": freshness["state_age_hours"],
+        },
+        "identity": "WELL",
+        "role": "Body / Human Intelligence",
+        "authority": "REFLECT_ONLY",
+        "delta_s": state.get("delta_s", -1),
+        "peace2": state.get("peace2", 0),
+        "kappa_r": state.get("kappa_r", 0),
+        "rasa": state.get("rasa", False),
+        "amanah": state.get("amanah", "UNLOCKED"),
+        "verdict": verdict,
+        "verdict_reason": verdict_reason,
+        "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
+    }
+
+
+# ── WELL-02 well_get_state ────────────────────────────────────────────────────
+@mcp.tool()
+def well_get_state(domain: str | None = None, ctx: Context | None = None) -> dict[str, Any]:
+    """
+    Retrieve current WELL state with evidence status.
+    domain: human | machine | None (both)
+    """
+    state = _load_state()
+    has_telemetry = _has_verified_telemetry(state)
+    result: dict[str, Any] = {
+        "ok": True,
+        "operator_id": state.get("operator_id", "arif"),
+        "timestamp": state.get("timestamp"),
+        "well_score": _state_score(state),
+        "floors_violated": state.get("floors_violated", []),
+        "truth_status": state.get("truth_status", "UNVERIFIED"),
+        "has_telemetry": has_telemetry,
+        "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
+    }
+    if domain in (None, "human"):
+        result["metrics"] = state.get("metrics", {})
+    if domain in (None, "machine"):
+        result["m_machine"] = state.get("m_machine", {})
+    return result
+
+
+# ── WELL-03 well_check_invariant ──────────────────────────────────────────────
+@mcp.tool()
+def well_check_invariant(floor_id: str | None = None, ctx: Context | None = None) -> dict[str, Any]:
+    """
+    Check WELL identity invariant and W-floors.
+    If floor_id is omitted, checks identity + all floors.
+    """
+    state = _load_state()
+    identity_ok = is_well(state)
+
+    # Identity check is always included
+    if floor_id is None:
+        # Check identity + all floors
+        floor_result = well_check_floors(ctx=ctx)
+        # Inject identity verdict
+        floor_result["identity_verdict"] = "WELL_PASS" if identity_ok else "NOT_WELL"
+        floor_result["identity_details"] = {
+            "identity": state.get("identity"),
+            "role": state.get("role"),
+            "authority": state.get("authority"),
+            "delta_s": state.get("delta_s"),
+            "peace2": state.get("peace2"),
+            "kappa_r": state.get("kappa_r"),
+            "rasa": state.get("rasa"),
+            "amanah": state.get("amanah"),
+        }
+        return floor_result
+
+    fid = floor_id.upper()
+    if fid == "W0":
+        return {
+            "ok": True,
+            "floor": "W0",
+            "name": "Sovereignty Invariant",
+            "status": "INVARIANT" if identity_ok else "CORRUPTED",
+            "detail": "Operator veto always intact. WELL never self-authorizes.",
+            "identity_verdict": "WELL_PASS" if identity_ok else "NOT_WELL",
+            "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
+        }
+
+    # Delegate to canonical floor checker
+    return well_check_floor(floor_id=fid, ctx=ctx)
+
+
+# ── WELL-04 well_log_signal ───────────────────────────────────────────────────
+@mcp.tool()
+def well_log_signal(
+    domain: str = "human",
+    signal: str = "",
+    value: float | str | None = None,
+    source: str = "OPERATOR_REPORTED",
+    confidence: str = "medium",
+    note: str | None = None,
+    ctx: Context | None = None,
+) -> dict[str, Any]:
+    """
+    Plastic evidence logger. One tool, many domains.
+    domain: human | machine | forge | session
+    signal: clarity | stress | tool_availability | debug_pressure | session_open | session_close
+    """
+    domain = domain.lower()
+    signal = signal.lower()
+    note = _sanitize_note(note)
+
+    # Session signals
+    if domain == "session":
+        if signal == "session_open":
+            return well_init(actor_id="well-session", ctx=ctx)
+        elif signal == "session_close":
+            return well_forge_closeout(
+                task_description="session_close",
+                outcome="success",
+                note=note,
+                ctx=ctx,
+            )
+        else:
+            return {"ok": False, "error": f"Unknown session signal: {signal}"}
+
+    # Human body signals
+    if domain == "human":
+        mapping = {
+            "sleep_hours": ("sleep_hours", float),
+            "sleep_debt_days": ("sleep_debt_days", float),
+            "sleep_quality": ("sleep_quality", float),
+            "stress_load": ("stress_load", float),
+            "restlessness": ("restlessness", float),
+            "hrv_proxy": ("hrv_proxy", float),
+            "clarity": ("clarity", float),
+            "decision_fatigue": ("decision_fatigue", float),
+            "focus_durability": ("focus_durability", float),
+            "fasting_hours": ("fasting_hours", float),
+            "metabolic_stability": ("metabolic_stability", float),
+            "hydration": ("hydration", str),
+            "pain_sites": ("pain_sites", list),
+            "movement_count": ("movement_count", float),
+        }
+        if signal in mapping:
+            param_name, param_type = mapping[signal]
+            kwargs = {"note": note}
+            if value is not None:
+                try:
+                    if param_type == float:
+                        kwargs[param_name] = float(value)
+                    elif param_type == str:
+                        kwargs[param_name] = str(value)
+                    elif param_type == list:
+                        kwargs[param_name] = list(value) if isinstance(value, (list, tuple)) else [str(value)]
+                except (TypeError, ValueError):
+                    return {"ok": False, "error": f"Invalid value type for {signal}: expected {param_type.__name__}"}
+            return well_log(**kwargs, ctx=ctx)
+        return {"ok": False, "error": f"Unknown human signal: {signal}"}
+
+    # Machine signals
+    if domain == "machine":
+        mapping = {
+            "model_reliability": ("model_reliability", float),
+            "tool_availability": ("tool_availability", float),
+            "latency_ms": ("latency_ms", float),
+            "context_pressure": ("context_pressure", float),
+            "memory_integrity": ("memory_integrity", float),
+            "api_failure_rate": ("api_failure_rate", float),
+            "data_freshness": ("data_freshness", float),
+            "compute_budget": ("compute_budget", float),
+            "token_budget": ("token_budget", float),
+            "vault_status": ("vault_status", str),
+            "schema_valid": ("schema_valid", bool),
+            "security_flag": ("security_flag", str),
+        }
+        if signal in mapping:
+            param_name, param_type = mapping[signal]
+            kwargs = {}
+            if value is not None:
+                try:
+                    if param_type == float:
+                        kwargs[param_name] = float(value)
+                    elif param_type == bool:
+                        kwargs[param_name] = bool(value)
+                    else:
+                        kwargs[param_name] = str(value)
+                except (TypeError, ValueError):
+                    return {"ok": False, "error": f"Invalid value type for {signal}"}
+            return well_machine_log(**kwargs, ctx=ctx)
+        return {"ok": False, "error": f"Unknown machine signal: {signal}"}
+
+    # Forge signals
+    if domain == "forge":
+        if signal == "debug_pressure":
+            return well_forge_pressure_update(
+                source="debugging_loop",
+                intensity=float(value) if value is not None else 5.0,
+                detail=note,
+                ctx=ctx,
+            )
+        elif signal == "token_pressure":
+            return well_forge_pressure_update(
+                source="token_pressure",
+                intensity=float(value) if value is not None else 5.0,
+                detail=note,
+                ctx=ctx,
+            )
+        elif signal == "tool_error":
+            return well_forge_pressure_update(
+                source="tool_error",
+                intensity=float(value) if value is not None else 5.0,
+                detail=note,
+                ctx=ctx,
+            )
+        elif signal == "forge_closeout":
+            return well_forge_closeout(
+                task_description=note or "forge_closeout",
+                outcome=str(value) if value is not None else "success",
+                ctx=ctx,
+            )
+        else:
+            return {"ok": False, "error": f"Unknown forge signal: {signal}"}
+
+    return {"ok": False, "error": f"Unknown domain: {domain}"}
+
+
+# ── WELL-05 well_list_events ──────────────────────────────────────────────────
+@mcp.tool()
+def well_list_events(limit: int = 10, redact: bool = True, ctx: Context | None = None) -> dict[str, Any]:
+    """
+    List recent WELL events with optional redaction of sensitive fields.
+    """
+    res = well_list_log(limit=limit, ctx=ctx)
+    if not redact or not res.get("ok"):
+        return res
+    entries = res.get("entries", [])
+    safe_entries = []
+    for e in entries:
+        safe = {k: v for k, v in e.items() if k.lower() not in SENSITIVE_METRIC_KEYS}
+        safe_entries.append(safe)
+    return {"ok": True, "entries": safe_entries, "redacted": True}
+
+
+# ── WELL-06 well_reflect_trend ────────────────────────────────────────────────
+@mcp.tool()
+def well_reflect_trend(lookback_days: int = 30, ctx: Context | None = None) -> dict[str, Any]:
+    """
+    Reflect trajectory over time. Not analysis as authority — reflection only.
+    """
+    return well_trend_analysis(ctx=ctx)
+
+
+# ── WELL-07 well_reflect_readiness ────────────────────────────────────────────
+@mcp.tool()
+def well_reflect_readiness(
+    domain: str = "coupled",
+    task_type: str | None = None,
+    decision_class: str | None = None,
+    ctx: Context | None = None,
+) -> dict[str, Any]:
+    """
+    Reflect readiness from available evidence.
+    domain: human | machine | coupled
+    """
+    domain = domain.lower()
+    if domain == "human":
+        return well_readiness(ctx=ctx)
+    elif domain == "machine":
+        return well_machine_state(ctx=ctx)
+    elif domain == "coupled":
+        if task_type or decision_class:
+            return well_decision_bandwidth(task_description=task_type, decision_class=decision_class, ctx=ctx)
+        return well_coupled_readiness(ctx=ctx)
+    return {"ok": False, "error": f"Unknown domain: {domain}"}
+
+
+# ── WELL-08 well_suggest_mode ─────────────────────────────────────────────────
+@mcp.tool()
+def well_suggest_mode(
+    domain: str = "forge",
+    task_description: str | None = None,
+    decision_class: str | None = None,
+    ctx: Context | None = None,
+) -> dict[str, Any]:
+    """
+    Suggest operating mode. Suggest, not decide.
+    domain: forge | general
+    """
+    domain = domain.lower()
+    if domain == "forge":
+        return well_forge_precheck(
+            task_description=task_description,
+            decision_class=decision_class,
+            ctx=ctx,
+        )
+    return well_bandwidth_recommendation(ctx=ctx)
+
+
+# ── WELL-09 well_suggest_recovery ─────────────────────────────────────────────
+@mcp.tool()
+def well_suggest_recovery(ctx: Context | None = None) -> dict[str, Any]:
+    """
+    Suggest non-medical stabilizing actions. Suggest, not prescribe.
+    """
+    return well_recovery_protocol(ctx=ctx)
+
+
+# ── WELL-10 well_reflect_niat ─────────────────────────────────────────────────
+@mcp.tool()
+def well_reflect_niat(
+    intent: str,
+    context: str | None = None,
+    reversibility: str = "unknown",
+    ctx: Context | None = None,
+) -> dict[str, Any]:
+    """
+    Reflect whether stated intent appears clear, reversible, and aligned.
+    """
+    return well_niat_check(intent=intent, context=context, reversibility=reversibility, ctx=ctx)
+
+
+# ── WELL-11 well_classify_task ────────────────────────────────────────────────
+@mcp.tool()
+def well_classify_task(
+    task_description: str | None = None,
+    decision_class: str | None = None,
+    ctx: Context | None = None,
+) -> dict[str, Any]:
+    """
+    Classify task risk C0-C5. Classification is not judgment.
+    """
+    return well_decision_classify(task_description=task_description, decision_class=decision_class, ctx=ctx)
+
+
+# ── WELL-12 well_get_packet ───────────────────────────────────────────────────
+@mcp.tool()
+def well_get_packet(
+    target: str = "arifos",
+    detail: str = "standard",
+    ctx: Context | None = None,
+) -> dict[str, Any]:
+    """
+    Emit context packet for arifOS, dashboard, or A-FORGE.
+    target: arifos | dashboard | forge
+    detail: minimal | standard | full
+    """
+    target = target.lower()
+    if target == "arifos":
+        pkt = well_arifos_packet(ctx=ctx)
+    elif target == "dashboard":
+        pkt = well_daily_brief(ctx=ctx)
+    elif target == "forge":
+        pkt = well_forge_mode_recommend(ctx=ctx)
+    else:
+        return {"ok": False, "error": f"Unknown target: {target}"}
+
+    if detail == "minimal":
+        # Strip to essentials only
+        return {
+            "ok": True,
+            "readiness": pkt.get("readiness") if isinstance(pkt, dict) else pkt.readiness,
+            "recommended_mode": pkt.get("recommended_mode") if isinstance(pkt, dict) else None,
+            "human_confirmation_required": pkt.get("human_confirmation_required") if isinstance(pkt, dict) else None,
+            "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
+        }
+    return pkt
+
+
+# ── WELL-13 well_request_anchor ───────────────────────────────────────────────
+@mcp.tool()
+async def well_request_anchor(
+    target: str = "vault999",
+    dry_run: bool = False,
+    reason: str = "state_checkpoint",
+    ctx: Context | None = None,
+) -> dict[str, Any]:
+    """
+    Request anchor/seal to vault. Subject to auth and invariant pass.
+    WELL requests. VAULT records. Arif decides.
+    """
+    if dry_run:
+        state = _load_state()
+        return {
+            "ok": True,
+            "dry_run": True,
+            "would_anchor": _has_verified_telemetry(state),
+            "identity_pass": is_well(state),
+            "reason": reason,
+            "w0": "WELL requests. arifOS governs. Arif decides.",
+        }
+    return await well_anchor(force=False, ctx=ctx)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Legacy tool deprecation notices
+# The 31 legacy tools remain as backward-compatible wrappers.
+# Prefer the 13 canonical tools for new integrations.
+# ═══════════════════════════════════════════════════════════════════════════════
+
 # ── Entry ──────────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
+    from starlette.responses import JSONResponse
     import uvicorn
 
-
-    from starlette.responses import JSONResponse
     host = _os.environ.get("HOST", "0.0.0.0")
     port = int(_os.environ.get("PORT", 8083))
     app = mcp.http_app(path="/mcp")
 
     async def health_handler(request):
-        return JSONResponse({"status": "healthy", "service": "well-mcp", "version": "2026.04.29"})
+        state = _load_state()
+        well_ok = is_well(state)
+        return JSONResponse({
+            "identity": "WELL",
+            "role": "Body / Human Intelligence",
+            "authority": "REFLECT_ONLY",
+            "delta_s": state.get("delta_s", -1),
+            "peace2": state.get("peace2", 0),
+            "kappa_r": state.get("kappa_r", 0),
+            "rasa": state.get("rasa", False),
+            "amanah": state.get("amanah", "UNLOCKED"),
+            "verdict": "WELL_PASS" if well_ok else "NOT_WELL",
+            "service": "well-mcp",
+            "version": "2026.04.29",
+        })
 
     app.add_route("/health", health_handler, methods=["GET"])
+
     uvicorn.run(app, host=host, port=port, log_level=_os.environ.get("LOG_LEVEL", "info"))

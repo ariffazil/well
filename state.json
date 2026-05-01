@@ -1,6 +1,14 @@
 {
   "timestamp": "2026-04-28T22:00:00.000000+00:00",
   "operator_id": "arif",
+  "identity": "WELL",
+  "role": "Body / Human Intelligence",
+  "authority": "REFLECT_ONLY",
+  "delta_s": 0.0,
+  "peace2": 1.0,
+  "kappa_r": 0.95,
+  "rasa": true,
+  "amanah": "LOCK",
   "metrics": {
     "sleep": {
       "last_night_hours": 8,
