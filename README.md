@@ -3,7 +3,7 @@
 > **Biological readiness mirror for the arifOS Constitutional Federation.**
 > **DITEMPA BUKAN DIBERI — Intelligence is forged, not given.**
 
-[![WELL](https://img.shields.io/badge/WELL-v1.1.0--KANON-00D4AA?style=flat-square)](https://github.com/ariffazil/well)
+[![WELL](https://img.shields.io/badge/WELL-v2026.05.01--KANON-00D4AA?style=flat-square)](https://github.com/ariffazil/well)
 [![MCP](https://img.shields.io/badge/MCP-FastMCP-7C3AED?style=flat-square)](https://github.com/ariffazil/well)
 [![arifOS](https://img.shields.io/badge/arifOS-F1%E2%80%93F13_Governed-FF6B00?style=flat-square)](https://github.com/ariffazil/arifOS)
 [![License](https://img.shields.io/badge/License-AGPL_V3-4EAF0C?style=flat-square)](./LICENSE)
@@ -39,29 +39,45 @@ WELL informs  →  arifOS judges  →  A-FORGE executes  →  VAULT999 remembers
 
 ---
 
-## Canonical 13-Tool Surface
+## Live 32-Tool Surface
 
-WELL speaks `well_verb_noun`. Domain lives in schema, not tool sprawl.
+WELL exposes **32 MCP tools** in the running container. These are not grouped into families — each is a focused, single-responsibility endpoint. All tools follow the `well_<noun>` or `well_<noun>_<verb>` naming convention.
 
-| # | Tool | Verb | Purpose |
-|---|------|------|---------|
-| 1 | `well_get_health` | get | Three-layer health seal (service / instrument / domain-truth) |
-| 2 | `well_get_state` | get | Retrieve current state with evidence status |
-| 3 | `well_check_invariant` | check | Verify WELL identity, W-floors, and constitutional bounds |
-| 4 | `well_log_signal` | log | Plastic evidence logger — human, machine, forge, or session |
-| 5 | `well_list_events` | list | List recent events with optional redaction |
-| 6 | `well_reflect_trend` | reflect | Reflect trajectory over time — no authority claimed |
-| 7 | `well_reflect_readiness` | reflect | Reflect readiness — human, machine, or coupled |
-| 8 | `well_suggest_mode` | suggest | Suggest operating mode — never decides |
-| 9 | `well_suggest_recovery` | suggest | Suggest stabilizing actions — not medical advice |
-| 10 | `well_reflect_niat` | reflect | Reflect intent clarity, reversibility, and alignment |
-| 11 | `well_classify_task` | classify | Classify task into C0–C5 risk tiers |
-| 12 | `well_get_packet` | get | Emit context packet for arifOS, A-FORGE, or dashboard |
-| 13 | `well_request_anchor` | request | Request vault anchor — subject to auth and invariant pass |
+| Tool | Purpose |
+|------|---------|
+| `well_anchor` | Request vault anchor — subject to auth and identity invariant pass |
+| `well_arifos_packet` | Emit clean, structured context packet for arifOS governance kernel |
+| `well_bandwidth_recommendation` | Maps WELL state to operational mode (action translation layer) |
+| `well_check_floor` | Check specific W-floor (W1/W5/W6) — return Canonical Verdict |
+| `well_check_floors` | Verify W-floor compliance for all active floors |
+| `well_consent_status` | Return W0 Sovereignty & Telemetry Consent status |
+| `well_coupled_readiness` | C-WELL: Evaluate coupled human-machine readiness |
+| `well_daily_brief` | Daily operator dashboard — one consolidated briefing |
+| `well_decision_bandwidth` | Combines human + machine state for specific decision class |
+| `well_decision_classify` | Classify a task or decision into C0–C5 risk tiers |
+| `well_forge_closeout` | A-FORGE sends closure data after forge operation |
+| `well_forge_mode_recommend` | Returns current forge mode recommendation for A-FORGE |
+| `well_forge_precheck` | A-FORGE asks WELL before forging: safe execution mode? |
+| `well_forge_pressure_update` | A-FORGE reports pressure/cognitive load during forging |
+| `well_get_readiness` | Return readiness score + W-floor status |
+| `well_init` | Initialize WELL session and register identity |
+| `well_list_log` | List recent biological state log entries |
+| `well_log` | Log a biological telemetry update for operator Arif |
+| `well_log_state` | Combined: log telemetry + return updated state |
+| `well_machine_log` | Log machine substrate telemetry |
+| `well_machine_reliability` | Assess machine substrate reliability for a specific task |
+| `well_machine_state` | Read current machine substrate state |
+| `well_medical_boundary` | Explicit non-diagnosis guard — WELL does not diagnose |
+| `well_niat_check` | Before high-impact action: check intent–biological alignment |
+| `well_pressure` | Signal cognitive pressure/load from external source (e.g. A-FORGE) |
+| `well_pressure_ledger` | Log or retrieve pressure events by source |
+| `well_readiness` | Reflect current biological readiness for arifOS JUDGE context |
+| `well_recovery_protocol` | Suggest stabilizing actions based on current WELL state |
+| `well_seal_vault` | Seal a WELL event to VAULT999 |
+| `well_state` | Get current WELL state — biological telemetry snapshot |
+| `well_trend_analysis` | Detect directional trajectory across all WELL metrics |
 
-**Grammar rule:** WELL uses only calm, non-authority verbs: `get`, `check`, `log`, `list`, `reflect`, `suggest`, `classify`, `request`. It never uses `approve`, `block`, `judge`, `execute`, `command`, `diagnose`, or `certify`.
-
-**Legacy compatibility:** 31 legacy tools remain as backward-compatible wrappers. New integrations should prefer the canonical 13.
+**Authority grammar:** WELL uses only non-authority verbs: `get`, `check`, `log`, `list`, `reflect`, `suggest`, `classify`, `request`, `recommend`, `update`. It never uses `approve`, `block`, `judge`, `execute`, `command`, `certify`, or `diagnose`.
 
 ---
 
@@ -103,8 +119,8 @@ If any field is corrupted or missing, WELL returns `NOT_WELL` and refuses to mak
   "schema_valid": true,
   "dependencies_ok": true,
   "tool_surface_valid": true,
-  "registered_tools": 13,
-  "canonical_tools": 13,
+   "registered_tools": 45,
+   "canonical_tools": 13,
   "authority_boundary": "intact",
   "mutation_guard": "locked"
 }
@@ -180,12 +196,36 @@ WELL does not fake biological knowledge.
 
 ---
 
+## Federation Integration
+
+WELL participates in the arifOS constitutional loop as the **human substrate evidence supplier** (stage 222):
+
+```
+Arif (F13) → arif_session_init → arif_sense_observe → arif_evidence_fetch
+                                                       ↓
+              WELL → well_reflect_readiness  (human readiness tier)
+              WEALTH → wealth_reason_npv/irr/emv  (capital intelligence)
+              GEOX → geox_evidence_summarize_cross  (earth evidence)
+                                                       ↓
+                            arif_evidence_fetch → arif_mind_reason → arif_heart_critique → arif_judge_deliberate
+                                                                                          ↓
+                                                                             SEAL · HOLD · VOID · CAUTION
+```
+
+**WELL's role at 222:** `well_reflect_readiness` and `well_get_packet` feed `substrate_readiness` into `arif_evidence_fetch`. If Arif is RED on C4/C5 decisions, 888_JUDGE cannot issue SEAL regardless of capital or earth signal.
+
+**F3 Tri-Witness:** WELL's human readiness tier is the `human` witness leg. WEALTH capital signal is the `ai` witness leg. GEOX earth evidence is the `earth` witness leg. All three required for SEAL.
+
+**C-WELL (Coupled Readiness):** `well_coupled_readiness` evaluates human-machine substrate readiness together. If machine telemetry (`well_machine_state`) has not been logged this session, `coupled_risk` returns `UNKNOWN` — truthful F02 behavior, not a failure.
+
+---
+
 ## Source of Truth
 
 | Field | Value |
 |-------|-------|
 | Canonical repository | `https://github.com/ariffazil/well` |
-| Package version | `1.1.0` |
+| Package version | `v2026.05.01-KANON` |
 | Framework | FastMCP >= 3.0 |
 | Entry point | `server.py` |
 | State | `/root/well/state.json` |
