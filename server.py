@@ -3260,7 +3260,19 @@ if __name__ == "__main__":
 
     host = _os.environ.get("HOST", "0.0.0.0")
     port = int(_os.environ.get("PORT", 8083))
-    app = mcp.http_app(path="/mcp")
+    # ── Monkey-patch: Accept */* when json_response is enabled ───────────────
+    from mcp.server.streamable_http import StreamableHTTPServerTransport
+    _orig = StreamableHTTPServerTransport._check_accept_headers
+
+    def _patched_check(self, request):
+        has_json, has_sse = _orig(self, request)
+        if self.is_json_response_enabled and not has_json:
+            if "*/*" in request.headers.get("accept", ""):
+                has_json = True
+        return has_json, has_sse
+    StreamableHTTPServerTransport._check_accept_headers = _patched_check
+
+    app = mcp.http_app(path="/mcp", transport="streamable-http", json_response=True, stateless_http=True)
 
     async def health_handler(request):
         state = _load_state()
