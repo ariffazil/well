@@ -44,7 +44,7 @@ WELL informs  →  arifOS judges  →  A-FORGE executes  →  VAULT999 remembers
 WELL exposes **32 MCP tools** in the running container. These are not grouped into families — each is a focused, single-responsibility endpoint. All tools follow the `well_<noun>` or `well_<noun>_<verb>` naming convention.
 
 | Tool | Purpose |
-|------|---------|
+|------|---------| 
 | `well_anchor` | Request vault anchor — subject to auth and identity invariant pass |
 | `well_arifos_packet` | Emit clean, structured context packet for arifOS governance kernel |
 | `well_bandwidth_recommendation` | Maps WELL state to operational mode (action translation layer) |
@@ -235,15 +235,61 @@ Arif (F13) → arif_session_init → arif_sense_observe → arif_evidence_fetch
 
 ---
 
-## Sibling Organs
+## External Scientific Foundations
 
-| Organ | Role |
-|-------|------|
-| [`arifOS`](https://github.com/ariffazil/arifOS) | Constitutional kernel — F1–F13 floors, 13 canonical tools, VAULT999 |
-| [`A-FORGE`](https://github.com/ariffazil/A-FORGE) | Execution shell — orchestration, metabolic execution, operator observability |
-| [`GEOX`](https://github.com/ariffazil/geox) | Earth intelligence — seismic, petrophysics, basin analysis |
-| [`WEALTH`](https://github.com/ariffazil/wealth) | Capital intelligence — NPV, IRR, EMV, crisis triage |
-| [`AAA`](https://github.com/ariffazil/AAA) | Identity, A2A federation gateway, and operator control plane |
+WELL's W-Floor definitions, OFS classifier design, and trigger taxonomy are grounded in the following canonical sources. When Computer audits W-Floor logic, proposes new trigger conditions, or designs sensor integrations, these are the live evidentiary authorities to check against — not internal assumptions.
+
+### Identity & Constitutional Anchors
+
+| Priority | Source | Role |
+|----------|--------|------|
+| 1 | [github.com/ariffazil/well](https://github.com/ariffazil/well) | Canonical WELL repository — primary source of truth |
+| 2 | [APEX Constitution Gist v888.1.0](https://gist.github.com/ariffazil/81314f6cda1ea898f9feb88ce8f8959b) | Constitutional foundation with 13 floors and authority/status metadata |
+| 3 | [arif-fazil.com](https://arif-fazil.com/) | Human sovereign surface — identity root, Trinity surfaces |
+| 4 | [wiki.arif-fazil.com](https://wiki.arif-fazil.com/) | Knowledge Mesh — institutional memory, constitutional policy, audit trails |
+
+### Scientific Pillars
+
+| Pillar | Source | Maps To |
+|--------|--------|---------|
+| **Adaptive Automation Triggers** | [NRC RIL 2020-05 — Adaptive Automation in Nuclear Power Plants](https://www.nrc.gov/docs/ML2017/ML20176A199.pdf) | W-Floor trigger model · 6-category sensor taxonomy · hybrid multimodal rationale · throttle etiquette rules |
+| **OFS Classifier Design** | [Grzeszczuk (2025) — Building Trustworthy Cognitive Monitoring for Safety-Critical Human Tasks (arXiv:2506.22066)](https://arxiv.org/abs/2506.22066) | W5 Cognitive Entropy floor · Phase 2–3 OFS Classifier evolution · unsupervised OFS classification across operating conditions |
+| **Multi-Domain Trigger Taxonomy** | [Idaho National Laboratory — Initiators and Triggering Conditions for Adaptive Automation](https://inldigitallibrary.inl.gov/sites/sti/sti/6250170.pdf) | W6 Incentive Decoupling · loop-detection logic · Metabolic Pause enforcement · cross-domain triggers (aviation, nuclear, military) |
+
+> **Evidentiary rule:** No W-Floor trigger definition may be upgraded from HYPOTHESIS → CLAIM without reference to at least one of the three scientific pillars above, or explicit Arif approval.
+
+---
+
+## arifOS Federation
+
+arifOS is part of a federated AI governance system. Each organ has a narrow responsibility so no single agent becomes uncontrolled, unaccountable, or self-authorizing.
+
+| Organ | Human Meaning | System Role | Docs |
+|---|---|---|---|
+| **ARIF / APEX** | Final human authority | F13 sovereign veto, approval, override, terminal judgment | [arif-fazil.com](https://arif-fazil.com) |
+| **AAA** | Operator cockpit | Identity, A2A federation gateway, session control, agent supervision | [README](https://github.com/ariffazil/AAA) |
+| **A-FORGE** | Execution shell | Runs tools, performs dry-runs, executes approved actions, reports outcomes | [README](https://github.com/ariffazil/A-FORGE) |
+| **arifOS** | Governance kernel | Checks evidence, risk, authority, verdicts, and auditability before action | [README](https://github.com/ariffazil/arifOS) |
+| **GEOX** | Earth intelligence | Seismic, petrophysics, basin, subsurface, and physics-grounded evidence | [README](https://github.com/ariffazil/geox) |
+| **WEALTH** | Capital intelligence | NPV, IRR, EMV, risk scoring, crisis triage, economic judgment | [README](https://github.com/ariffazil/wealth) |
+| **WELL** | Human readiness mirror | Operator pressure, biological state, cognitive load, human-system safety | [README](https://github.com/ariffazil/well) |
+| **Ω-Wiki** | Knowledge base | Persistent compiled knowledge, doctrine, references, and memory surfaces | [wiki.arif-fazil.com](https://wiki.arif-fazil.com) |
+
+### How the organs work together
+
+A governed action should not move directly from prompt to execution.
+
+```
+Human / Agent request
+→ AAA identifies the session
+→ arifOS judges the request
+→ GEOX / WEALTH / WELL provide domain evidence when needed
+→ A-FORGE executes only approved actions
+→ VAULT999 records the receipt
+→ APEX / Human can veto at any time
+```
+
+> **AAA controls the session. arifOS judges. Domain organs provide evidence. A-FORGE executes. VAULT999 records. The human remains sovereign.**
 
 ---
 
