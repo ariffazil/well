@@ -3254,13 +3254,25 @@ async def well_request_anchor(
 
 # ── Entry ──────────────────────────────────────────────────────────────────────
 
+# ── WellStack Monkeys ─────────────────────────────────────────────────────────
+# Fix 406 from Accept header — mirror of GEOX fix
+from mcp.server.streamable_http import StreamableHTTPServerTransport
+_orig_check = StreamableHTTPServerTransport._check_accept_headers
+
+def _patched_check(self, request):
+    if getattr(self, 'is_json_response_enabled', False):
+        return True, True
+    return _orig_check(self, request)
+
+StreamableHTTPServerTransport._check_accept_headers = _patched_check
+
 if __name__ == "__main__":
     from starlette.responses import JSONResponse
     import uvicorn
 
     host = _os.environ.get("HOST", "0.0.0.0")
     port = int(_os.environ.get("PORT", 8083))
-    app = mcp.http_app(path="/mcp")
+    app = mcp.http_app(path="/mcp", transport="streamable-http", json_response=True, stateless_http=True)
 
     async def health_handler(request):
         state = _load_state()
