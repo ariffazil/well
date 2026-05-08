@@ -5416,7 +5416,7 @@ if __name__ == "__main__":
     app.add_route("/health", health_handler, methods=["GET"])
     app.add_route("/tools", tools_handler, methods=["GET"])
 
-    uvicorn.run(app, host=host, port=port, log_level=_os.environ.get("LOG_LEVEL", "info"))
+    # Server start moved to end of file so canonical tools are registered before uvicorn blocks
 # ═══════════════════════════════════════════════════════════════════════════════
 # Ω-WELL Canonical Surface v2 — well_verb_noun ontology
 # Replaces stage-facing names (well_000_init, well_111_sense, etc.)
@@ -5673,3 +5673,12 @@ async def well_anchor_evidence(
         return well_444_reply(mode=mode, target=target, detail=detail, subject=subject, substrate_class=substrate_class, ctx=ctx)
     return await well_999_vault(mode=mode, dry_run=dry_run, reason=reason, force=force, ctx=ctx)
 
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Server bootstrap — must run AFTER all canonical tools are registered
+# ═══════════════════════════════════════════════════════════════════════════════
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host=host, port=port, log_level=_os.environ.get("LOG_LEVEL", "info"))
