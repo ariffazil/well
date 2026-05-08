@@ -462,6 +462,24 @@ def _state_score(state: dict[str, Any], default: float = 0.0) -> float:
         return default
 
 
+def _legacy_advisory(legacy_name: str, canonical_name: str, canonical_params: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Deprecation advisory for legacy tools. Additive only — never breaks existing clients."""
+    adv: dict[str, Any] = {
+        "_advisory": {
+            "legacy_tool": legacy_name,
+            "canonical_tool": canonical_name,
+            "deprecation_epoch": "2026-Q3",
+            "surface_type": "legacy_wrapper",
+            "removal_allowed": False,
+            "minimum_deprecation_window": "2_epochs",
+            "federation_break_risk": "high",
+        }
+    }
+    if canonical_params:
+        adv["_advisory"]["canonical_params"] = canonical_params
+    return adv
+
+
 def _state_is_void(state: dict[str, Any]) -> bool:
     return (
         state.get("truth_status") == "VOID"
@@ -636,7 +654,7 @@ def well_state(ctx: Context | None = None) -> dict[str, Any]:
     Returns score, floor violations, and all metric dimensions.
     """
     state = _load_state()
-    return {
+    result = {
         "ok": True,
         "operator_id": state.get("operator_id", "arif"),
         "timestamp": state.get("timestamp"),
@@ -648,6 +666,8 @@ def well_state(ctx: Context | None = None) -> dict[str, Any]:
         "human_decision_required": bool(state.get("arif_decision_required", False)),
         "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
     }
+    result.update(_legacy_advisory("well_state", "well_classify_substrate", {"mode": "state"}))
+    return result
 
 
 @mcp.tool()
@@ -1213,7 +1233,10 @@ async def well_seal_vault(force: bool = False, ctx: Context | None = None) -> di
     Seal current biological state to VAULT999 via vault_bridge.py (Phase 2).
     Ensures immutability of the substrate mirror.
     """
-    return await well_anchor(force=force, ctx=ctx)
+    result = await well_anchor(force=force, ctx=ctx)
+    if isinstance(result, dict) and result.get("ok"):
+        result.update(_legacy_advisory("well_seal_vault", "well_anchor_evidence", {"mode": "seal"}))
+    return result
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -1327,7 +1350,7 @@ def well_bandwidth_recommendation(ctx: Context | None = None) -> dict[str, Any]:
     resolved = _resolve_readiness(state)
 
     if not resolved["has_telemetry"]:
-        return {
+        result = {
             "ok": True,
             "verdict": "UNKNOWN",
             "mode": "UNKNOWN",
@@ -1339,6 +1362,8 @@ def well_bandwidth_recommendation(ctx: Context | None = None) -> dict[str, Any]:
             "has_telemetry": False,
             "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
         }
+        result.update(_legacy_advisory("well_bandwidth_recommendation", "well_assess_metabolism", {"mode": "bandwidth"}))
+        return result
 
     score = resolved["well_score"]
     violations = resolved["active_violations"]
@@ -1384,7 +1409,7 @@ def well_bandwidth_recommendation(ctx: Context | None = None) -> dict[str, Any]:
         advised_against = ["C1", "C2", "C3", "C4", "C5"]
         message = "Cognitive overload detected. Recommend resting until recovery."
 
-    return {
+    result = {
         "ok": True,
         "verdict": verdict,
         "mode": mode,
@@ -1396,6 +1421,8 @@ def well_bandwidth_recommendation(ctx: Context | None = None) -> dict[str, Any]:
         "has_telemetry": True,
         "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
     }
+    result.update(_legacy_advisory("well_bandwidth_recommendation", "well_assess_metabolism", {"mode": "bandwidth"}))
+    return result
 
 
 # ── 3. Recovery Protocol ──────────────────────────────────────────────────────
@@ -1667,8 +1694,7 @@ def well_decision_classify(
 
 # ── 6. arifOS Handoff Packet ────────────────────────────────────────────────────
 
-@mcp.tool()
-def well_arifos_packet(ctx: Context | None = None) -> dict[str, Any]:
+def _build_arifos_packet(ctx: Context | None = None) -> dict[str, Any]:
     """
     Emit a clean, structured context packet for arifOS governance kernel.
     This is the canonical handoff format from WELL to arifOS.
@@ -1776,6 +1802,15 @@ def well_arifos_packet(ctx: Context | None = None) -> dict[str, Any]:
         "has_telemetry": has_telemetry,
         "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
     }
+
+
+@mcp.tool()
+def well_arifos_packet(ctx: Context | None = None) -> dict[str, Any]:
+    """Legacy — delegates to well_get_packet(target='arifos'). Retained for federation compatibility."""
+    result = well_get_packet(target="arifos", ctx=ctx)
+    if isinstance(result, dict) and result.get("ok"):
+        result.update(_legacy_advisory("well_arifos_packet", "well_get_packet", {"target": "arifos"}))
+    return result
 
 
 # ── 7. W0 Consent & Privacy Floor ───────────────────────────────────────────────
@@ -2126,7 +2161,7 @@ def well_machine_state(ctx: Context | None = None) -> dict[str, Any]:
         verdict = "CRITICAL"
         mode = "suspended"
 
-    return {
+    result = {
         "ok": True,
         "m_well_verdict": verdict,
         "m_well_score": score,
@@ -2135,6 +2170,8 @@ def well_machine_state(ctx: Context | None = None) -> dict[str, Any]:
         "security_flags": machine_metrics.get("security_flags", []),
         "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT — M-WELL is instrument, not authority",
     }
+    result.update(_legacy_advisory("well_machine_state", "well_assess_reliability", {"mode": "state"}))
+    return result
 
 
 # INTERNAL — called by well_333_mind(mode="machine")
@@ -3005,6 +3042,8 @@ def well_get_health(ctx: Context | None = None) -> dict[str, Any]:
         "verdict_reason": verdict_reason,
         "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
     }
+    result.update(_legacy_advisory("well_get_health", "well_classify_substrate", {"mode": "health"}))
+    return result
 
 
 # ── WELL-02 well_get_state ────────────────────────────────────────────────────
@@ -3030,6 +3069,7 @@ def well_get_state(domain: str | None = None, ctx: Context | None = None) -> dic
         result["metrics"] = state.get("metrics", {})
     if domain in (None, "machine"):
         result["m_machine"] = state.get("m_machine", {})
+    result.update(_legacy_advisory("well_get_state", "well_classify_substrate", {"mode": "state"}))
     return result
 
 
@@ -3336,7 +3376,7 @@ def well_get_packet(
     if target == "unified":
         return _build_unified_packet(ctx=ctx)
     if target == "arifos":
-        pkt = well_arifos_packet(ctx=ctx)
+        pkt = _build_arifos_packet(ctx=ctx)
     elif target == "dashboard":
         pkt = well_daily_brief(ctx=ctx)
     elif target == "forge":
@@ -5279,9 +5319,29 @@ if __name__ == "__main__":
         all_tools = await mcp.list_tools()
         # WELL is L1/L2 only — mirrors, informs, reflects; no irrevocable mutations
         _DANGER_MAP = {
+            # L3: fail-closed — vault seal, evidence anchor, constitutional floor check
+            "well_anchor_evidence": {"danger_level": "L3", "fail_posture": "fail-closed"},
             "well_seal_vault": {"danger_level": "L3", "fail_posture": "fail-closed"},
+            "well_request_anchor": {"danger_level": "L3", "fail_posture": "fail-closed"},
             "well_check_floor": {"danger_level": "L3", "fail_posture": "fail-closed"},
+            "well_validate_vitality": {"danger_level": "L2", "fail_posture": "fail-open"},
+            "well_check_repair": {"danger_level": "L2", "fail_posture": "fail-open"},
+            "well_guard_dignity": {"danger_level": "L2", "fail_posture": "fail-open"},
+            "well_assess_metabolism": {"danger_level": "L2", "fail_posture": "fail-open"},
+            "well_assess_homeostasis": {"danger_level": "L2", "fail_posture": "fail-open"},
+            "well_assess_livelihood": {"danger_level": "L2", "fail_posture": "fail-open"},
+            "well_assess_reliability": {"danger_level": "L2", "fail_posture": "fail-open"},
+            "well_reflect_intelligence": {"danger_level": "L2", "fail_posture": "fail-open"},
+            # L1: fail-open — read-only observation and classification
+            "well_classify_substrate": {"danger_level": "L1", "fail_posture": "fail-open"},
+            "well_trace_lineage": {"danger_level": "L1", "fail_posture": "fail-open"},
+            "well_detect_boundary": {"danger_level": "L1", "fail_posture": "fail-open"},
+            "well_measure_gradient": {"danger_level": "L1", "fail_posture": "fail-open"},
             "mcp_health_check": {"danger_level": "L1", "fail_posture": "fail-open"},
+            "well_state": {"danger_level": "L1", "fail_posture": "fail-open"},
+            "well_get_packet": {"danger_level": "L1", "fail_posture": "fail-open"},
+            "well_arifos_packet": {"danger_level": "L1", "fail_posture": "fail-open"},
+            "well_readiness": {"danger_level": "L1", "fail_posture": "fail-open"},
         }
         _FAIL_OPEN_CONSTRAINT = "may degrade output, must not elevate authority"
         tools = []
