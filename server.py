@@ -276,6 +276,22 @@ def _resolve_readiness(state: dict[str, Any]) -> dict[str, Any]:
             "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
         }
 
+    # I2/I3 — Evidence discipline: unverified/stale/expired telemetry cannot produce OPTIMAL
+    truth_status = state.get("truth_status", "UNVERIFIED")
+    if truth_status in ("UNVERIFIED", "STALE", "EXPIRED"):
+        return {
+            "readiness": "DEGRADED" if truth_status == "EXPIRED" else "LOW_CAPACITY",
+            "risk_level": "RED" if truth_status == "EXPIRED" else "AMBER",
+            "recommended_mode": "draft_only" if truth_status == "EXPIRED" else "review_or_draft",
+            "human_confirmation_required": True,
+            "reason": f"Telemetry {truth_status.lower()}. WELL cannot confirm biological readiness without fresh verified evidence.",
+            "well_score": score,
+            "active_violations": violations,
+            "has_telemetry": True,
+            "truth_status": truth_status,
+            "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
+        }
+
     if violations:
         return {
             "readiness": "DEGRADED",
@@ -362,20 +378,34 @@ def mcp_health_check() -> dict:
     """Universal health check for federation stability."""
     state = _load_state()
     m_machine = state.get("m_machine", {})
+    well_ok = is_well(state)
+    has_telemetry = _has_verified_telemetry(state)
+    # I2 — Health coherence: heartbeat must reflect identity validity
+    if not well_ok:
+        status = "WARN"
+        identity_note = "identity_invalid"
+    elif not has_telemetry:
+        status = "DEGRADED"
+        identity_note = "no_telemetry"
+    else:
+        status = "OK"
+        identity_note = "healthy"
     return {
         "mcp": "WELL",
-        "status": "OK" if _has_verified_telemetry(state) else "DEGRADED",
+        "status": status,
         "transport": "SSE_VALID",
         "auth": "OK",
         "schema_version": "2026.05.08",
         "read_only": True,
         "final_authority": "ARIF",
+        "identity_valid": well_ok,
         "latency_ms": m_machine.get("latency_ms", 200),
         "tool_availability": m_machine.get("tool_availability", 1.0),
         "recent_errors": int(m_machine.get("api_failure_rate", 0.0) * 10),
         "context_pressure": m_machine.get("context_length_pressure", 0.0),
         "memory_integrity": m_machine.get("memory_integrity", 1.0),
         "vault_status": m_machine.get("vault_status", "ok"),
+        "identity_note": identity_note,
     }
 
 
@@ -416,12 +446,24 @@ def _build_unified_packet(ctx: Context | None = None) -> dict[str, Any]:
     m_ready = "HEALTHY" if machine["model_reliability"] >= 0.8 and machine["tool_availability"] >= 0.8 else "DEGRADED" if machine["model_reliability"] >= 0.5 else "CRITICAL"
     mcp_ready = "HEALTHY" if mcp["status"] == "OK" else "DEGRADED"
 
+    # I3 — Evidence discipline: unverified/stale/expired telemetry downgrades coupled verdict
+    truth_status = state.get("truth_status", "UNVERIFIED")
+    evidence_degraded = truth_status in ("UNVERIFIED", "STALE", "EXPIRED")
+
+    if h_ready in ("READY", "OPTIMAL") and m_ready == "HEALTHY" and mcp_ready == "HEALTHY" and not evidence_degraded:
+        coupled_verdict = "PROCEED"
+    elif h_ready in ("READY", "OPTIMAL", "DEGRADED") and m_ready in ("HEALTHY", "DEGRADED") and mcp_ready in ("HEALTHY", "DEGRADED") and not evidence_degraded:
+        coupled_verdict = "CAUTION"
+    else:
+        coupled_verdict = "HOLD"
+
     coupled = {
         "human_ready": h_ready,
         "machine_ready": m_ready,
         "mcp_ready": mcp_ready,
-        "coupled_verdict": "PROCEED" if h_ready in ("READY", "OPTIMAL") and m_ready == "HEALTHY" and mcp_ready == "HEALTHY" else "CAUTION" if h_ready in ("READY", "OPTIMAL", "DEGRADED") and m_ready in ("HEALTHY", "DEGRADED") and mcp_ready in ("HEALTHY", "DEGRADED") else "HOLD",
-        "operator_confirmation_advised": h_ready not in ("READY", "OPTIMAL") or m_ready != "HEALTHY" or mcp_ready != "HEALTHY",
+        "coupled_verdict": coupled_verdict,
+        "operator_confirmation_advised": h_ready not in ("READY", "OPTIMAL") or m_ready != "HEALTHY" or mcp_ready != "HEALTHY" or evidence_degraded,
+        "truth_status": truth_status,
     }
 
     return {
@@ -603,6 +645,7 @@ def _compose_verdict(
         human_required = True
 
     return {
+        "ok": status in ("PASS", "SEAL", "WELL_PASS"),
         "mcp": mcp,
         "task": task,
         "status": status,
@@ -883,17 +926,24 @@ def well_readiness(ctx: Context | None = None) -> dict[str, Any]:
         "LOW_CAPACITY": "CAUTION",
     }
 
+    # I3 — Evidence discipline: confidence gated by truth_status
+    truth_status = state.get("truth_status", "UNVERIFIED")
+    confidence = (
+        "LOW" if truth_status in ("UNVERIFIED", "STALE", "EXPIRED") else
+        "MEDIUM" if truth_status in ("PARTIAL", "INFERRED") else
+        "HIGH" if resolved["has_telemetry"] else "LOW"
+    )
     return _compose_verdict(
         mcp="AFWELL",
         task="readiness_reflection",
         status=status_map.get(resolved["readiness"], "HOLD"),
         domain_verdict=resolved["readiness"],
-        confidence="HIGH" if resolved["has_telemetry"] else "LOW",
+        confidence=confidence,
         risk_level=resolved["risk_level"],
         recommended_mode=resolved["recommended_mode"],
         human_required=resolved["human_confirmation_required"],
         assumptions=[
-            f"truth_status={state.get('truth_status', 'UNVERIFIED')}",
+            f"truth_status={truth_status}",
             f"telemetry_confidence={state.get('telemetry_confidence', 'UNKNOWN')}",
             f"has_telemetry={resolved['has_telemetry']}",
         ],
@@ -2414,12 +2464,19 @@ def well_coupled_readiness(ctx: Context | None = None) -> dict[str, Any]:
         risk_count >= 2
     )
 
+    # I3 — Evidence discipline: confidence gated by truth_status
+    truth_status = h_state.get("truth_status", "UNVERIFIED")
+    confidence = (
+        "LOW" if truth_status in ("UNVERIFIED", "STALE", "EXPIRED") else
+        "MEDIUM" if truth_status in ("PARTIAL", "INFERRED") else
+        "HIGH" if has_telemetry else "LOW"
+    )
     return _compose_verdict(
         mcp="AFWELL",
         task="coupled_readiness_check",
         status=status,
         domain_verdict=f"Human {h_verdict} | Machine {m_verdict}",
-        confidence="HIGH" if has_telemetry else "LOW",
+        confidence=confidence,
         risk_level=coupled_risk,
         recommended_mode=recommended_mode,
         human_required=human_confirmation,
@@ -3468,15 +3525,31 @@ def _well_classify_substrate_impl(
         "ECOSYSTEM": ["forest", "river", "lake", "ocean", "reef", "wetland", "desert", "mountain", "ecosystem", "biosphere", "farm", "garden"],
         "INFORMATION_SYSTEM": ["document", "code", "codebase", "constitution", "schema", "database", "protocol", "standard", "file", "repo", "api"],
         "SYMBOLIC_METAPHYSICAL": ["soul", "spirit", "niat", "dignity", "faith", "meaning", "symbol", "sacred", "metaphysical", "god", "divine", "conscience"],
+        "COUPLED_HUMAN_MACHINE_SYSTEM": [],  # assigned via override logic below
     }
 
-    detected_class = None
-    max_matches = 0
-    for cls, keywords in class_keywords.items():
-        matches = sum(1 for kw in keywords if kw in combined)
-        if matches > max_matches:
-            max_matches = matches
-            detected_class = cls
+    # I1 — Substrate classification override: machine indicators take precedence
+    machine_indicators = ["ai", "agent", "model", "mcp", "tool", "machine", "algorithm", "software", "compute", "server", "robot", "bot", "llm", "gpt", "claude", "kimi"]
+    human_indicators = ["human", "person", "man", "woman", "child", "arif", "operator", "worker", "founder", "individual"]
+    machine_matches = sum(1 for kw in machine_indicators if kw in combined)
+    human_matches = sum(1 for kw in human_indicators if kw in combined)
+
+    if machine_matches >= 1 and human_matches >= 1:
+        detected_class = "COUPLED_HUMAN_MACHINE_SYSTEM"
+        max_matches = machine_matches + human_matches
+    elif machine_matches >= 1 and human_matches == 0:
+        detected_class = "MACHINE_SYSTEM"
+        max_matches = machine_matches
+    else:
+        detected_class = None
+        max_matches = 0
+        for cls, keywords in class_keywords.items():
+            if cls == "COUPLED_HUMAN_MACHINE_SYSTEM":
+                continue
+            matches = sum(1 for kw in keywords if kw in combined)
+            if matches > max_matches:
+                max_matches = matches
+                detected_class = cls
 
     if detected_class is None:
         detected_class = "MATERIAL_OBJECT"

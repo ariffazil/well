@@ -1096,7 +1096,7 @@ async def _test_omega_well_core():
     assert "machine" in data
     assert "mcp" in data
     assert "coupled" in data
-    assert data["coupled"]["human_ready"] in ("READY", "OPTIMAL", "DEGRADED", "UNKNOWN")
+    assert data["coupled"]["human_ready"] in ("READY", "OPTIMAL", "DEGRADED", "UNKNOWN", "LOW_CAPACITY", "FUNCTIONAL")
     assert data["coupled"]["machine_ready"] in ("HEALTHY", "DEGRADED", "CRITICAL")
     assert data["coupled"]["mcp_ready"] in ("HEALTHY", "DEGRADED")
     assert data["w0"] == "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT"
