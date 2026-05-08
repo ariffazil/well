@@ -1,9 +1,10 @@
-# WELL — Human Substrate Governance Layer
+# WELL — Universal Substrate Vitality Mirror
 
 > **Biological readiness mirror for the arifOS Constitutional Federation.**
+> **Now expanded to Universal Substrate Governance — any substance, any substrate.**
 > **DITEMPA BUKAN DIBERI — Intelligence is forged, not given.**
 
-[![WELL](https://img.shields.io/badge/WELL-v2026.05.01--KANON-00D4AA?style=flat-square)](https://github.com/ariffazil/well)
+[![WELL](https://img.shields.io/badge/WELL-v2026.05.08--%CE%A9WELL-00D4AA?style=flat-square)](https://github.com/ariffazil/well)
 [![MCP](https://img.shields.io/badge/MCP-FastMCP-7C3AED?style=flat-square)](https://github.com/ariffazil/well)
 [![arifOS](https://img.shields.io/badge/arifOS-F1%E2%80%93F13_Governed-FF6B00?style=flat-square)](https://github.com/ariffazil/arifOS)
 [![License](https://img.shields.io/badge/License-AGPL_V3-4EAF0C?style=flat-square)](./LICENSE)
@@ -12,9 +13,21 @@
 
 ## What WELL Is
 
-WELL is the **Human–Machine Substrate Governance Layer** for arifOS. It provides high-signal biological and technical readiness telemetry to ensure that intent is verified before it is forged into action.
+WELL is the **Universal Substrate Vitality Mirror** for arifOS. It provides high-signal biological, technical, and contextual readiness telemetry to ensure that intent is verified before it is forged into action.
 
-WELL is the **mirror** — it reflects the state of the human and machine substrate so arifOS can judge whether the current configuration is safe for the decision class at hand. It does not veto. It informs.
+WELL is the **mirror** — it reflects the state of the human, machine, and any other substrate so arifOS can judge whether the current configuration is safe for the decision class at hand. It does not veto. It informs.
+
+WELL now operates across **10 substrate classes**:
+- **H-WELL**: Human biological and cognitive state
+- **M-WELL**: Machine reliability and tool health
+- **C-WELL**: Coupled human-machine readiness
+- **U-WELL**: Universal substrate classification (Phase 4)
+  - Human livelihood (energy, time, role, meaning, dignity)
+  - Biological viability (organisms, viruses, body parts)
+  - Material integrity (rocks, structures, objects)
+  - Institutional entropy (companies, departments, VP roles)
+  - Information coherence (code, documents, constitutions)
+  - Symbolic boundary protection (soul, dignity, meaning)
 
 > **W0 Sovereignty Invariant:** WELL holds a mirror, not a veto. It informs the arifOS JUDGE, but the Operator (Arif) retains final authority. Hierarchy is invariant.
 
@@ -39,45 +52,88 @@ WELL informs  →  arifOS judges  →  A-FORGE executes  →  VAULT999 remembers
 
 ---
 
-## Live 32-Tool Surface
+## Live MCP Surface
 
-WELL exposes **32 MCP tools** in the running container. These are not grouped into families — each is a focused, single-responsibility endpoint. All tools follow the `well_<noun>` or `well_<noun>_<verb>` naming convention.
+| Capability | Count | Status |
+|------------|-------|--------|
+| **Tools** | 47 (13 Ω-WELL v2 + 34 legacy) | ✅ Active |
+| **Resources** | 6 canonical | ✅ Active |
+| **Prompts** | 4 canonical | ✅ Active |
+| **Instructions** | 1 server-level | ✅ Active |
 
-| Tool | Purpose |
-|------|---------| 
-| `well_anchor` | Request vault anchor — subject to auth and identity invariant pass |
-| `well_arifos_packet` | Emit clean, structured context packet for arifOS governance kernel |
-| `well_bandwidth_recommendation` | Maps WELL state to operational mode (action translation layer) |
-| `well_check_floor` | Check specific W-floor (W1/W5/W6) — return Canonical Verdict |
-| `well_check_floors` | Verify W-floor compliance for all active floors |
-| `well_consent_status` | Return W0 Sovereignty & Telemetry Consent status |
-| `well_coupled_readiness` | C-WELL: Evaluate coupled human-machine readiness |
-| `well_daily_brief` | Daily operator dashboard — one consolidated briefing |
-| `well_decision_bandwidth` | Combines human + machine state for specific decision class |
-| `well_decision_classify` | Classify a task or decision into C0–C5 risk tiers |
-| `well_forge_closeout` | A-FORGE sends closure data after forge operation |
-| `well_forge_mode_recommend` | Returns current forge mode recommendation for A-FORGE |
-| `well_forge_precheck` | A-FORGE asks WELL before forging: safe execution mode? |
-| `well_forge_pressure_update` | A-FORGE reports pressure/cognitive load during forging |
-| `well_get_readiness` | Return readiness score + W-floor status |
-| `well_init` | Initialize WELL session and register identity |
-| `well_list_log` | List recent biological state log entries |
-| `well_log` | Log a biological telemetry update for operator Arif |
-| `well_log_state` | Combined: log telemetry + return updated state |
-| `well_machine_log` | Log machine substrate telemetry |
-| `well_machine_reliability` | Assess machine substrate reliability for a specific task |
-| `well_machine_state` | Read current machine substrate state |
-| `well_medical_boundary` | Explicit non-diagnosis guard — WELL does not diagnose |
-| `well_niat_check` | Before high-impact action: check intent–biological alignment |
-| `well_pressure` | Signal cognitive pressure/load from external source (e.g. A-FORGE) |
-| `well_pressure_ledger` | Log or retrieve pressure events by source |
-| `well_readiness` | Reflect current biological readiness for arifOS JUDGE context |
-| `well_recovery_protocol` | Suggest stabilizing actions based on current WELL state |
-| `well_seal_vault` | Seal a WELL event to VAULT999 |
-| `well_state` | Get current WELL state — biological telemetry snapshot |
-| `well_trend_analysis` | Detect directional trajectory across all WELL metrics |
+WELL exposes **two canonical tool layers**:
 
-**Authority grammar:** WELL uses only non-authority verbs: `get`, `check`, `log`, `list`, `reflect`, `suggest`, `classify`, `request`, `recommend`, `update`. It never uses `approve`, `block`, `judge`, `execute`, `command`, `certify`, or `diagnose`.
+1. **Ω-WELL (13 tools)** — The compressed universal stack. Aligned with arifOS intelligence kernel stages (000–999) and AAA civilization agentic state. **Prefer these for all new integrations.**
+2. **Legacy / Expanded tools (27 exposed)** — The underlying flat tool surface. Backward-compatible. Used internally by Ω-WELL modes. 19 redundant tools removed from MCP surface and absorbed into Ω-WELL modes.
+
+---
+
+## Ω-WELL — The 13-Tool Universal Stack
+
+Each Ω-WELL tool is **polymorphic** with a `mode` parameter. One tool covers ~4 of the original 50 tools.
+
+| # | Ω-WELL Tool | Ontology Layer | arifOS Stage | AAA Dimension | Modes | Compressed From |
+|---|-------------|----------------|--------------|---------------|-------|-----------------|
+| 01 | `well_classify_substrate` | Universal | 000_INIT / 111_SENSE | Agent Registry / Task Discovery | `init`, `assert`, `bootstrap`, `classify`, `boundary`, `scan` | well_init, well_classify_substrate, well_boundary_check |
+| 02 | `well_trace_lineage` | Memory / Vault | 555_MEMORY / 999_VAULT | State Persistence / Immutable Anchor | `recall`, `trend`, `ledger`, `context`, `chain` | well_list_events, well_trend_analysis, well_anchor, well_seal_vault |
+| 03 | `well_detect_boundary` | Boundary / Gateway | 111_SENSE / 444g_GATEWAY | Task Discovery / Federation Bridge | `classify`, `boundary`, `scan`, `status`, `connect`, `handoff`, `manifest` | well_boundary_check, A2A federation bridge |
+| 04 | `well_measure_gradient` | Evidence / Gradient | 222_FETCH | Evidence Ingest | `evidence`, `quality`, `ingest` | well_evidence_quality_check |
+| 05 | `well_assess_metabolism` | Metabolism / System | 333_MIND | Risk Assessment | `human`, `machine`, `coupled`, `bio`, `material`, `institution`, `info`, `symbolic` | All 10 livelihood + 8 substrate tools |
+| 06 | `well_assess_homeostasis` | Regulation / Empathy | 666_HEART | Empathy Scan | `critique`, `empathize`, `dignity`, `redteam`, `maruah` | well_livelihood_dignity, well_symbolic_domain |
+| 07 | `well_check_repair` | Repair / Forge | 777_FORGE | Execution Mode | `precheck`, `mode`, `bandwidth`, `pressure`, `closeout` | well_forge_precheck, well_forge_mode_recommend, etc. |
+| 08 | `well_validate_vitality` | Vitality / Judgment | 888_JUDGE | Constitutional Verdict | `readiness`, `classify`, `niat`, `coupled`, `floors` | well_readiness, well_decision_classify, well_niat_check |
+| 09 | `well_assess_livelihood` | Human Wellness | 333_MIND | Risk Assessment | `human`, `machine`, `coupled`, `bio`, `material`, `institution`, `info`, `symbolic` | All 10 livelihood + 8 substrate tools |
+| 10 | `well_assess_reliability` | Reliability / Ops | 000_OPS | Health Telemetry | `health`, `consent`, `medical`, `vitals` | well_get_health, well_consent_status, well_medical_boundary |
+| 11 | `well_reflect_intelligence` | Cognition / Routing | 444_KERNEL | Lane Selection | `route`, `stage`, `lane`, `list` | well_bandwidth_recommendation, readiness routing |
+| 12 | `well_guard_dignity` | Dignity / Symbolic | 666_HEART | Empathy Scan | `critique`, `empathize`, `dignity`, `redteam`, `maruah` | well_livelihood_dignity, well_symbolic_domain |
+| 13 | `well_anchor_evidence` | Audit / Packet / Vault | 999_VAULT / 444r_REPLY | Immutable Anchor / Composition | `seal`, `anchor`, `verify`, `chain`, `packet`, `brief`, `verdict`, `daily`, `unified` | well_anchor, well_seal_vault, well_get_packet, well_daily_brief, well_verdict_packet |
+
+### Ω-WELL Output Format
+
+Every Ω-WELL tool returns a standardized tri-layer response:
+
+```json
+{
+  "ok": true,
+  "Ω": { "stage": "333_MIND", "lane": "AGI", "mode": "human", "verdict": "SEAL" },
+  "arifos": { "stage": "333_MIND", "lane": "AGI", "verdict": "SEAL", "compliance": {...} },
+  "aaa": { "federation_state": {...}, "risk_tier": "T0", "agent_status": "active" },
+  "data": {...},
+  "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT"
+}
+```
+
+**Verdict grammar:** `SEAL` | `PROVISIONAL` | `HOLD` | `VOID` — aligned with arifOS canonical verdicts.
+
+---
+
+### Resources (6)
+
+| URI | Purpose | MIME Type |
+|-----|---------|-----------|
+| `afwell://schema` | AFWELL State JSON Schema | `application/json` |
+| `afwell://state/arif` | Live operator state snapshot (redacted) | `application/json` |
+| `afwell://events/recent` | Last 20 events from events.jsonl | `application/json` |
+| `afwell://floors/well_floors` | W-series floor definitions + current status | `application/json` |
+| `afwell://vitals/arif` | Readiness vitals — triage color, score, violations | `application/json` |
+| `afwell://substrate/registry` | U-WELL 10-class substrate registry | `application/json` |
+
+Resources are **subscribable** per MCP spec. Clients can poll or subscribe to `afwell://state/arif` for live readiness changes.
+
+### Prompts (4)
+
+| Prompt | Arguments | Purpose |
+|--------|-----------|---------|
+| `prompt_daily_reflection` | `date?` | Guided morning/evening check-in |
+| `prompt_recovery_protocol` | `severity`, `domain` | Structured recovery protocol |
+| `prompt_readiness_brief` | `task_type`, `urgency` | Pre-task readiness briefing |
+| `prompt_substrate_classify` | `subject` | Universal substrate classification guide |
+
+Prompts are **user-controlled** (slash commands), not model-controlled like tools. Arif triggers these directly.
+
+### Authority Grammar
+
+WELL uses only non-authority verbs: `get`, `check`, `log`, `list`, `reflect`, `suggest`, `classify`, `request`, `recommend`, `update`. It never uses `approve`, `block`, `judge`, `execute`, `command`, `certify`, or `diagnose`.
 
 ---
 
@@ -225,7 +281,7 @@ Arif (F13) → arif_session_init → arif_sense_observe → arif_evidence_fetch
 | Field | Value |
 |-------|-------|
 | Canonical repository | `https://github.com/ariffazil/well` |
-| Package version | `v2026.05.01-KANON` |
+| Package version | `v2026.05.08-ΩWELL` |
 | Framework | FastMCP >= 3.0 |
 | Entry point | `server.py` |
 | State | `/root/well/state.json` |
@@ -244,9 +300,10 @@ WELL's W-Floor definitions, OFS classifier design, and trigger taxonomy are grou
 | Priority | Source | Role |
 |----------|--------|------|
 | 1 | [github.com/ariffazil/well](https://github.com/ariffazil/well) | Canonical WELL repository — primary source of truth |
-| 2 | [APEX Constitution Gist v888.1.0](https://gist.github.com/ariffazil/81314f6cda1ea898f9feb88ce8f8959b) | Constitutional foundation with 13 floors and authority/status metadata |
-| 3 | [arif-fazil.com](https://arif-fazil.com/) | Human sovereign surface — identity root, Trinity surfaces |
-| 4 | [wiki.arif-fazil.com](https://wiki.arif-fazil.com/) | Knowledge Mesh — institutional memory, constitutional policy, audit trails |
+| 2 | [`FOUNDATION.md`](FOUNDATION.md) | Chemistry → Vitality → Wellness hierarchy; scientific substrate for all WELL measurements |
+| 3 | [APEX Constitution Gist v888.1.0](https://gist.github.com/ariffazil/81314f6cda1ea898f9feb88ce8f8959b) | Constitutional foundation with 13 floors and authority/status metadata |
+| 4 | [arif-fazil.com](https://arif-fazil.com/) | Human sovereign surface — identity root, Trinity surfaces |
+| 5 | [wiki.arif-fazil.com](https://wiki.arif-fazil.com/) | Knowledge Mesh — institutional memory, constitutional policy, audit trails |
 
 ### Scientific Pillars
 

@@ -1,9 +1,9 @@
 # WELL — Roadmap H1–H4
 
-**Version:** v2026.05.06  
-**Organ:** WELL (Human Readiness · Biological Substrate)  
-**Maturity:** DRAFT (15 commits) — **CRITICAL: Weakest organ in federation**  
-**Role:** Biological substrate — operator cognitive pressure, thermodynamic WELL state  
+**Version:** v2026.05.08  
+**Organ:** WELL (Universal Substrate Vitality Mirror)  
+**Maturity:** Phase 4 Complete — 14 Universal Substrate Tools Added  
+**Role:** Biological substrate + Universal substrate governance — operator cognitive pressure, thermodynamic WELL state, livelihood vitality, institutional entropy, symbolic boundary protection  
 **Status:** SEALED — pending APEX ratification
 
 ---

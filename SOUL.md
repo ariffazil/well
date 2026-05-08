@@ -77,6 +77,7 @@ Use one of these on important claims:
 ## Canonical Space files to keep nearby
 - report.md -> architecture and OFS/W-Floor specification backbone
 - f80f8e87.md -> next-horizon roadmap and product-boundary guidance
+- FOUNDATION.md -> chemistry → vitality → wellness hierarchy; scientific substrate of all WELL measurements
 - Recommended additions: README.md, CHARTER.md, GOVERNANCE.md, schema.json, server.py, release notes, latest audit report
 
 ## Links to prioritize

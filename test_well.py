@@ -626,6 +626,505 @@ def test_canonical_tools():
     asyncio.run(_test_canonical_tools())
 
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# U-WELL — Universal Substrate Vitality Tests
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+async def _test_universal_classify_substrate():
+    print("\n🧪 Testing U-WELL classify_substrate...")
+
+    res = await mcp.call_tool("well_classify_substrate", arguments={"subject": "rock", "description": "granite boulder"})
+    data = get_data(res)
+    assert data["substrate_class"] == "MATERIAL_OBJECT"
+    assert data["vitality_mode"] == "structural integrity, not life"
+
+    res = await mcp.call_tool("well_classify_substrate", arguments={"subject": "virus"})
+    data = get_data(res)
+    assert data["substrate_class"] == "LIMINAL_BIOLOGICAL"
+
+    res = await mcp.call_tool("well_classify_substrate", arguments={"subject": "AI assistant"})
+    data = get_data(res)
+    assert data["substrate_class"] == "MACHINE_SYSTEM"
+
+    res = await mcp.call_tool("well_classify_substrate", arguments={"subject": "soul"})
+    data = get_data(res)
+    assert data["substrate_class"] == "SYMBOLIC_METAPHYSICAL"
+    assert data["human_judge_required"] is True
+
+    res = await mcp.call_tool("well_classify_substrate", arguments={"subject": "VP", "description": "vice president person"})
+    data = get_data(res)
+    assert data["substrate_class"] == "HUMAN_PERSON"
+
+    print("✅ well_classify_substrate tests passed")
+
+
+async def _test_universal_boundary_check():
+    print("\n🧪 Testing U-WELL boundary_check...")
+
+    res = await mcp.call_tool("well_boundary_check", arguments={
+        "subject": "rock", "substrate_class": "MATERIAL_OBJECT", "evaluation_intent": "alive_check"
+    })
+    data = get_data(res)
+    assert data["category_error"] is True
+    assert data["boundary_violated"] is True
+
+    res = await mcp.call_tool("well_boundary_check", arguments={
+        "subject": "soul", "substrate_class": "SYMBOLIC_METAPHYSICAL", "evaluation_intent": "quantify"
+    })
+    data = get_data(res)
+    assert data["category_error"] is True
+    assert data["authority_scope"] == "mirror_and_protect_only"
+
+    res = await mcp.call_tool("well_boundary_check", arguments={
+        "subject": "Arif", "substrate_class": "HUMAN_PERSON", "evaluation_intent": "vitality"
+    })
+    data = get_data(res)
+    assert data["intent_valid"] is True
+    assert data["boundary_violated"] is False
+
+    print("✅ well_boundary_check tests passed")
+
+
+async def _test_universal_evidence_quality():
+    print("\n🧪 Testing U-WELL evidence_quality_check...")
+
+    res = await mcp.call_tool("well_evidence_quality_check", arguments={
+        "evidence_source": "direct_observation", "corroboration_count": 2
+    })
+    data = get_data(res)
+    assert data["evidence_quality"] == "STRONG"
+
+    res = await mcp.call_tool("well_evidence_quality_check", arguments={
+        "evidence_source": "hearsay", "evidence_age_hours": 200
+    })
+    data = get_data(res)
+    assert data["evidence_quality"] == "INSUFFICIENT"
+
+    print("✅ well_evidence_quality_check tests passed")
+
+
+async def _test_universal_verdict_packet():
+    print("\n🧪 Testing U-WELL verdict_packet...")
+
+    res = await mcp.call_tool("well_verdict_packet", arguments={
+        "subject": "rock",
+        "substrate_class": "MATERIAL_OBJECT",
+        "alive_biologically": False,
+        "operational_vitality": "structural_intact",
+    })
+    data = get_data(res)
+    assert data["subject"] == "rock"
+    assert data["alive_biologically"] is False
+    assert data["machine_authority"] == "advisory_only"
+    assert data["w0"] == "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT"
+
+    print("✅ well_verdict_packet tests passed")
+
+
+async def _test_universal_livelihood_energy():
+    print("\n🧪 Testing U-WELL livelihood_energy_check...")
+
+    _write_canonical_state()
+    res = await mcp.call_tool("well_livelihood_energy_check")
+    data = get_data(res)
+    assert data["ok"] is True
+    assert "status" in data
+    assert "gap" in data
+
+    # Explicit parameters override state
+    res = await mcp.call_tool("well_livelihood_energy_check", arguments={
+        "energy_level": 2, "duty_load": 9
+    })
+    data = get_data(res)
+    assert data["status"] == "CRITICAL_DEFICIT"
+    assert data["human_judge_required"] is True
+
+    print("✅ well_livelihood_energy_check tests passed")
+
+
+async def _test_universal_livelihood_time():
+    print("\n🧪 Testing U-WELL livelihood_time_check...")
+
+    _write_canonical_state()
+    res = await mcp.call_tool("well_livelihood_time_check")
+    data = get_data(res)
+    assert data["ok"] is True
+    assert "time_sovereignty_score" in data
+
+    res = await mcp.call_tool("well_livelihood_time_check", arguments={
+        "time_sovereignty_score": 2, "competing_demands": ["work", "family", "coding"]
+    })
+    data = get_data(res)
+    assert data["status"] == "LOW"
+    assert data["human_judge_required"] is True
+
+    print("✅ well_livelihood_time_check tests passed")
+
+
+async def _test_universal_livelihood_role():
+    print("\n🧪 Testing U-WELL livelihood_role_check...")
+
+    res = await mcp.call_tool("well_livelihood_role_check", arguments={
+        "role_clarity": 8, "role_burden": 3
+    })
+    data = get_data(res)
+    assert data["status"] == "HEALTHY"
+
+    res = await mcp.call_tool("well_livelihood_role_check", arguments={
+        "role_clarity": 2, "role_burden": 9, "role_contradictions": ["conflict_of_interest"]
+    })
+    data = get_data(res)
+    assert data["status"] == "OVERLOADED"
+
+    print("✅ well_livelihood_role_check tests passed")
+
+
+async def _test_universal_livelihood_meaning():
+    print("\n🧪 Testing U-WELL livelihood_meaning_check...")
+
+    res = await mcp.call_tool("well_livelihood_meaning_check", arguments={
+        "purpose_alignment": 8, "niat_clarity": 9
+    })
+    data = get_data(res)
+    assert data["status"] == "ALIGNED"
+
+    res = await mcp.call_tool("well_livelihood_meaning_check", arguments={
+        "purpose_alignment": 2, "niat_clarity": 3
+    })
+    data = get_data(res)
+    assert data["status"] == "MISALIGNED"
+
+    print("✅ well_livelihood_meaning_check tests passed")
+
+
+async def _test_universal_livelihood_dignity():
+    print("\n🧪 Testing U-WELL livelihood_dignity_check...")
+
+    res = await mcp.call_tool("well_livelihood_dignity_check", arguments={
+        "dignity_preservation": 8, "coercion_signals": []
+    })
+    data = get_data(res)
+    assert data["status"] == "PRESERVED"
+
+    res = await mcp.call_tool("well_livelihood_dignity_check", arguments={
+        "dignity_preservation": 2, "coercion_signals": ["forced_overtime", "verbal_abuse"]
+    })
+    data = get_data(res)
+    assert data["status"] == "VIOLATED"
+    assert data["human_judge_required"] is True
+
+    print("✅ well_livelihood_dignity_check tests passed")
+
+
+async def _test_universal_bio_viability():
+    print("\n🧪 Testing U-WELL bio_viability_check...")
+
+    # Alive organism
+    res = await mcp.call_tool("well_bio_viability_check", arguments={
+        "has_metabolism": True, "has_homeostasis": True, "has_growth_repair": True,
+        "has_response": True, "has_reproduction": True, "host_dependency": "independent"
+    })
+    data = get_data(res)
+    assert data["viability"] == "ALIVE"
+
+    # Virus (liminal)
+    res = await mcp.call_tool("well_bio_viability_check", arguments={
+        "has_metabolism": False, "has_reproduction": True, "host_dependency": "host_dependent"
+    })
+    data = get_data(res)
+    assert data["viability"] == "LIMINAL"
+
+    # Dead
+    res = await mcp.call_tool("well_bio_viability_check", arguments={
+        "has_metabolism": False, "has_homeostasis": False, "has_growth_repair": False,
+        "has_response": False, "has_reproduction": False
+    })
+    data = get_data(res)
+    assert data["viability"] == "DEAD"
+
+    print("✅ well_bio_viability_check tests passed")
+
+
+async def _test_universal_material_integrity():
+    print("\n🧪 Testing U-WELL material_integrity_check...")
+
+    res = await mcp.call_tool("well_material_integrity_check", arguments={
+        "material_type": "concrete beam", "structural_condition": "good", "age_years": 5
+    })
+    data = get_data(res)
+    assert data["status"] == "SOUND"
+    assert data["alive_biologically"] is False
+
+    res = await mcp.call_tool("well_material_integrity_check", arguments={
+        "material_type": "rusted pipe", "structural_condition": "critical", "hazard_flags": ["toxic_leak"]
+    })
+    data = get_data(res)
+    assert data["status"] == "CRITICAL"
+    assert "toxic_leak" in data["hazard_flags"]
+
+    print("✅ well_material_integrity_check tests passed")
+
+
+async def _test_universal_institution_entropy():
+    print("\n🧪 Testing U-WELL institution_entropy_check...")
+
+    res = await mcp.call_tool("well_institution_entropy_check", arguments={
+        "mission_clarity": 8, "cashflow_status": "positive", "role_integrity": 7, "trust_trend": "stable"
+    })
+    data = get_data(res)
+    assert data["status"] == "VIABLE"
+
+    res = await mcp.call_tool("well_institution_entropy_check", arguments={
+        "mission_clarity": 2, "cashflow_status": "critical", "role_integrity": 3, "trust_trend": "falling"
+    })
+    data = get_data(res)
+    assert data["status"] == "DEGRADING"
+    assert "cashflow_crisis" in data["entropy_flags"]
+
+    print("✅ well_institution_entropy_check tests passed")
+
+
+async def _test_universal_info_coherence():
+    print("\n🧪 Testing U-WELL info_coherence_check...")
+
+    res = await mcp.call_tool("well_info_coherence_check", arguments={
+        "internal_consistency": 8, "version_integrity": True, "executable_status": "passing", "maintainability_score": 7
+    })
+    data = get_data(res)
+    assert data["status"] == "COHERENT"
+
+    res = await mcp.call_tool("well_info_coherence_check", arguments={
+        "internal_consistency": 2, "version_integrity": False, "executable_status": "broken"
+    })
+    data = get_data(res)
+    assert data["status"] == "FRAGMENTED"
+
+    print("✅ well_info_coherence_check tests passed")
+
+
+async def _test_universal_symbolic_domain():
+    print("\n🧪 Testing U-WELL symbolic_domain_check...")
+
+    res = await mcp.call_tool("well_symbolic_domain_check", arguments={"subject": "soul"})
+    data = get_data(res)
+    assert data["is_symbolic_domain"] is True
+    assert data["machine_authority"] == "none"
+    assert "quantify" in data["invalid_well_action"]
+
+    res = await mcp.call_tool("well_symbolic_domain_check", arguments={"subject": "rock"})
+    data = get_data(res)
+    assert data["is_symbolic_domain"] is False
+    assert data["machine_authority"] == "advisory_only"
+
+    res = await mcp.call_tool("well_symbolic_domain_check", arguments={
+        "subject": "dignity", "reductionism_risk": 9
+    })
+    data = get_data(res)
+    assert data["reductionism_status"] == "HIGH_RISK"
+    assert data["guard_action"] == "BLOCK_REDUCTION"
+
+    print("✅ well_symbolic_domain_check tests passed")
+
+
+async def _test_universal_tools_core():
+    await _test_universal_classify_substrate()
+    await _test_universal_boundary_check()
+    await _test_universal_evidence_quality()
+    await _test_universal_verdict_packet()
+    await _test_universal_livelihood_energy()
+    await _test_universal_livelihood_time()
+    await _test_universal_livelihood_role()
+    await _test_universal_livelihood_meaning()
+    await _test_universal_livelihood_dignity()
+    await _test_universal_bio_viability()
+    await _test_universal_material_integrity()
+    await _test_universal_institution_entropy()
+    await _test_universal_info_coherence()
+    await _test_universal_symbolic_domain()
+    print("\n✅ All U-WELL universal substrate tests passed")
+
+
+async def _test_omega_well_core():
+    print("\n🧪 Testing Ω-WELL 13-Tool Polymorphic Stack...")
+
+    _write_canonical_state()
+
+    # Ω-00 init
+    print("--- well_classify_substrate (init) ---")
+    res = await mcp.call_tool("well_classify_substrate", arguments={"mode": "assert"})
+    data = get_data(res)
+    assert data["ok"] is True
+    assert data["Ω"]["stage"] == "000_INIT"
+    assert "arifos" in data
+    assert "aaa" in data
+
+    # Ω-01 sense
+    print("--- well_classify_substrate (sense) ---")
+    res = await mcp.call_tool("well_classify_substrate", arguments={"mode": "classify", "subject": "virus"})
+    data = get_data(res)
+    assert data["Ω"]["stage"] == "111_SENSE"
+    assert data["data"]["substrate_class"] == "LIMINAL_BIOLOGICAL"
+
+    res = await mcp.call_tool("well_classify_substrate", arguments={"mode": "boundary", "subject": "soul", "evaluation_intent": "quantify"})
+    data = get_data(res)
+    assert data["Ω"]["verdict"] == "HOLD"
+
+    # Ω-02 fetch
+    print("--- well_measure_gradient ---")
+    res = await mcp.call_tool("well_measure_gradient", arguments={"mode": "evidence", "evidence_source": "direct_observation", "corroboration_count": 2})
+    data = get_data(res)
+    assert data["Ω"]["stage"] == "222_FETCH"
+    assert data["data"]["evidence_quality"] == "STRONG"
+
+    # Ω-03 mind
+    print("--- well_assess_metabolism ---")
+    res = await mcp.call_tool("well_assess_metabolism", arguments={"mode": "human"})
+    data = get_data(res)
+    assert data["Ω"]["stage"] == "333_MIND"
+    assert "energy" in data["data"]
+    assert "dignity" in data["data"]
+
+    res = await mcp.call_tool("well_assess_metabolism", arguments={"mode": "symbolic", "subject": "soul"})
+    data = get_data(res)
+    assert data["Ω"]["lane"] == "APEX"
+
+    res = await mcp.call_tool("well_assess_metabolism", arguments={"mode": "material", "material_type": "beam", "structural_condition": "critical"})
+    data = get_data(res)
+    assert data["data"]["status"] == "CRITICAL"
+
+    # Ω-04 kernel
+    print("--- well_reflect_intelligence ---")
+    res = await mcp.call_tool("well_reflect_intelligence", arguments={"mode": "route"})
+    data = get_data(res)
+    assert data["Ω"]["stage"] == "444_KERNEL"
+    assert data["data"]["recommended_lane"] in ("AGI", "ASI", "APEX")
+
+    res = await mcp.call_tool("well_reflect_intelligence", arguments={"mode": "list"})
+    data = get_data(res)
+    assert "AGI" in data["data"]["lanes"]
+
+    # Ω-05 memory
+    print("--- well_trace_lineage ---")
+    res = await mcp.call_tool("well_trace_lineage", arguments={"mode": "context"})
+    data = get_data(res)
+    assert data["Ω"]["stage"] == "555_MEMORY"
+    assert "state" in data["data"]
+
+    # Ω-06 heart
+    print("--- well_guard_dignity ---")
+    res = await mcp.call_tool("well_assess_homeostasis", arguments={"mode": "empathize"})
+    data = get_data(res)
+    assert data["Ω"]["stage"] == "666_HEART"
+    assert "human_impact_load" in data["data"]
+
+    res = await mcp.call_tool("well_assess_homeostasis", arguments={"mode": "redteam"})
+    data = get_data(res)
+    assert "attack_surface" in data["data"]
+
+    res = await mcp.call_tool("well_guard_dignity", arguments={"mode": "maruah", "dignity_preservation": 8})
+    data = get_data(res)
+    assert data["data"]["maruah_score"] >= 0.7
+
+    # Ω-07 forge
+    print("--- well_check_repair ---")
+    res = await mcp.call_tool("well_check_repair", arguments={"mode": "mode"})
+    data = get_data(res)
+    assert data["Ω"]["stage"] == "777_FORGE"
+
+    res = await mcp.call_tool("well_check_repair", arguments={"mode": "bandwidth"})
+    data = get_data(res)
+    assert data["ok"] is True
+
+    # Ω-08 judge
+    print("--- well_validate_vitality ---")
+    res = await mcp.call_tool("well_validate_vitality", arguments={"mode": "readiness"})
+    data = get_data(res)
+    assert data["Ω"]["stage"] == "888_JUDGE"
+
+    res = await mcp.call_tool("well_validate_vitality", arguments={"mode": "niat", "intent": "test", "reversibility": "reversible"})
+    data = get_data(res)
+    assert data["ok"] is True
+
+    # Ω-09 vault (dry_run)
+    print("--- well_anchor_evidence ---")
+    res = await mcp.call_tool("well_anchor_evidence", arguments={"mode": "anchor", "dry_run": True})
+    data = get_data(res)
+    assert data["Ω"]["stage"] == "999_VAULT"
+
+    res = await mcp.call_tool("well_anchor_evidence", arguments={"mode": "verify"})
+    data = get_data(res)
+    assert data["ok"] is True
+
+    # Ω-10 reply
+    print("--- well_anchor_evidence (reply) ---")
+    res = await mcp.call_tool("well_anchor_evidence", arguments={"mode": "packet", "target": "arifos", "detail": "minimal"})
+    data = get_data(res)
+    assert data["Ω"]["stage"] == "444r_REPLY"
+
+    res = await mcp.call_tool("well_anchor_evidence", arguments={"mode": "brief"})
+    data = get_data(res)
+    assert data["ok"] is True
+
+    # Ω-11 gateway
+    print("--- well_detect_boundary ---")
+    res = await mcp.call_tool("well_detect_boundary", arguments={"mode": "status"})
+    data = get_data(res)
+    assert data["Ω"]["stage"] == "444g_GATEWAY"
+
+    res = await mcp.call_tool("well_detect_boundary", arguments={"mode": "manifest"})
+    data = get_data(res)
+    assert "federation" in data["data"]
+
+    # Ω-12 ops
+    print("--- well_assess_reliability ---")
+    res = await mcp.call_tool("well_assess_reliability", arguments={"mode": "health"})
+    data = get_data(res)
+    assert data["Ω"]["stage"] == "000_OPS"
+
+    res = await mcp.call_tool("well_assess_reliability", arguments={"mode": "vitals"})
+    data = get_data(res)
+    assert "human_health" in data["data"]
+    assert "machine_health" in data["data"]
+
+    # Ω-13 unified packet — live reflection via well_get_packet
+    print("--- well_get_packet (unified) ---")
+    res = await mcp.call_tool("well_get_packet", arguments={"target": "unified"})
+    data = get_data(res)
+    assert data["ok"] is True
+    assert "human" in data
+    assert "machine" in data
+    assert "mcp" in data
+    assert "coupled" in data
+    assert data["coupled"]["human_ready"] in ("READY", "OPTIMAL", "DEGRADED", "UNKNOWN")
+    assert data["coupled"]["machine_ready"] in ("HEALTHY", "DEGRADED", "CRITICAL")
+    assert data["coupled"]["mcp_ready"] in ("HEALTHY", "DEGRADED")
+    assert data["w0"] == "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT"
+
+    # Ω-13 unified packet — anchor receipt via well_anchor_evidence
+    print("--- well_anchor_evidence (unified) ---")
+    res = await mcp.call_tool("well_anchor_evidence", arguments={"mode": "unified", "dry_run": True})
+    data = get_data(res)
+    assert data["ok"] is True
+    assert "receipt_hash" in data["data"]
+    assert data["data"]["dry_run"] is True
+    assert data["data"]["coupled_verdict"] in ("PROCEED", "CAUTION", "HOLD")
+
+    print("✅ All Ω-WELL 13-tool tests passed")
+
+
+def test_omega_well_tools():
+    asyncio.run(_test_omega_well_core())
+
+
+# test_universal_tools() removed — U-WELL Phase 4 tools absorbed into Ω-WELL modes.
+# Use test_omega_well_tools() for universal substrate coverage.
+
+
+def test_omega_well_tools():
+    asyncio.run(_test_omega_well_core())
+
+
 if __name__ == "__main__":
     try:
         test_identity_invariants()
@@ -634,6 +1133,7 @@ if __name__ == "__main__":
         test_well_integration_fixes()
         test_well_unknown_telemetry()
         test_canonical_tools()
+        test_omega_well_tools()
         print("\n✅ All AFWELL Audit tests passed!")
     except Exception as e:
         print(f"\n❌ Test failed: {e}")

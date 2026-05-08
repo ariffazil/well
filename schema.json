@@ -79,6 +79,53 @@
       }
     },
     "well_score": { "type": "number", "minimum": 0, "maximum": 100 },
-    "floors_violated": { "type": "array", "items": { "type": "string" } }
+    "floors_violated": { "type": "array", "items": { "type": "string" } },
+    "substrates": {
+      "type": "object",
+      "description": "Universal substrate registry (U-WELL)",
+      "additionalProperties": true,
+      "properties": {
+        "human_person": {
+          "type": "object",
+          "properties": {
+            "livelihood": {
+              "type": "object",
+              "properties": {
+                "energy_level": { "type": "number", "minimum": 0, "maximum": 10 },
+                "duty_load": { "type": "number", "minimum": 0, "maximum": 10 },
+                "time_sovereignty": { "type": "number", "minimum": 0, "maximum": 10 },
+                "role_clarity": { "type": "number", "minimum": 0, "maximum": 10 },
+                "role_burden": { "type": "number", "minimum": 0, "maximum": 10 },
+                "purpose_alignment": { "type": "number", "minimum": 0, "maximum": 10 },
+                "niat_clarity": { "type": "number", "minimum": 0, "maximum": 10 },
+                "dignity_preservation": { "type": "number", "minimum": 0, "maximum": 10 }
+              }
+            }
+          }
+        }
+      }
+    },
+    "institution": {
+      "type": "object",
+      "description": "Institutional substrate state (I-WELL)",
+      "properties": {
+        "mission_clarity": { "type": "number", "minimum": 0, "maximum": 10 },
+        "cashflow_status": { "type": "string", "enum": ["positive", "surplus", "strong", "break_even", "stable", "negative", "deficit", "critical", "unknown"] },
+        "role_integrity": { "type": "number", "minimum": 0, "maximum": 10 },
+        "trust_trend": { "type": "string", "enum": ["rising", "strong", "stable", "falling", "broken", "unknown"] },
+        "entropy_flags": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "information": {
+      "type": "object",
+      "description": "Information system coherence (INFO-WELL)",
+      "properties": {
+        "internal_consistency": { "type": "number", "minimum": 0, "maximum": 10 },
+        "version_integrity": { "type": "boolean" },
+        "executable_status": { "type": "string", "enum": ["passing", "green", "ok", "flaky", "yellow", "broken", "red", "failing", "unknown"] },
+        "maintainability_score": { "type": "number", "minimum": 0, "maximum": 10 },
+        "truth_anchor_strength": { "type": "number", "minimum": 0, "maximum": 10 }
+      }
+    }
   }
 }
