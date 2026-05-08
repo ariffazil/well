@@ -5344,10 +5344,31 @@ if __name__ == "__main__":
             "well_readiness": {"danger_level": "L1", "fail_posture": "fail-open"},
         }
         _FAIL_OPEN_CONSTRAINT = "may degrade output, must not elevate authority"
+        _CANONICAL = {
+            "well_classify_substrate", "well_trace_lineage", "well_detect_boundary",
+            "well_measure_gradient", "well_assess_metabolism", "well_assess_homeostasis",
+            "well_check_repair", "well_validate_vitality", "well_assess_livelihood",
+            "well_assess_reliability", "well_reflect_intelligence", "well_guard_dignity",
+            "well_anchor_evidence",
+        }
+        _ALIASES = {
+            "well_000_init", "well_111_sense", "well_222_fetch", "well_333_mind",
+            "well_444_kernel", "well_555_memory", "well_666_heart", "well_777_forge",
+            "well_888_judge", "well_999_vault", "well_444_reply", "well_444_gateway",
+            "well_000_ops",
+        }
         tools = []
         for t in all_tools:
             name = t.name
             meta = _DANGER_MAP.get(name, {"danger_level": "L1", "fail_posture": "fail-open"})
+            if name in _CANONICAL:
+                category = "canonical"
+            elif name in _ALIASES:
+                category = "alias"
+            elif name == "mcp_health_check":
+                category = "heartbeat"
+            else:
+                category = "legacy"
             tools.append({
                 "name": name,
                 "description": getattr(t, "description", "") or "",
@@ -5356,6 +5377,7 @@ if __name__ == "__main__":
                 "danger_level": meta["danger_level"],
                 "fail_posture": meta["fail_posture"],
                 "fail_open_constraint": _FAIL_OPEN_CONSTRAINT if meta["fail_posture"] == "fail-open" else None,
+                "tool_category": category,
             })
         return JSONResponse({
             "organ": "WELL",
