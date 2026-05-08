@@ -1,0 +1,167 @@
+# WELL Tool Authority Manifest
+# schema_version: 2026.05.08
+# final_authority: ARIF
+#
+# Every tool declares: can it read? write? mutate? seal? execute? advise?
+# This prevents future agents from misusing the surface.
+
+mcp: WELL
+schema_version: "2026.05.08"
+final_authority: "ARIF"
+irreversible_requires_human_ack: true
+self_approval_forbidden: true
+
+heartbeat:
+  - tool: mcp_health_check
+    type: heartbeat
+    mutation: false
+    irreversible: false
+    requires_ack: false
+    description: Federation liveness probe
+
+canonical_tools:
+  - tool: well_classify_substrate
+    type: reader
+    mutation: false
+    irreversible: false
+    requires_ack: false
+    description: Chemistry-level substrate classification
+
+  - tool: well_trace_lineage
+    type: reader
+    mutation: false
+    irreversible: false
+    requires_ack: false
+    description: Biology-level lineage tracing
+
+  - tool: well_detect_boundary
+    type: reader
+    mutation: false
+    irreversible: false
+    requires_ack: false
+    description: Boundary and threshold detection
+
+  - tool: well_measure_gradient
+    type: reader
+    mutation: false
+    irreversible: false
+    requires_ack: false
+    description: Energy gradient measurement
+
+  - tool: well_assess_metabolism
+    type: reflector
+    mutation: false
+    irreversible: false
+    requires_ack: false
+    description: Metabolism assessment
+
+  - tool: well_assess_homeostasis
+    type: reflector
+    mutation: false
+    irreversible: false
+    requires_ack: false
+    description: Homeostasis and regulation check
+
+  - tool: well_check_repair
+    type: reflector
+    mutation: false
+    irreversible: false
+    requires_ack: false
+    description: Repair and resilience assessment
+
+  - tool: well_validate_vitality
+    type: guard
+    mutation: false
+    irreversible: false
+    requires_ack: false
+    description: Vitality validation against thresholds
+
+  - tool: well_assess_livelihood
+    type: reflector
+    mutation: false
+    irreversible: false
+    requires_ack: false
+    description: Livelihood and sustainability assessment
+
+  - tool: well_assess_reliability
+    type: reader
+    mutation: false
+    irreversible: false
+    requires_ack: false
+    description: Machine reliability assessment
+
+  - tool: well_reflect_intelligence
+    type: reflector
+    mutation: false
+    irreversible: false
+    requires_ack: false
+    description: Intelligence and deliberation reflection
+
+  - tool: well_guard_dignity
+    type: guard
+    mutation: false
+    irreversible: false
+    requires_ack: false
+    description: Dignity and meaning protection
+
+  - tool: well_anchor_evidence
+    type: writer
+    mutation: true
+    irreversible: true
+    requires_ack: true
+    description: Evidence anchoring to VAULT999
+    authority_note: "Only Arif may authorize irreversible vault seals."
+
+legacy_wrappers:
+  - tool: well_state
+    canonical_delegate: well_validate_vitality
+    delegate_mode: state
+    type: reader
+    mutation: false
+    irreversible: false
+    deprecation_epoch: "2026-Q3"
+
+  - tool: well_anchor
+    canonical_delegate: well_anchor_evidence
+    delegate_mode: anchor
+    type: writer
+    mutation: true
+    irreversible: true
+    requires_ack: true
+    deprecation_epoch: "2026-Q3"
+
+  - tool: well_check_floors
+    canonical_delegate: well_detect_boundary
+    delegate_mode: floors
+    type: reader
+    mutation: false
+    irreversible: false
+    deprecation_epoch: "2026-Q3"
+
+  - tool: well_arifos_packet
+    canonical_delegate: well_get_packet
+    delegate_params: {target: arifos}
+    type: reader
+    mutation: false
+    irreversible: false
+    deprecation_epoch: "2026-Q3"
+
+  - tool: well_seal_vault
+    canonical_delegate: well_anchor_evidence
+    delegate_mode: seal
+    type: writer
+    mutation: true
+    irreversible: true
+    requires_ack: true
+    deprecation_epoch: "2026-Q3"
+
+danger_taxonomy:
+  L3:
+    description: "vault seal / floor check — fail-closed mandatory"
+    tools: [well_anchor_evidence, well_seal_vault, well_request_anchor, well_check_floor]
+  L2:
+    description: "session / log / assess — fail-open with constraint"
+    tools: [well_validate_vitality, well_check_repair, well_guard_dignity, well_assess_metabolism, well_assess_homeostasis, well_assess_livelihood, well_assess_reliability, well_reflect_intelligence]
+  L1:
+    description: "observe / health / readiness — fail-open with constraint"
+    tools: [well_classify_substrate, well_trace_lineage, well_detect_boundary, well_measure_gradient, mcp_health_check, well_state, well_get_packet, well_arifos_packet, well_readiness]

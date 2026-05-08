@@ -666,7 +666,7 @@ def well_state(ctx: Context | None = None) -> dict[str, Any]:
         "human_decision_required": bool(state.get("arif_decision_required", False)),
         "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
     }
-    result.update(_legacy_advisory("well_state", "well_classify_substrate", {"mode": "state"}))
+    result.update(_legacy_advisory("well_state", "well_validate_vitality", {"mode": "state"}))
     return result
 
 
@@ -1825,7 +1825,7 @@ def well_consent_status(ctx: Context | None = None) -> dict[str, Any]:
     This is a hard floor — WELL never operates without operator consent.
     W0: WELL holds a mirror, not a veto. Operator sovereignty is invariant.
     """
-    return {
+    result = {
         "ok": True,
         "w0_version": W0_CONSENT_VERSION,
         "axiom": "WELL holds a mirror, not a veto. Operator sovereignty is invariant.",
@@ -1840,6 +1840,8 @@ def well_consent_status(ctx: Context | None = None) -> dict[str, Any]:
         "telemetry_purposes": W0_TELEMETRY_PURPOSES,
         "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
     }
+    result.update(_legacy_advisory("well_consent_status", "well_guard_dignity", {"mode": "consent"}))
+    return result
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -2003,7 +2005,7 @@ def well_daily_brief(ctx: Context | None = None) -> dict[str, Any]:
     # ── No telemetry → honest unknown brief ──
     if not has_telemetry:
         now = datetime.datetime.now(datetime.timezone.utc)
-        return {
+        result = {
             "ok": True,
             "readiness": "UNKNOWN",
             "well_score": score,
@@ -2017,6 +2019,8 @@ def well_daily_brief(ctx: Context | None = None) -> dict[str, Any]:
             "timestamp": now.isoformat(),
             "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
         }
+        result.update(_legacy_advisory("well_daily_brief", "well_anchor_evidence", {"mode": "packet"}))
+        return result
 
     fatigue = cognitive.get("decision_fatigue", 0)
     clarity = cognitive.get("clarity", 10)
@@ -2083,7 +2087,7 @@ def well_daily_brief(ctx: Context | None = None) -> dict[str, Any]:
     if hour >= 22 or hour < 6:
         time_note = " — late night window, defer consequential decisions"
 
-    return {
+    result = {
         "ok": True,
         "readiness": readiness,
         "well_score": score,
@@ -2097,6 +2101,8 @@ def well_daily_brief(ctx: Context | None = None) -> dict[str, Any]:
         "timestamp": now.isoformat(),
         "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
     }
+    result.update(_legacy_advisory("well_daily_brief", "well_anchor_evidence", {"mode": "packet"}))
+    return result
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -3069,7 +3075,7 @@ def well_get_state(domain: str | None = None, ctx: Context | None = None) -> dic
         result["metrics"] = state.get("metrics", {})
     if domain in (None, "machine"):
         result["m_machine"] = state.get("m_machine", {})
-    result.update(_legacy_advisory("well_get_state", "well_classify_substrate", {"mode": "state"}))
+    result.update(_legacy_advisory("well_get_state", "well_validate_vitality", {"mode": "state"}))
     return result
 
 
@@ -3410,7 +3416,7 @@ async def well_request_anchor(
     """
     if dry_run:
         state = _load_state()
-        return {
+        result = {
             "ok": True,
             "dry_run": True,
             "would_anchor": _has_verified_telemetry(state),
@@ -3418,7 +3424,12 @@ async def well_request_anchor(
             "reason": reason,
             "w0": "WELL requests. arifOS governs. Arif decides.",
         }
-    return await well_anchor(force=False, ctx=ctx)
+        result.update(_legacy_advisory("well_request_anchor", "well_anchor_evidence", {"mode": "request"}))
+        return result
+    result = await well_anchor(force=False, ctx=ctx)
+    if isinstance(result, dict) and result.get("ok"):
+        result.update(_legacy_advisory("well_request_anchor", "well_anchor_evidence", {"mode": "request"}))
+    return result
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
