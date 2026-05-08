@@ -5301,8 +5301,8 @@ if __name__ == "__main__":
             "organ": "WELL",
             "role": "Body / Human Intelligence — Operator Cognitive Pressure Monitor",
             "authority": "REFLECT_ONLY — WELL informs. arifOS judges. Arif decides.",
-            "schema": "well-federation-v2026.05.07",
-            "version": "2026.04.29",
+            "schema": "well-federation-v2026.05.08",
+            "version": "2026.05.08-ΩWELL",
             "count": len(tools),
             "w0_invariant": "WELL holds a mirror, not a veto. Operator sovereignty is invariant.",
             "danger_taxonomy": {

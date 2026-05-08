@@ -56,7 +56,7 @@ WELL informs  →  arifOS judges  →  A-FORGE executes  →  VAULT999 remembers
 
 | Capability | Count | Status |
 |------------|-------|--------|
-| **Tools** | 47 (13 Ω-WELL v2 + 34 legacy) | ✅ Active |
+| **Tools** | 60 (13 canonical verb_noun + 13 stage aliases + 34 legacy) | ✅ Active |
 | **Resources** | 6 canonical | ✅ Active |
 | **Prompts** | 4 canonical | ✅ Active |
 | **Instructions** | 1 server-level | ✅ Active |

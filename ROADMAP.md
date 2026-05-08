@@ -23,7 +23,7 @@ WELL has **only 15 commits**. It is the most immature organ and the most critica
 (4 more commits — 15 total)
 ```
 
-WELL was removed from the production compose stack in April 2026. It is currently offline.
+WELL was restored to the production compose stack in May 2026. It is currently online at https://well.arif-fazil.com/mcp.
 
 ---
 
@@ -250,7 +250,7 @@ WELL v1.0 ──► Operator Readiness ──► H2 Recursive Governance
 | Cognitive load prediction is not feasible | Medium | High | Split into research track; use proxy metrics until validated |
 | Operator refuses biometric monitoring | Medium | Medium | Explicit consent protocol; no monitoring without consent |
 | 14-day sprint produces shotgun architecture | High | High | Split into Track A (data infra) + Track B (research) |
-| WELL offline in production | Confirmed | Critical | Restore to compose stack immediately |
+| WELL offline in production | Resolved | — | Restored to compose stack 2026-05-08 |
 
 ---
 
