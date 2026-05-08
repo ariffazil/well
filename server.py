@@ -5483,6 +5483,7 @@ if __name__ == "__main__":
     async def health_handler(request):
         state = _load_state()
         well_ok = is_well(state)
+        has_telemetry = _has_verified_telemetry(state)
         return JSONResponse({
             "identity": "WELL",
             "role": "Body / Human Intelligence",
@@ -5493,6 +5494,8 @@ if __name__ == "__main__":
             "rasa": state.get("rasa", False),
             "amanah": state.get("amanah", "UNLOCKED"),
             "verdict": "WELL_PASS" if well_ok else "NOT_WELL",
+            "identity_valid": well_ok,
+            "has_telemetry": has_telemetry,
             "service": "well-mcp",
             "version": "2026.05.08-ΩWELL",
         })

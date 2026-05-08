@@ -14,3 +14,5 @@ build/
 events.jsonl
 vault_ledger.jsonl
 state.json
+__pycache__/
+quarantine/
