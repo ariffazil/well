@@ -516,7 +516,7 @@ mcp = FastMCP(
 
 @mcp.tool()
 def mcp_health_check() -> dict:
-    """Universal health check for federation stability."""
+    """[DEPRECATED — use well_assess_reliability(mode='health')] Federation health stub. Retained for compatibility."""
     state = _load_state()
     m_machine = state.get("m_machine", {})
     well_ok = is_well(state)
@@ -1189,8 +1189,9 @@ async def well_anchor(
     ctx: Context | None = None,
 ) -> dict[str, Any]:
     """
-    Anchor current WELL state to arifOS VAULT999 (PostgreSQL + Merkle).
-    Ensures human substrate readiness is immutably recorded.
+    [DEPRECATED — use well_anchor_evidence(mode='seal')] 
+    Legacy anchor to arifOS VAULT999. Retained for federation compatibility.
+    New code should call well_anchor_evidence.
     """
     import sys
     from pathlib import Path
@@ -1223,9 +1224,9 @@ async def well_anchor(
 @mcp.tool()
 def well_check_floors(ctx: Context | None = None) -> dict[str, Any]:
     """
-    Check WELL floor status against all W-Floors.
-    Returns per-floor status, overall verdict, and bandwidth recommendation for arifOS JUDGE.
-    If no verified telemetry exists, returns UNKNOWN rather than faking clear floors.
+    [DEPRECATED — use well_validate_vitality(mode='floors')]
+    Legacy W-floor checker. Retained for compatibility.
+    New code should call well_validate_vitality.
     """
     state = _load_state()
     metrics = state.get("metrics", {})
@@ -1359,9 +1360,9 @@ def well_get_readiness(ctx: Context | None = None) -> dict[str, Any]:
 @mcp.tool("well_check_floor")
 def well_check_floor(floor_id: str | None = None, ctx: Context | None = None) -> dict[str, Any]:
     """
-    Check specific W-floor (W1/W5/W6) — return Canonical Verdict.
-    If floor_id is None, checks all floors via well_check_floors.
-    If no verified telemetry, returns UNKNOWN rather than faking clear floors.
+    [DEPRECATED — use well_validate_vitality(floor_id=...)]
+    Legacy single-floor checker. Retained for compatibility.
+    New code should call well_validate_vitality.
     """
     if not floor_id:
         return well_check_floors(ctx=ctx)
@@ -1560,9 +1561,9 @@ def well_trend_analysis(ctx: Context | None = None) -> dict[str, Any]:
 @mcp.tool()
 def well_bandwidth_recommendation(ctx: Context | None = None) -> dict[str, Any]:
     """
-    Action translation layer — maps WELL state to operational mode.
-    Not just 'you are tired' but 'your state supports X but not Y.'
-    For arifOS kernel: WELL does not block, it informs mode.
+    [DEPRECATED — use well_assess_metabolism(mode='bandwidth')]
+    Legacy bandwidth/action-mode mapper. Retained for compatibility.
+    New code should call well_assess_metabolism.
     If no verified telemetry, returns UNKNOWN rather than faking capacity.
     """
     state = _load_state()
@@ -2025,7 +2026,7 @@ def _build_arifos_packet(ctx: Context | None = None) -> dict[str, Any]:
 
 @mcp.tool()
 def well_arifos_packet(ctx: Context | None = None) -> dict[str, Any]:
-    """Legacy — delegates to well_get_packet(target='arifos'). Retained for federation compatibility."""
+    """[DEPRECATED — use well_get_packet(target='arifos')] Legacy arifOS handoff. Retained for compatibility."""
     result = well_get_packet(target="arifos", ctx=ctx)
     if isinstance(result, dict) and result.get("ok"):
         result.update(_legacy_advisory("well_arifos_packet", "well_get_packet", {"target": "arifos"}))
