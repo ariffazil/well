@@ -7,12 +7,12 @@ WORKDIR /app
 # For full reproducibility, replace with digest-pinned image.
 COPY --from=ghcr.io/astral-sh/uv:0.6.16 /uv /usr/local/bin/uv
 
-# Copy project files
-COPY pyproject.toml server.py vault_bridge.py state.json schema.json events.jsonl ./
+# Copy project files. events.jsonl is mutable runtime state and may be absent from Git.
+COPY pyproject.toml server.py vault_bridge.py state.json schema.json ./
 COPY .well-known ./.well-known
 
 # Install dependencies
-RUN uv pip install --system fastmcp>=2.0 uvicorn
+RUN uv pip install --system fastmcp>=2.0 uvicorn && touch events.jsonl
 
 # Create non-root user for runtime security
 RUN useradd -m -u 1000 welluser && chown -R welluser:welluser /app
