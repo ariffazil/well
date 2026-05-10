@@ -549,7 +549,7 @@ def mcp_health_check() -> dict:
         "status": status,
         "transport": "SSE_VALID",
         "auth": "OK",
-        "schema_version": "2026.05.08",
+        "schema_version": "2026.05.10",
         "read_only": True,
         "final_authority": "ARIF",
         "identity_valid": well_ok,
@@ -5672,7 +5672,7 @@ if __name__ == "__main__":
             "role": "Body / Human Intelligence — Operator Cognitive Pressure Monitor",
             "authority": "REFLECT_ONLY — WELL informs. arifOS judges. Arif decides.",
             "schema": "well-federation-v2026.05.08",
-            "version": "2026.05.08-ΩWELL",
+            "version": "2026.05.10-ΩWELL",
             "count": len(tools),
             "w0_invariant": "WELL holds a mirror, not a veto. Operator sovereignty is invariant.",
             "danger_taxonomy": {
