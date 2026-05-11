@@ -1,0 +1,247 @@
+{
+  "name": "WELL Biological Substrate",
+  "description": "Human substrate governance layer for the arifOS federation. Monitors operator biological state, cognitive pressure, and readiness under constitutional floors F1-F13. Now exposes unified substrate packet (human + machine + MCP coupled verdict) for federation-wide substrate assessment.",
+  "url": "https://well.arif-fazil.com",
+  "provider": {
+    "organization": "arifOS",
+    "system": "WELL"
+  },
+  "version": "2026.05.08-REFORGED",
+  "protocol_version": "1.0.0",
+  "capabilities": {
+    "streaming": false,
+    "push_notifications": false,
+    "authenticated_extended_card": false
+  },
+  "authentication": {
+    "schemes": [
+      "bearer"
+    ]
+  },
+  "default_input_modes": [
+    "text/plain",
+    "application/json"
+  ],
+  "default_output_modes": [
+    "text/plain",
+    "application/json"
+  ],
+  "skills": [
+    {
+      "id": "well-classify-substrate",
+      "name": "Classify Substrate",
+      "description": "Chemistry-level substrate classification \u2014 sense and classify the raw biological and machine substrate.",
+      "tags": [
+        "substrate",
+        "sense",
+        "chemistry"
+      ],
+      "examples": [
+        "What is my substrate state?",
+        "Classify my biological and machine substrate"
+      ]
+    },
+    {
+      "id": "well-trace-lineage",
+      "name": "Trace Lineage",
+      "description": "Biology-level lineage tracing \u2014 recall memory and audit history across substrate events.",
+      "tags": [
+        "memory",
+        "lineage",
+        "biology"
+      ],
+      "examples": [
+        "Trace my substrate history",
+        "What changed in my state?"
+      ]
+    },
+    {
+      "id": "well-detect-boundary",
+      "name": "Detect Boundary",
+      "description": "Boundary detection \u2014 identify thresholds, limits, and edge conditions in substrate readiness.",
+      "tags": [
+        "boundary",
+        "threshold",
+        "gateway"
+      ],
+      "examples": [
+        "Am I near a boundary?",
+        "Detect my readiness boundaries"
+      ]
+    },
+    {
+      "id": "well-measure-gradient",
+      "name": "Measure Gradient",
+      "description": "Energy gradient measurement \u2014 assess deltas, pressures, and directional changes in substrate state.",
+      "tags": [
+        "gradient",
+        "energy",
+        "delta"
+      ],
+      "examples": [
+        "Measure my cognitive gradient",
+        "What is changing in my state?"
+      ]
+    },
+    {
+      "id": "well-assess-metabolism",
+      "name": "Assess Metabolism",
+      "description": "Metabolism assessment \u2014 evaluate how substrate resources are being consumed and transformed.",
+      "tags": [
+        "metabolism",
+        "mind",
+        "cognitive-load"
+      ],
+      "examples": [
+        "Assess my cognitive metabolism",
+        "How am I processing information?"
+      ]
+    },
+    {
+      "id": "well-assess-homeostasis",
+      "name": "Assess Homeostasis",
+      "description": "Homeostasis check \u2014 evaluate regulatory balance across biological and machine systems.",
+      "tags": [
+        "homeostasis",
+        "regulation",
+        "heart"
+      ],
+      "examples": [
+        "Check my homeostasis",
+        "Am I in balance?"
+      ]
+    },
+    {
+      "id": "well-check-repair",
+      "name": "Check Repair",
+      "description": "Repair and resilience check \u2014 assess recovery capacity and repair mechanisms.",
+      "tags": [
+        "repair",
+        "resilience",
+        "forge"
+      ],
+      "examples": [
+        "Check my repair capacity",
+        "Can I recover from this load?"
+      ]
+    },
+    {
+      "id": "well-validate-vitality",
+      "name": "Validate Vitality",
+      "description": "Vitality validation \u2014 judge whether substrate vitality meets thresholds for safe operation.",
+      "tags": [
+        "vitality",
+        "judge",
+        "validation"
+      ],
+      "examples": [
+        "Validate my vitality",
+        "Am I fit for high-stakes decisions?"
+      ]
+    },
+    {
+      "id": "well-assess-livelihood",
+      "name": "Assess Livelihood",
+      "description": "Livelihood assessment \u2014 evaluate long-term sustainability and thriving capacity.",
+      "tags": [
+        "livelihood",
+        "thriving",
+        "prosperity"
+      ],
+      "examples": [
+        "Assess my livelihood",
+        "Can I sustain this pace?"
+      ]
+    },
+    {
+      "id": "well-assess-reliability",
+      "name": "Assess Reliability",
+      "description": "Reliability assessment \u2014 measure machine and infrastructure reliability metrics.",
+      "tags": [
+        "reliability",
+        "machine",
+        "ops"
+      ],
+      "examples": [
+        "Assess machine reliability",
+        "Is the infrastructure stable?"
+      ]
+    },
+    {
+      "id": "well-reflect-intelligence",
+      "name": "Reflect Intelligence",
+      "description": "Intelligence reflection \u2014 evaluate cognitive and deliberative capacity.",
+      "tags": [
+        "intelligence",
+        "reflection",
+        "kernel"
+      ],
+      "examples": [
+        "Reflect on my intelligence state",
+        "How is my deliberative capacity?"
+      ]
+    },
+    {
+      "id": "well-guard-dignity",
+      "name": "Guard Dignity",
+      "description": "Dignity guard \u2014 ensure human dignity and meaning are preserved in substrate assessments.",
+      "tags": [
+        "dignity",
+        "meaning",
+        "human"
+      ],
+      "examples": [
+        "Guard my dignity",
+        "Is my human dignity intact?"
+      ]
+    },
+    {
+      "id": "well-anchor-evidence",
+      "name": "Anchor Evidence",
+      "description": "Evidence anchoring \u2014 immutably record substrate state to VAULT999 for audit and constitutional review.",
+      "tags": [
+        "evidence",
+        "vault",
+        "anchor",
+        "audit"
+      ],
+      "examples": [
+        "Anchor my substrate evidence",
+        "Record this state immutably"
+      ]
+    }
+  ],
+  "governance": {
+    "constitutional_floors": [
+      "F1",
+      "F2",
+      "F3",
+      "F4",
+      "F5",
+      "F6",
+      "F7",
+      "F8",
+      "F9",
+      "F10",
+      "F11",
+      "F12",
+      "F13"
+    ],
+    "verdict_authority": "888_JUDGE",
+    "vault": "VAULT999",
+    "irreversible_requires_human": true,
+    "self_approval_forbidden": true,
+    "federation_trust_model": "untrusted_peers"
+  },
+  "a2a_endpoints": {
+    "health": "GET /health",
+    "mcp": "POST /mcp",
+    "packet": "GET /mcp (tool: well_get_packet)"
+  },
+  "honesty_disclaimer": {
+    "transport_note": "MCP primary (60 tools: 13 canonical verb_noun + 13 alias + 34 legacy); A2A agent card for federation discovery only. No medical diagnosis.",
+    "last_audited": "2026-05-08"
+  },
+  "last_updated": "2026-05-08T14:00:00Z",
+  "deprecation_notice": "\u03a9-WELL v2 canonical surface active. Legacy tools (well_anchor, well_arifos_packet, well_bandwidth_recommendation, well_check_floor, well_check_floors) are deprecated aliases retained for compatibility. Use well_verb_noun ontology."
+}

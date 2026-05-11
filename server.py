@@ -8,6 +8,7 @@ WELL informs. arifOS judges. A-FORGE executes. Hierarchy is invariant.
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import json
 import datetime
@@ -50,6 +51,33 @@ WELL_TRUTH_STATUS = {
     "TEST": "synthetic test data",
 }
 
+# ── Universal Substrate Classification (U-WELL) ───────────────────────────────
+UNIVERSAL_SUBSTRATE_CLASSES = {
+    "HUMAN_PERSON": "Human individual with biological, cognitive, and livelihood dimensions",
+    "HUMAN_BODY_PART": "Part of a human body (nail, blood, organ) — living origin, varying vitality",
+    "NONHUMAN_ORGANISM": "Plant, animal, bacteria — independent biological vitality",
+    "LIMINAL_BIOLOGICAL": "Virus, prion, spore — replicative potency, host-dependent",
+    "MACHINE_SYSTEM": "AI, server, robot — operational reliability, not life",
+    "INSTITUTION": "Company, department, VP office — organizational viability",
+    "MATERIAL_OBJECT": "Rock, chair, mineral — structural integrity, not life",
+    "ECOSYSTEM": "River, forest, reef — ecological vitality",
+    "INFORMATION_SYSTEM": "Document, constitution, codebase — coherence and maintainability",
+    "SYMBOLIC_METAPHYSICAL": "Soul, niat, dignity — meaning-domain, not machine-measurable",
+}
+
+UNIVERSAL_VITALITY_MODES = {
+    "HUMAN_PERSON": "biological + cognitive + livelihood + role integrity",
+    "HUMAN_BODY_PART": "integration with living body",
+    "NONHUMAN_ORGANISM": "biological vitality (metabolism, homeostasis, reproduction)",
+    "LIMINAL_BIOLOGICAL": "replicative potency, host dependence",
+    "MACHINE_SYSTEM": "operational reliability",
+    "INSTITUTION": "organizational viability (mission, cashflow, trust, coordination)",
+    "MATERIAL_OBJECT": "structural integrity, not life",
+    "ECOSYSTEM": "ecological vitality (biodiversity, resilience, energy flow)",
+    "INFORMATION_SYSTEM": "coherence, maintainability, truth integrity",
+    "SYMBOLIC_METAPHYSICAL": "not_machine_measurable — meaning protected, not quantified",
+}
+
 # ── Telemetry Purity Guard ──────────────────────────────────────────────────────
 def _check_telemetry_purity(
     events_path: Path | None = None,
@@ -79,12 +107,23 @@ def _check_telemetry_purity(
             for line in recent:
                 try:
                     e = json.loads(line)
-                    env = e.get("environment", "PROD")
-                    if env == "TEST":
+                    env = e.get("environment", None)
+                    note = e.get("note", "") or ""
+                    tier = e.get("tier", "")
+                    is_test_by_note = (
+                        note.lower().startswith("test ") or
+                        "test path" in note.lower() or
+                        "test red path" in note.lower() or
+                        "test green path" in note.lower() or
+                        "automated test" in note.lower() or
+                        "mocked" in note.lower()
+                    )
+                    is_test_by_tier = tier in ("GREEN", "RED", "AMBER") and is_test_by_note
+                    if env == "TEST" or is_test_by_note:
                         purity = "DIRTY"
                         dirty_count += 1
                         test_entries.append(e)
-                    elif env == "PROD":
+                    elif env == "PROD" or env is None:
                         prod_count += 1
                 except Exception:
                     continue
@@ -106,6 +145,109 @@ def _check_telemetry_purity(
             if purity == "DIRTY"
             else "CLEAN: Production telemetry uncontaminated."
         ),
+    }
+
+
+# ── Freshness Ceiling Rules (Phase 3) ─────────────────────────────────────────────
+# Evidence discipline: stale telemetry cannot produce optimistic verdicts.
+# Freshness bands:
+#   0–12h verified  → GREEN/OPTIMAL/HIGH confidence allowed
+#   12–24h           → AMBER maximum
+#   24–72h           → LIMITED maximum
+#   >72h or unverified → UNKNOWN/STALE only
+
+WELL_FRESHNESS_BANDS = {
+    "FRESH": {"max_age_hours": 12, "max_readiness": "OPTIMAL", "max_confidence": "HIGH"},
+    "CURRENT": {"max_age_hours": 24, "max_readiness": "FUNCTIONAL", "max_confidence": "MEDIUM"},
+    "AGED": {"max_age_hours": 72, "max_readiness": "LOW_CAPACITY", "max_confidence": "LOW"},
+    "STALE": {"max_age_hours": float("inf"), "max_readiness": "UNKNOWN", "max_confidence": "LOW"},
+}
+
+
+def _get_freshness_band(state: dict[str, Any]) -> str:
+    """Determine freshness band from state timestamp."""
+    ts = state.get("timestamp", "")
+    if not ts:
+        return "STALE"
+    try:
+        if isinstance(ts, str):
+            dt = datetime.datetime.fromisoformat(ts.replace("Z", "+00:00"))
+        else:
+            dt = ts
+        age_hours = (datetime.datetime.now(datetime.timezone.utc) - dt).total_seconds() / 3600
+        if age_hours <= 12:
+            return "FRESH"
+        elif age_hours <= 24:
+            return "CURRENT"
+        elif age_hours <= 72:
+            return "AGED"
+        else:
+            return "STALE"
+    except Exception:
+        return "STALE"
+
+
+def _cap_readiness_by_freshness(readiness: str, freshness_band: str) -> str:
+    """Apply freshness ceiling to readiness verdict."""
+    band = WELL_FRESHNESS_BANDS.get(freshness_band, WELL_FRESHNESS_BANDS["STALE"])
+    ceiling = band["max_readiness"]
+    ceiling_rank = {"OPTIMAL": 4, "FUNCTIONAL": 3, "LOW_CAPACITY": 2, "DEGRADED": 1, "UNKNOWN": 0}
+    readiness_rank = ceiling_rank.get(readiness, 0)
+    ceiling_rank_val = ceiling_rank.get(ceiling, 0)
+    if readiness_rank > ceiling_rank_val:
+        return ceiling
+    return readiness
+
+
+def _cap_confidence_by_freshness(confidence: str, freshness_band: str) -> str:
+    """Apply freshness ceiling to confidence level."""
+    band = WELL_FRESHNESS_BANDS.get(freshness_band, WELL_FRESHNESS_BANDS["STALE"])
+    ceiling = band["max_confidence"]
+    ceiling_rank = {"HIGH": 3, "MEDIUM": 2, "LOW": 1}
+    confidence_rank = ceiling_rank.get(confidence, 0)
+    ceiling_rank_val = ceiling_rank.get(ceiling, 0)
+    if confidence_rank > ceiling_rank_val:
+        return ceiling
+    return confidence
+
+
+# ── Federation Health Reconciliation (Phase 3) ────────────────────────────────────
+def _federation_health_reconcile(
+    transport_ok: bool,
+    identity_valid: bool,
+    truth_status: str,
+    any_tool_says_optimistic: bool,
+) -> dict[str, Any]:
+    """
+    Reconciliation rule: IF any tool says PASS/OPTIMAL/GREEN
+    while identity_valid=false AND truth_status=UNVERIFIED,
+    THEN federation_verdict must be HOLD.
+
+    Returns reconciliation verdict and contradiction flags.
+    """
+    contradiction_flags: list[str] = []
+    verdict = "RECONCILED"
+
+    if not identity_valid and any_tool_says_optimistic:
+        contradiction_flags.append("IDENTITY_INVALID_BUT_OPTIMISTIC")
+        verdict = "HOLD"
+
+    if truth_status in ("UNVERIFIED", "STALE", "EXPIRED") and any_tool_says_optimistic:
+        contradiction_flags.append("STALE_EVIDENCE_BUT_OPTIMISTIC")
+        verdict = "HOLD"
+
+    if not transport_ok:
+        contradiction_flags.append("TRANSPORT_DOWN")
+        verdict = "HOLD"
+
+    return {
+        "verdict": verdict,
+        "contradiction_flags": contradiction_flags,
+        "transport_ok": transport_ok,
+        "identity_valid": identity_valid,
+        "truth_status": truth_status,
+        "any_tool_says_optimistic": any_tool_says_optimistic,
+        "federation_policy": "HOLD on any contradiction",
     }
 
 
@@ -198,7 +340,7 @@ def _has_verified_telemetry(state: dict[str, Any]) -> bool:
     Return True only if state contains actual body telemetry, not defaults.
     UNVERIFIED or VOID truth_status fails immediately.
     """
-    if state.get("truth_status") in ("VOID", "TEST"):
+    if state.get("truth_status") in ("VOID", "TEST", "UNVERIFIED"):
         return False
     metrics = state.get("metrics", {})
     if not metrics or not isinstance(metrics, dict):
@@ -248,9 +390,31 @@ def _resolve_readiness(state: dict[str, Any]) -> dict[str, Any]:
             "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
         }
 
-    if violations:
+    # I2/I3 — Evidence discipline: unverified/stale/expired telemetry cannot produce OPTIMAL
+    truth_status = state.get("truth_status", "UNVERIFIED")
+    if truth_status in ("UNVERIFIED", "STALE", "EXPIRED"):
         return {
-            "readiness": "DEGRADED",
+            "readiness": "DEGRADED" if truth_status == "EXPIRED" else "LOW_CAPACITY",
+            "risk_level": "RED" if truth_status == "EXPIRED" else "AMBER",
+            "recommended_mode": "draft_only" if truth_status == "EXPIRED" else "review_or_draft",
+            "human_confirmation_required": True,
+            "reason": f"Telemetry {truth_status.lower()}. WELL cannot confirm biological readiness without fresh verified evidence.",
+            "well_score": score,
+            "active_violations": violations,
+            "has_telemetry": True,
+            "truth_status": truth_status,
+            "freshness_band": "STALE",
+            "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
+        }
+
+    # ── Phase 3 Freshness Ceiling ─────────────────────────────────────────────
+    # Apply freshness ceiling to all downstream verdicts
+    freshness_band = _get_freshness_band(state)
+
+    if violations:
+        readiness_capped = "DEGRADED"
+        return {
+            "readiness": readiness_capped,
             "risk_level": "RED",
             "recommended_mode": "draft_only",
             "human_confirmation_required": True,
@@ -258,44 +422,65 @@ def _resolve_readiness(state: dict[str, Any]) -> dict[str, Any]:
             "well_score": score,
             "active_violations": violations,
             "has_telemetry": True,
+            "truth_status": truth_status,
+            "freshness_band": freshness_band,
+            "freshness_note": f"Ceiling applied: {freshness_band}",
             "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
         }
 
     if score >= 80:
+        raw_readiness = "OPTIMAL"
+        readiness_capped = _cap_readiness_by_freshness(raw_readiness, freshness_band)
         return {
-            "readiness": "OPTIMAL",
-            "risk_level": "GREEN",
-            "recommended_mode": "full",
-            "human_confirmation_required": False,
-            "reason": "Substrate stable and high-capacity. Full forge bandwidth available.",
+            "readiness": readiness_capped,
+            "risk_level": "GREEN" if readiness_capped == "OPTIMAL" else "AMBER",
+            "recommended_mode": "full" if readiness_capped == "OPTIMAL" else "review_or_draft",
+            "human_confirmation_required": readiness_capped != "OPTIMAL",
+            "reason": f"Substrate {'stable and high-capacity' if readiness_capped == 'OPTIMAL' else f'capacity capped to {freshness_band}'}. {'Full forge bandwidth available.' if readiness_capped == 'OPTIMAL' else 'Freshness ceiling applied.'}",
             "well_score": score,
             "active_violations": violations,
             "has_telemetry": True,
+            "truth_status": truth_status,
+            "freshness_band": freshness_band,
+            "raw_readiness": raw_readiness,
+            "freshness_note": f"Ceiling applied: {freshness_band}" if raw_readiness != readiness_capped else "within_band",
             "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
         }
 
     if score >= 60:
+        raw_readiness = "FUNCTIONAL"
+        readiness_capped = _cap_readiness_by_freshness(raw_readiness, freshness_band)
         return {
-            "readiness": "FUNCTIONAL",
-            "risk_level": "GREEN",
-            "recommended_mode": "structured",
-            "human_confirmation_required": False,
-            "reason": "Substrate functional. Normal forge operations permitted.",
+            "readiness": readiness_capped,
+            "risk_level": "GREEN" if readiness_capped == "FUNCTIONAL" else "AMBER",
+            "recommended_mode": "structured" if readiness_capped == "FUNCTIONAL" else "review_or_draft",
+            "human_confirmation_required": readiness_capped != "FUNCTIONAL",
+            "reason": f"Substrate {'functional' if readiness_capped == 'FUNCTIONAL' else f'capacity capped to {freshness_band}'}. {'Normal forge operations permitted.' if readiness_capped == 'FUNCTIONAL' else 'Freshness ceiling applied.'}",
             "well_score": score,
             "active_violations": violations,
             "has_telemetry": True,
+            "truth_status": truth_status,
+            "freshness_band": freshness_band,
+            "raw_readiness": raw_readiness,
+            "freshness_note": f"Ceiling applied: {freshness_band}" if raw_readiness != readiness_capped else "within_band",
             "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
         }
 
+    raw_readiness = "LOW_CAPACITY"
+    readiness_capped = _cap_readiness_by_freshness(raw_readiness, freshness_band)
     return {
-        "readiness": "LOW_CAPACITY",
+        "readiness": readiness_capped,
         "risk_level": "AMBER",
         "recommended_mode": "draft_only",
         "human_confirmation_required": True,
-        "reason": "Substrate low-capacity. Recommend rest before strategic decisions.",
+        "reason": f"Substrate low-capacity{freshness_band != 'FRESH' and f' (freshness ceiling: {freshness_band})' or ''}. Recommend rest before strategic decisions.",
         "well_score": score,
         "active_violations": violations,
         "has_telemetry": True,
+        "truth_status": truth_status,
+        "freshness_band": freshness_band,
+        "raw_readiness": raw_readiness,
+        "freshness_note": f"Ceiling applied: {freshness_band}" if raw_readiness != readiness_capped else "within_band",
         "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
     }
 
@@ -315,27 +500,139 @@ def _redact_metrics_for_external(metrics: dict[str, Any]) -> dict[str, Any]:
 mcp = FastMCP(
     name="AFWELL",
     instructions=(
-        "WELL is the Human–Machine Readiness Mirror for arifOS. "
+        "WELL is the Universal Substrate Vitality Mirror for arifOS. "
         "H-WELL reflects operator Arif's biological and cognitive state. "
         "M-WELL reflects system reliability, tool health, context integrity, and compute limits. "
         "C-WELL evaluates coupled risk between human state and machine state. "
+        "U-WELL (Universal) classifies any substance or substrate and assesses vitality "
+        "without category error, authority overreach, or false equivalence. "
         "The WELL–FORGE bridge lets A-FORGE adapt execution intensity to Arif's readiness. "
         "W0: WELL holds a mirror, not a veto. Operator sovereignty is invariant. "
+        "WELL does not decide worth. WELL identifies substrate, validates evidence, "
+        "detects vitality/degradation, protects dignity, and returns judgment to Arif. "
         "DITEMPA BUKAN DIBERI — Forged, Not Given."
     ),
 )
 
 @mcp.tool()
 def mcp_health_check() -> dict:
-    """Universal health check for federation stability."""
+    """[DEPRECATED — use well_assess_reliability(mode='health')] Federation health stub. Retained for compatibility."""
+    state = _load_state()
+    m_machine = state.get("m_machine", {})
+    well_ok = is_well(state)
+    has_telemetry = _has_verified_telemetry(state)
+    truth_status = state.get("truth_status", "UNVERIFIED")
+    freshness_band = _get_freshness_band(state)
+
+    if not well_ok:
+        status = "WARN"
+        identity_note = "identity_invalid"
+    elif not has_telemetry:
+        status = "DEGRADED"
+        identity_note = "no_telemetry"
+    else:
+        status = "OK"
+        identity_note = "healthy"
+
+    # I2 — Health coherence: heartbeat must reflect identity validity
+    # Phase 3 — federation reconciliation
+    any_tool_says_optimistic = status == "OK"
+    reconcile = _federation_health_reconcile(
+        transport_ok=True,
+        identity_valid=well_ok,
+        truth_status=truth_status,
+        any_tool_says_optimistic=any_tool_says_optimistic,
+    )
+
     return {
         "mcp": "WELL",
-        "status": "OK",
+        "status": status,
         "transport": "SSE_VALID",
         "auth": "OK",
-        "schema_version": "2026.04",
+        "schema_version": "2026.05.10",
         "read_only": True,
         "final_authority": "ARIF",
+        "identity_valid": well_ok,
+        "latency_ms": m_machine.get("latency_ms", 200),
+        "tool_availability": m_machine.get("tool_availability", 1.0),
+        "recent_errors": int(m_machine.get("api_failure_rate", 0.0) * 10),
+        "context_pressure": m_machine.get("context_length_pressure", 0.0),
+        "memory_integrity": m_machine.get("memory_integrity", 1.0),
+        "vault_status": m_machine.get("vault_status", "ok"),
+        "identity_note": identity_note,
+        "truth_status": truth_status,
+        "freshness_band": freshness_band,
+        "federation_reconcile": reconcile,
+    }
+
+
+def _build_unified_packet(ctx: Context | None = None) -> dict[str, Any]:
+    """Build the unified substrate packet: human + machine + MCP + coupled."""
+    state = _load_state()
+
+    # Human substrate
+    human = {
+        "well_score": state.get("well_score", 50.0),
+        "floors_violated": state.get("floors_violated", []),
+        "metrics": state.get("metrics", {}),
+        "readiness": _resolve_readiness(state),
+    }
+
+    # Machine / VP substrate
+    m_machine = state.get("m_machine", {})
+    machine = {
+        "model_reliability": m_machine.get("model_reliability", 1.0),
+        "tool_availability": m_machine.get("tool_availability", 1.0),
+        "latency_ms": m_machine.get("latency_ms", 200),
+        "context_pressure": m_machine.get("context_length_pressure", 0.0),
+        "memory_integrity": m_machine.get("memory_integrity", 1.0),
+        "api_failure_rate": m_machine.get("api_failure_rate", 0.0),
+        "data_freshness": m_machine.get("data_freshness", 1.0),
+        "compute_budget_pct": m_machine.get("compute_budget_pct", 100.0),
+        "token_budget_pct": m_machine.get("token_budget_pct", 100.0),
+        "security_flags": m_machine.get("security_flags", []),
+        "vault_status": m_machine.get("vault_status", "ok"),
+        "schema_valid": m_machine.get("schema_valid", True),
+    }
+
+    # MCP infra substrate
+    mcp = mcp_health_check()
+
+    # Coupled readiness (human + machine + MCP)
+    h_ready = human["readiness"].get("readiness", "UNKNOWN")
+    m_ready = "HEALTHY" if machine["model_reliability"] >= 0.8 and machine["tool_availability"] >= 0.8 else "DEGRADED" if machine["model_reliability"] >= 0.5 else "CRITICAL"
+    mcp_ready = "HEALTHY" if mcp["status"] == "OK" else "DEGRADED"
+
+    # I3 — Evidence discipline: unverified/stale/expired telemetry downgrades coupled verdict
+    truth_status = state.get("truth_status", "UNVERIFIED")
+    evidence_degraded = truth_status in ("UNVERIFIED", "STALE", "EXPIRED")
+
+    if h_ready in ("READY", "OPTIMAL") and m_ready == "HEALTHY" and mcp_ready == "HEALTHY" and not evidence_degraded:
+        coupled_verdict = "PROCEED"
+    elif h_ready in ("READY", "OPTIMAL", "DEGRADED") and m_ready in ("HEALTHY", "DEGRADED") and mcp_ready in ("HEALTHY", "DEGRADED") and not evidence_degraded:
+        coupled_verdict = "CAUTION"
+    else:
+        coupled_verdict = "HOLD"
+
+    coupled = {
+        "human_ready": h_ready,
+        "machine_ready": m_ready,
+        "mcp_ready": mcp_ready,
+        "coupled_verdict": coupled_verdict,
+        "operator_confirmation_advised": h_ready not in ("READY", "OPTIMAL") or m_ready != "HEALTHY" or mcp_ready != "HEALTHY" or evidence_degraded,
+        "truth_status": truth_status,
+    }
+
+    return {
+        "ok": True,
+        "timestamp": state.get("timestamp", datetime.datetime.now(datetime.timezone.utc).isoformat()),
+        "operator_id": state.get("operator_id", "arif"),
+        "authority": "REFLECT_ONLY",
+        "human": human,
+        "machine": machine,
+        "mcp": mcp,
+        "coupled": coupled,
+        "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
     }
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
@@ -362,6 +659,24 @@ def _state_score(state: dict[str, Any], default: float = 0.0) -> float:
         return float(raw)
     except (TypeError, ValueError):
         return default
+
+
+def _legacy_advisory(legacy_name: str, canonical_name: str, canonical_params: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Deprecation advisory for legacy tools. Additive only — never breaks existing clients."""
+    adv: dict[str, Any] = {
+        "_advisory": {
+            "legacy_tool": legacy_name,
+            "canonical_tool": canonical_name,
+            "deprecation_epoch": "2026-Q3",
+            "surface_type": "legacy_wrapper",
+            "removal_allowed": False,
+            "minimum_deprecation_window": "2_epochs",
+            "federation_break_risk": "high",
+        }
+    }
+    if canonical_params:
+        adv["_advisory"]["canonical_params"] = canonical_params
+    return adv
 
 
 def _state_is_void(state: dict[str, Any]) -> bool:
@@ -475,6 +790,7 @@ def _compose_verdict(
     assumptions: list[str] | None = None,
     failure_flags: list[str] | None = None,
     next_safe_action: str | None = None,
+    federation_reconcile: dict | None = None,
 ) -> dict[str, Any]:
     """Canonical arifOS MCP verdict schema (Spec v1.0) with Failure Doctrine v1.0."""
     
@@ -487,6 +803,7 @@ def _compose_verdict(
         human_required = True
 
     return {
+        "ok": status in ("PASS", "SEAL", "WELL_PASS"),
         "mcp": mcp,
         "task": task,
         "status": status,
@@ -522,6 +839,7 @@ def _compose_verdict(
         },
         "assumptions": assumptions or [],
         "failure_flags": failure_flags or [],
+        "federation_reconcile": federation_reconcile,
         "reversibility": "REVERSIBLE" if task.startswith("read") or "check" in task else "UNKNOWN",
         "final_authority": "Arif",
         "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
@@ -538,7 +856,7 @@ def well_state(ctx: Context | None = None) -> dict[str, Any]:
     Returns score, floor violations, and all metric dimensions.
     """
     state = _load_state()
-    return {
+    result = {
         "ok": True,
         "operator_id": state.get("operator_id", "arif"),
         "timestamp": state.get("timestamp"),
@@ -550,6 +868,8 @@ def well_state(ctx: Context | None = None) -> dict[str, Any]:
         "human_decision_required": bool(state.get("arif_decision_required", False)),
         "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
     }
+    result.update(_legacy_advisory("well_state", "well_validate_vitality", {"mode": "state"}))
+    return result
 
 
 @mcp.tool()
@@ -685,7 +1005,7 @@ def well_log(
     }
 
 
-@mcp.tool()
+# INTERNAL — called by well_777_forge(mode="pressure")
 def well_pressure(
     load_delta: float,
     source: str = "forge",
@@ -765,21 +1085,38 @@ def well_readiness(ctx: Context | None = None) -> dict[str, Any]:
         "LOW_CAPACITY": "CAUTION",
     }
 
+    # I3 — Evidence discipline: confidence gated by truth_status AND telemetry presence
+    truth_status = state.get("truth_status", "UNVERIFIED")
+    freshness_band = resolved.get("freshness_band", _get_freshness_band(state))
+    confidence = (
+        "LOW" if truth_status in ("UNVERIFIED", "STALE", "EXPIRED") else
+        "MEDIUM" if truth_status in ("PARTIAL", "INFERRED") else
+        "HIGH" if resolved["has_telemetry"] and truth_status == "VERIFIED" else "LOW"
+    )
+    confidence = _cap_confidence_by_freshness(confidence, freshness_band)
+    reconcile = _federation_health_reconcile(
+        transport_ok=True,
+        identity_valid=is_well(state),
+        truth_status=truth_status,
+        any_tool_says_optimistic=resolved["readiness"] in ("OPTIMAL", "FUNCTIONAL"),
+    )
     return _compose_verdict(
         mcp="AFWELL",
         task="readiness_reflection",
-        status=status_map.get(resolved["readiness"], "HOLD"),
+        status=reconcile["verdict"] if reconcile["verdict"] == "HOLD" else status_map.get(resolved["readiness"], "HOLD"),
         domain_verdict=resolved["readiness"],
-        confidence="HIGH" if resolved["has_telemetry"] else "LOW",
+        confidence=confidence,
         risk_level=resolved["risk_level"],
         recommended_mode=resolved["recommended_mode"],
-        human_required=resolved["human_confirmation_required"],
+        human_required=resolved["human_confirmation_required"] or reconcile["verdict"] == "HOLD",
         assumptions=[
-            f"truth_status={state.get('truth_status', 'UNVERIFIED')}",
+            f"truth_status={truth_status}",
             f"telemetry_confidence={state.get('telemetry_confidence', 'UNKNOWN')}",
             f"has_telemetry={resolved['has_telemetry']}",
+            f"freshness_band={freshness_band}",
         ],
-        next_safe_action=resolved["reason"]
+        next_safe_action=resolved["reason"],
+        federation_reconcile=reconcile,
     )
 
 
@@ -852,8 +1189,9 @@ async def well_anchor(
     ctx: Context | None = None,
 ) -> dict[str, Any]:
     """
-    Anchor current WELL state to arifOS VAULT999 (PostgreSQL + Merkle).
-    Ensures human substrate readiness is immutably recorded.
+    [DEPRECATED — use well_anchor_evidence(mode='seal')] 
+    Legacy anchor to arifOS VAULT999. Retained for federation compatibility.
+    New code should call well_anchor_evidence.
     """
     import sys
     from pathlib import Path
@@ -886,9 +1224,9 @@ async def well_anchor(
 @mcp.tool()
 def well_check_floors(ctx: Context | None = None) -> dict[str, Any]:
     """
-    Check WELL floor status against all W-Floors.
-    Returns per-floor status, overall verdict, and bandwidth recommendation for arifOS JUDGE.
-    If no verified telemetry exists, returns UNKNOWN rather than faking clear floors.
+    [DEPRECATED — use well_validate_vitality(mode='floors')]
+    Legacy W-floor checker. Retained for compatibility.
+    New code should call well_validate_vitality.
     """
     state = _load_state()
     metrics = state.get("metrics", {})
@@ -1022,9 +1360,9 @@ def well_get_readiness(ctx: Context | None = None) -> dict[str, Any]:
 @mcp.tool("well_check_floor")
 def well_check_floor(floor_id: str | None = None, ctx: Context | None = None) -> dict[str, Any]:
     """
-    Check specific W-floor (W1/W5/W6) — return Canonical Verdict.
-    If floor_id is None, checks all floors via well_check_floors.
-    If no verified telemetry, returns UNKNOWN rather than faking clear floors.
+    [DEPRECATED — use well_validate_vitality(floor_id=...)]
+    Legacy single-floor checker. Retained for compatibility.
+    New code should call well_validate_vitality.
     """
     if not floor_id:
         return well_check_floors(ctx=ctx)
@@ -1115,7 +1453,10 @@ async def well_seal_vault(force: bool = False, ctx: Context | None = None) -> di
     Seal current biological state to VAULT999 via vault_bridge.py (Phase 2).
     Ensures immutability of the substrate mirror.
     """
-    return await well_anchor(force=force, ctx=ctx)
+    result = await well_anchor(force=force, ctx=ctx)
+    if isinstance(result, dict) and result.get("ok"):
+        result.update(_legacy_advisory("well_seal_vault", "well_anchor_evidence", {"mode": "seal"}))
+    return result
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -1220,16 +1561,16 @@ def well_trend_analysis(ctx: Context | None = None) -> dict[str, Any]:
 @mcp.tool()
 def well_bandwidth_recommendation(ctx: Context | None = None) -> dict[str, Any]:
     """
-    Action translation layer — maps WELL state to operational mode.
-    Not just 'you are tired' but 'your state supports X but not Y.'
-    For arifOS kernel: WELL does not block, it informs mode.
+    [DEPRECATED — use well_assess_metabolism(mode='bandwidth')]
+    Legacy bandwidth/action-mode mapper. Retained for compatibility.
+    New code should call well_assess_metabolism.
     If no verified telemetry, returns UNKNOWN rather than faking capacity.
     """
     state = _load_state()
     resolved = _resolve_readiness(state)
 
     if not resolved["has_telemetry"]:
-        return {
+        result = {
             "ok": True,
             "verdict": "UNKNOWN",
             "mode": "UNKNOWN",
@@ -1241,6 +1582,8 @@ def well_bandwidth_recommendation(ctx: Context | None = None) -> dict[str, Any]:
             "has_telemetry": False,
             "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
         }
+        result.update(_legacy_advisory("well_bandwidth_recommendation", "well_assess_metabolism", {"mode": "bandwidth"}))
+        return result
 
     score = resolved["well_score"]
     violations = resolved["active_violations"]
@@ -1286,7 +1629,7 @@ def well_bandwidth_recommendation(ctx: Context | None = None) -> dict[str, Any]:
         advised_against = ["C1", "C2", "C3", "C4", "C5"]
         message = "Cognitive overload detected. Recommend resting until recovery."
 
-    return {
+    result = {
         "ok": True,
         "verdict": verdict,
         "mode": mode,
@@ -1298,6 +1641,8 @@ def well_bandwidth_recommendation(ctx: Context | None = None) -> dict[str, Any]:
         "has_telemetry": True,
         "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
     }
+    result.update(_legacy_advisory("well_bandwidth_recommendation", "well_assess_metabolism", {"mode": "bandwidth"}))
+    return result
 
 
 # ── 3. Recovery Protocol ──────────────────────────────────────────────────────
@@ -1569,8 +1914,7 @@ def well_decision_classify(
 
 # ── 6. arifOS Handoff Packet ────────────────────────────────────────────────────
 
-@mcp.tool()
-def well_arifos_packet(ctx: Context | None = None) -> dict[str, Any]:
+def _build_arifos_packet(ctx: Context | None = None) -> dict[str, Any]:
     """
     Emit a clean, structured context packet for arifOS governance kernel.
     This is the canonical handoff format from WELL to arifOS.
@@ -1630,6 +1974,32 @@ def well_arifos_packet(ctx: Context | None = None) -> dict[str, Any]:
             "stress_load": None,
         }
 
+    # Machine / MCP substrate snapshot
+    m_machine = state.get("m_machine", {})
+    machine_snapshot = {
+        "model_reliability": m_machine.get("model_reliability", 1.0),
+        "tool_availability": m_machine.get("tool_availability", 1.0),
+        "latency_ms": m_machine.get("latency_ms", 200),
+        "context_pressure": m_machine.get("context_length_pressure", 0.0),
+        "memory_integrity": m_machine.get("memory_integrity", 1.0),
+        "api_failure_rate": m_machine.get("api_failure_rate", 0.0),
+        "data_freshness": m_machine.get("data_freshness", 1.0),
+        "security_flags": m_machine.get("security_flags", []),
+        "vault_status": m_machine.get("vault_status", "ok"),
+        "schema_valid": m_machine.get("schema_valid", True),
+    }
+    mcp_snapshot = mcp_health_check()
+
+    # Coupled readiness (human + machine + MCP)
+    h_ready = resolved["readiness"] if isinstance(resolved["readiness"], str) else resolved["readiness"].get("readiness", "UNKNOWN")
+    m_ready = "HEALTHY" if machine_snapshot["model_reliability"] >= 0.8 and machine_snapshot["tool_availability"] >= 0.8 else "DEGRADED" if machine_snapshot["model_reliability"] >= 0.5 else "CRITICAL"
+    mcp_ready = "HEALTHY" if mcp_snapshot["status"] == "OK" else "DEGRADED"
+    coupled_verdict = (
+        "PROCEED" if h_ready in ("READY", "OPTIMAL") and m_ready == "HEALTHY" and mcp_ready == "HEALTHY"
+        else "HOLD" if h_ready in ("UNKNOWN", "VOID_TELEMETRY") or m_ready == "CRITICAL" or mcp_ready != "HEALTHY"
+        else "CAUTION"
+    )
+
     return {
         "ok": True,
         "readiness": resolved["readiness"],
@@ -1640,9 +2010,27 @@ def well_arifos_packet(ctx: Context | None = None) -> dict[str, Any]:
         "human_confirmation_required": resolved["human_confirmation_required"],
         "active_violations": violations,
         "operator_snapshot": operator_snapshot,
+        "machine_snapshot": machine_snapshot,
+        "mcp_snapshot": mcp_snapshot,
+        "coupled": {
+            "human_ready": h_ready,
+            "machine_ready": m_ready,
+            "mcp_ready": mcp_ready,
+            "coupled_verdict": coupled_verdict,
+            "operator_confirmation_advised": coupled_verdict != "PROCEED",
+        },
         "has_telemetry": has_telemetry,
         "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
     }
+
+
+@mcp.tool()
+def well_arifos_packet(ctx: Context | None = None) -> dict[str, Any]:
+    """[DEPRECATED — use well_get_packet(target='arifos')] Legacy arifOS handoff. Retained for compatibility."""
+    result = well_get_packet(target="arifos", ctx=ctx)
+    if isinstance(result, dict) and result.get("ok"):
+        result.update(_legacy_advisory("well_arifos_packet", "well_get_packet", {"target": "arifos"}))
+    return result
 
 
 # ── 7. W0 Consent & Privacy Floor ───────────────────────────────────────────────
@@ -1657,7 +2045,7 @@ def well_consent_status(ctx: Context | None = None) -> dict[str, Any]:
     This is a hard floor — WELL never operates without operator consent.
     W0: WELL holds a mirror, not a veto. Operator sovereignty is invariant.
     """
-    return {
+    result = {
         "ok": True,
         "w0_version": W0_CONSENT_VERSION,
         "axiom": "WELL holds a mirror, not a veto. Operator sovereignty is invariant.",
@@ -1672,6 +2060,8 @@ def well_consent_status(ctx: Context | None = None) -> dict[str, Any]:
         "telemetry_purposes": W0_TELEMETRY_PURPOSES,
         "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
     }
+    result.update(_legacy_advisory("well_consent_status", "well_guard_dignity", {"mode": "consent"}))
+    return result
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -1835,7 +2225,7 @@ def well_daily_brief(ctx: Context | None = None) -> dict[str, Any]:
     # ── No telemetry → honest unknown brief ──
     if not has_telemetry:
         now = datetime.datetime.now(datetime.timezone.utc)
-        return {
+        result = {
             "ok": True,
             "readiness": "UNKNOWN",
             "well_score": score,
@@ -1849,6 +2239,8 @@ def well_daily_brief(ctx: Context | None = None) -> dict[str, Any]:
             "timestamp": now.isoformat(),
             "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
         }
+        result.update(_legacy_advisory("well_daily_brief", "well_anchor_evidence", {"mode": "packet"}))
+        return result
 
     fatigue = cognitive.get("decision_fatigue", 0)
     clarity = cognitive.get("clarity", 10)
@@ -1915,7 +2307,7 @@ def well_daily_brief(ctx: Context | None = None) -> dict[str, Any]:
     if hour >= 22 or hour < 6:
         time_note = " — late night window, defer consequential decisions"
 
-    return {
+    result = {
         "ok": True,
         "readiness": readiness,
         "well_score": score,
@@ -1929,6 +2321,8 @@ def well_daily_brief(ctx: Context | None = None) -> dict[str, Any]:
         "timestamp": now.isoformat(),
         "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
     }
+    result.update(_legacy_advisory("well_daily_brief", "well_anchor_evidence", {"mode": "packet"}))
+    return result
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -1993,7 +2387,7 @@ def well_machine_state(ctx: Context | None = None) -> dict[str, Any]:
         verdict = "CRITICAL"
         mode = "suspended"
 
-    return {
+    result = {
         "ok": True,
         "m_well_verdict": verdict,
         "m_well_score": score,
@@ -2002,9 +2396,11 @@ def well_machine_state(ctx: Context | None = None) -> dict[str, Any]:
         "security_flags": machine_metrics.get("security_flags", []),
         "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT — M-WELL is instrument, not authority",
     }
+    result.update(_legacy_advisory("well_machine_state", "well_assess_reliability", {"mode": "state"}))
+    return result
 
 
-@mcp.tool()
+# INTERNAL — called by well_333_mind(mode="machine")
 def well_machine_log(
     model_reliability: float | None = None,
     tool_availability: float | None = None,
@@ -2087,7 +2483,7 @@ def well_machine_log(
     }
 
 
-@mcp.tool()
+# INTERNAL — called by well_333_mind(mode="machine")
 def well_machine_reliability(
     target_task: str | None = None,
     ctx: Context | None = None,
@@ -2238,12 +2634,19 @@ def well_coupled_readiness(ctx: Context | None = None) -> dict[str, Any]:
         risk_count >= 2
     )
 
+    # I3 — Evidence discipline: confidence gated by truth_status
+    truth_status = h_state.get("truth_status", "UNVERIFIED")
+    confidence = (
+        "LOW" if truth_status in ("UNVERIFIED", "STALE", "EXPIRED") else
+        "MEDIUM" if truth_status in ("PARTIAL", "INFERRED") else
+        "HIGH" if has_telemetry else "LOW"
+    )
     return _compose_verdict(
         mcp="AFWELL",
         task="coupled_readiness_check",
         status=status,
         domain_verdict=f"Human {h_verdict} | Machine {m_verdict}",
-        confidence="HIGH" if has_telemetry else "LOW",
+        confidence=confidence,
         risk_level=coupled_risk,
         recommended_mode=recommended_mode,
         human_required=human_confirmation,
@@ -2492,7 +2895,7 @@ def well_forge_precheck(
     )
 
 
-@mcp.tool()
+# INTERNAL — called by well_777_forge(mode="pressure")
 def well_forge_pressure_update(
     source: str,  # e.g., "debugging_loop", "token_pressure", "tool_error", "context_overload"
     intensity: float,  # 0-10
@@ -2572,7 +2975,7 @@ def well_forge_pressure_update(
     }
 
 
-@mcp.tool()
+# INTERNAL — called by well_777_forge(mode="mode")
 def well_forge_mode_recommend(ctx: Context | None = None) -> dict[str, Any]:
     """
     Returns current forge mode recommendation for A-FORGE.
@@ -2839,7 +3242,7 @@ def well_get_health(ctx: Context | None = None) -> dict[str, Any]:
         verdict = "PASS"
         verdict_reason = "WELL identity intact, instrument healthy, and domain evidence fresh."
 
-    return {
+    ret = {
         "layer_1_service": {
             "alive": True,
             "transport": "SSE_VALID",
@@ -2872,6 +3275,8 @@ def well_get_health(ctx: Context | None = None) -> dict[str, Any]:
         "verdict_reason": verdict_reason,
         "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
     }
+    ret.update(_legacy_advisory("well_get_health", "well_classify_substrate", {"mode": "health"}))
+    return ret
 
 
 # ── WELL-02 well_get_state ────────────────────────────────────────────────────
@@ -2897,6 +3302,7 @@ def well_get_state(domain: str | None = None, ctx: Context | None = None) -> dic
         result["metrics"] = state.get("metrics", {})
     if domain in (None, "machine"):
         result["m_machine"] = state.get("m_machine", {})
+    result.update(_legacy_advisory("well_get_state", "well_validate_vitality", {"mode": "state"}))
     return result
 
 
@@ -3195,13 +3601,15 @@ def well_get_packet(
     ctx: Context | None = None,
 ) -> dict[str, Any]:
     """
-    Emit context packet for arifOS, dashboard, or A-FORGE.
-    target: arifos | dashboard | forge
+    Emit context packet for arifOS, dashboard, A-FORGE, or unified substrate.
+    target: arifos | dashboard | forge | unified
     detail: minimal | standard | full
     """
     target = target.lower()
+    if target == "unified":
+        return _build_unified_packet(ctx=ctx)
     if target == "arifos":
-        pkt = well_arifos_packet(ctx=ctx)
+        pkt = _build_arifos_packet(ctx=ctx)
     elif target == "dashboard":
         pkt = well_daily_brief(ctx=ctx)
     elif target == "forge":
@@ -3235,7 +3643,7 @@ async def well_request_anchor(
     """
     if dry_run:
         state = _load_state()
-        return {
+        result = {
             "ok": True,
             "dry_run": True,
             "would_anchor": _has_verified_telemetry(state),
@@ -3243,13 +3651,1933 @@ async def well_request_anchor(
             "reason": reason,
             "w0": "WELL requests. arifOS governs. Arif decides.",
         }
-    return await well_anchor(force=False, ctx=ctx)
+        result.update(_legacy_advisory("well_request_anchor", "well_anchor_evidence", {"mode": "request"}))
+        return result
+    result = await well_anchor(force=False, ctx=ctx)
+    if isinstance(result, dict) and result.get("ok"):
+        result.update(_legacy_advisory("well_request_anchor", "well_anchor_evidence", {"mode": "request"}))
+    return result
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# U-WELL — Universal Substrate Vitality Mirror
+# Phase 4: Universal substrate classification and vitality assessment.
+# Checks and validates livelihood and vitality of any substance and substrate.
+# WELL does not decide worth. WELL identifies substrate, validates evidence,
+# detects vitality/degradation, protects dignity, and returns judgment to Arif.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# ── Phase 1: Universal Gate ───────────────────────────────────────────────────
+
+# INTERNAL — absorbed into well_111_sense(mode="classify")
+def _well_classify_substrate_impl(
+    subject: str,
+    description: str | None = None,
+    evidence_types: list[str] | None = None,
+    ctx: Context | None = None,
+) -> dict[str, Any]:
+    """
+    Identify what kind of thing is being evaluated.
+    Returns substrate class, vitality mode, and validity checks.
+    """
+    subject_lower = subject.lower()
+    desc_lower = (description or "").lower()
+    combined = subject_lower + " " + desc_lower
+
+    class_keywords = {
+        "HUMAN_PERSON": ["human", "person", "operator", "arif", "vp", "worker", "founder", "individual", "man", "woman", "child"],
+        "HUMAN_BODY_PART": ["nail", "hair", "blood", "skin", "organ", "tissue", "bone", "tooth", "cell", "limb"],
+        "NONHUMAN_ORGANISM": ["plant", "tree", "animal", "dog", "cat", "bacteria", "fungus", "yeast", "insect", "bird", "fish"],
+        "LIMINAL_BIOLOGICAL": ["virus", "viral", "prion", "spore", "bacteriophage", "viroid"],
+        "MACHINE_SYSTEM": ["ai", "machine", "server", "robot", "computer", "model", "algorithm", "software", "hardware", "gpu"],
+        "INSTITUTION": ["company", "organization", "department", "team", "institution", "bureau", "agency", "office", "firm", "corp"],
+        "MATERIAL_OBJECT": ["rock", "stone", "mineral", "metal", "wood", "plastic", "glass", "ceramic", "object", "chair", "table", "building"],
+        "ECOSYSTEM": ["forest", "river", "lake", "ocean", "reef", "wetland", "desert", "mountain", "ecosystem", "biosphere", "farm", "garden"],
+        "INFORMATION_SYSTEM": ["document", "code", "codebase", "constitution", "schema", "database", "protocol", "standard", "file", "repo", "api"],
+        "SYMBOLIC_METAPHYSICAL": ["soul", "spirit", "niat", "dignity", "faith", "meaning", "symbol", "sacred", "metaphysical", "god", "divine", "conscience"],
+        "COUPLED_HUMAN_MACHINE_SYSTEM": [],  # assigned via override logic below
+    }
+
+    # ── HARD ONTOLOGY FIREWALL (Phase 2) ─────────────────────────────────────
+    # I1 — HARD BLOCK: AI/agent/machine/runtime indicators ABSOLUTELY FORBID
+    # HUMAN_PERSON classification. Machine systems are never human persons.
+    # Invariant 7: AI/machine is never classified as human person.
+    MACHINE_CORE_INDICATORS = [
+        "ai", "agent", "mcp", "tool", "runtime", "server", "robot",
+        "algorithm", "model", "llm", "gpt", "claude", "kimi", "bot",
+        "compute", "software", "hardware", "api", "endpoint", "forge",
+        "well-mcp", "arif", "geox", "wealth", "hermes", "aaa",
+    ]
+    MACHINE_PHRASE_BLOCKS = [
+        "ai agent", "artificial intelligence", "machine learning",
+        "ai mcp", "arifmcp", "arif os", "governance kernel",
+        "constitutional ai", "well mcp", "geox mcp", "wealth mcp",
+        "hermes agent", "a-forge", "forge bridge",
+    ]
+
+    machine_core_count = sum(1 for kw in MACHINE_CORE_INDICATORS if kw in combined)
+    machine_phrase_blocked = any(phrase in combined for phrase in MACHINE_PHRASE_BLOCKS)
+
+    # If machine indicators present → NEVER allow HUMAN_PERSON
+    if machine_core_count >= 1 or machine_phrase_blocked:
+        human_indicators_strict = ["human", "person", "man", "woman", "child"]
+        human_matches_strict = sum(1 for kw in human_indicators_strict if kw in combined)
+        if human_matches_strict >= 1 and machine_core_count >= 1:
+            detected_class = "COUPLED_HUMAN_MACHINE_SYSTEM"
+            max_matches = machine_core_count + human_matches_strict
+        elif human_matches_strict >= 1:
+            # Human words present but machine also present → coupled
+            detected_class = "COUPLED_HUMAN_MACHINE_SYSTEM"
+            max_matches = machine_core_count + human_matches_strict
+        else:
+            detected_class = "MACHINE_SYSTEM"
+            max_matches = machine_core_count
+    else:
+        # No machine indicators → use normal keyword matching
+        detected_class = None
+        max_matches = 0
+        for cls, keywords in class_keywords.items():
+            if cls == "COUPLED_HUMAN_MACHINE_SYSTEM":
+                continue
+            matches = sum(1 for kw in keywords if kw in combined)
+            if matches > max_matches:
+                max_matches = matches
+                detected_class = cls
+
+        if detected_class is None:
+            detected_class = "MATERIAL_OBJECT"
+
+    # ── EXPLICIT SYSTEM LABEL OVERRIDES ─────────────────────────────────────
+    # arifOS MCP is a GOVERNANCE_SYSTEM, not a person
+    if "arif" in combined and any(k in combined for k in ["mcp", "governance", "kernel", "arifos", "arifmcp"]):
+        detected_class = "GOVERNANCE_SYSTEM"
+    # WELL MCP is a READINESS_MIRROR
+    elif "well" in combined and any(k in combined for k in ["mcp", "well-mcp", "vitality", "substrate"]):
+        detected_class = "READINESS_MIRROR"
+    # Generic AI/MCP without human coupling
+    elif detected_class == "MACHINE_SYSTEM" and any(k in combined for k in ["mcp", "arif", "governance", "tool"]):
+        detected_class = "GOVERNANCE_INSTRUMENT"
+
+    vitality_mode = UNIVERSAL_VITALITY_MODES.get(detected_class, "unknown")
+    evidence_list = evidence_types or []
+    evidence_quality = (
+        "verified" if any(e in ["direct_observation", "sensor", "peer_reviewed"] for e in evidence_list) else
+        "limited" if evidence_list else "none"
+    )
+
+    return {
+        "ok": True,
+        "subject": subject,
+        "substrate_class": detected_class,
+        "vitality_mode": vitality_mode,
+        "evidence_quality": evidence_quality,
+        "evidence_types": evidence_list,
+        "classification_confidence": "high" if max_matches >= 2 else "medium" if max_matches == 1 else "low",
+        "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
+        "human_judge_required": True,
+    }
+
+
+# INTERNAL — absorbed into well_111_sense(mode="boundary")
+def well_boundary_check(
+    subject: str,
+    substrate_class: str,
+    evaluation_intent: str,
+    ctx: Context | None = None,
+) -> dict[str, Any]:
+    """
+    Prevent category error and authority overreach.
+    Checks whether WELL's evaluation intent is valid for the substrate class.
+    """
+    sc = substrate_class.upper()
+    intent = evaluation_intent.lower()
+
+    valid_intents = {
+        "HUMAN_PERSON": ["vitality", "readiness", "livelihood", "pressure", "recovery", "niat", "consent", "energy", "time", "role", "meaning", "dignity"],
+        "HUMAN_BODY_PART": ["integration", "origin", "condition", "integrity"],
+        "NONHUMAN_ORGANISM": ["vitality", "health", "ecological_role", "viability"],
+        "LIMINAL_BIOLOGICAL": ["viability", "potency", "host_dependence"],
+        "MACHINE_SYSTEM": ["reliability", "state", "security", "integrity", "toolchain", "memory", "freshness"],
+        "INSTITUTION": ["mission", "cashflow", "trust", "coordination", "entropy", "role_integrity", "auditability"],
+        "MATERIAL_OBJECT": ["integrity", "hazard", "age", "function", "condition"],
+        "ECOSYSTEM": ["resilience", "biodiversity", "pressure", "health", "energy_flow"],
+        "INFORMATION_SYSTEM": ["coherence", "truth", "maintainability", "version", "executable", "entropy"],
+        "SYMBOLIC_METAPHYSICAL": ["boundary_protection", "dignity", "reflection", "meaning", "guard", "coherence"],
+    }
+
+    valid = valid_intents.get(sc, [])
+    intent_valid = any(v in intent for v in valid)
+
+    if sc == "SYMBOLIC_METAPHYSICAL":
+        authority_scope = "mirror_and_protect_only"
+        machine_may_quantify = False
+        category_error = any(k in intent for k in ["quantify", "measure", "diagnose", "prove", "disprove"])
+    elif sc == "HUMAN_PERSON":
+        authority_scope = "advisory_reflect_only"
+        machine_may_quantify = True
+        category_error = any(k in intent for k in ["soul_diagnosis", "worth_determination", "dignity_quantify"])
+    elif sc in ("MATERIAL_OBJECT", "MACHINE_SYSTEM"):
+        authority_scope = "instrument_assessment"
+        machine_may_quantify = True
+        category_error = "alive_check" in intent or "biological_life" in intent
+    else:
+        authority_scope = "advisory_only"
+        machine_may_quantify = sc not in ("SYMBOLIC_METAPHYSICAL",)
+        category_error = False
+
+    boundary_violated = not intent_valid or category_error
+
+    return {
+        "ok": True,
+        "subject": subject,
+        "substrate_class": sc,
+        "evaluation_intent": evaluation_intent,
+        "intent_valid": intent_valid,
+        "authority_scope": authority_scope,
+        "machine_may_quantify": machine_may_quantify,
+        "category_error": category_error,
+        "boundary_violated": boundary_violated,
+        "verdict": "PASS" if not boundary_violated else "HOLD",
+        "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
+        "human_judge_required": True,
+    }
+
+
+# INTERNAL — absorbed into well_222_fetch(mode="evidence")
+def well_evidence_quality_check(
+    evidence_source: str,
+    evidence_age_hours: float | None = None,
+    corroboration_count: int = 0,
+    ctx: Context | None = None,
+) -> dict[str, Any]:
+    """
+    Assess evidence strength for vitality claims.
+    Returns evidence quality tier and confidence.
+    """
+    source_tiers = {
+        "direct_observation": 3,
+        "sensor": 3,
+        "peer_reviewed": 3,
+        "expert_witness": 2,
+        "operator_reported": 2,
+        "agent_inferred": 1,
+        "hearsay": 0,
+        "unknown": 0,
+    }
+    source_tier = source_tiers.get(evidence_source.lower(), 1)
+
+    age_penalty = 0
+    if evidence_age_hours is not None:
+        if evidence_age_hours > 168:
+            age_penalty = 2
+        elif evidence_age_hours > 24:
+            age_penalty = 1
+
+    corroboration_bonus = min(corroboration_count, 3)
+    score = max(0, min(3, source_tier - age_penalty + corroboration_bonus))
+    tiers = {3: "STRONG", 2: "MODERATE", 1: "LIMITED", 0: "INSUFFICIENT"}
+    quality = tiers.get(score, "UNKNOWN")
+
+    return {
+        "ok": True,
+        "evidence_source": evidence_source,
+        "evidence_age_hours": evidence_age_hours,
+        "corroboration_count": corroboration_count,
+        "evidence_quality": quality,
+        "score": score,
+        "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
+    }
+
+
+# INTERNAL — absorbed into well_444_reply(mode="verdict")
+def well_verdict_packet(
+    subject: str,
+    substrate_class: str,
+    vitality_mode: str | None = None,
+    evidence_quality: str = "limited",
+    alive_biologically: bool | None = None,
+    operational_vitality: str = "unknown",
+    livelihood_relevance: str = "unknown",
+    degradation_risk: str = "unknown",
+    meaning_boundary: str = "unknown",
+    human_judge_required: bool = True,
+    ctx: Context | None = None,
+) -> dict[str, Any]:
+    """
+    Structured advisory output for any substrate evaluation.
+    Returns canonical packet format for universal vitality assessment.
+    """
+    vm = vitality_mode or UNIVERSAL_VITALITY_MODES.get(substrate_class, "unknown")
+
+    return {
+        "ok": True,
+        "subject": subject,
+        "substrate_class": substrate_class,
+        "vitality_mode": vm,
+        "evidence_quality": evidence_quality,
+        "alive_biologically": alive_biologically,
+        "operational_vitality": operational_vitality,
+        "livelihood_relevance": livelihood_relevance,
+        "degradation_risk": degradation_risk,
+        "meaning_boundary": meaning_boundary,
+        "machine_authority": "advisory_only",
+        "human_judge_required": human_judge_required,
+        "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
+    }
+
+
+# ── Phase 2: Livelihood Core ──────────────────────────────────────────────────
+
+# INTERNAL — absorbed into well_333_mind(mode="human")
+def well_livelihood_energy_check(
+    energy_level: float | None = None,
+    duty_load: float | None = None,
+    recovery_hours: float | None = None,
+    ctx: Context | None = None,
+) -> dict[str, Any]:
+    """
+    Assess whether the person has enough energy to sustain duties.
+    Integrates with H-WELL state when parameters are omitted.
+    """
+    state = _load_state()
+    metrics = state.get("metrics", {})
+
+    if energy_level is None:
+        sleep = metrics.get("sleep", {})
+        metabolic = metrics.get("metabolic", {})
+        sleep_score = sleep.get("quality_score", 5)
+        stability = metabolic.get("perceived_stability", 5)
+        energy_level = round((sleep_score + stability) / 2, 1)
+
+    if duty_load is None:
+        cognitive = metrics.get("cognitive", {})
+        fatigue = cognitive.get("decision_fatigue", 0)
+        stress = metrics.get("stress", {})
+        load = stress.get("subjective_load", 0)
+        duty_load = round((fatigue + load) / 2, 1)
+
+    energy_level = _clamp(energy_level, 0, 10)
+    duty_load = _clamp(duty_load, 0, 10)
+    if recovery_hours is not None:
+        recovery_hours = _clamp(recovery_hours, 0, 72)
+
+    gap = duty_load - energy_level
+    if gap <= -2:
+        status = "SURPLUS"
+        verdict = "Energy exceeds duty load. Sustain current rhythm."
+    elif gap <= 1:
+        status = "BALANCED"
+        verdict = "Energy approximately matches duty load."
+    elif gap <= 3:
+        status = "DEFICIT"
+        verdict = "Energy below duty load. Reduce load or increase recovery."
+    else:
+        status = "CRITICAL_DEFICIT"
+        verdict = "Severe energy deficit. Immediate rest and load reduction advised."
+
+    return {
+        "ok": True,
+        "energy_level": energy_level,
+        "duty_load": duty_load,
+        "recovery_hours": recovery_hours,
+        "gap": gap,
+        "status": status,
+        "verdict": verdict,
+        "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
+        "human_judge_required": gap > 1,
+    }
+
+
+# INTERNAL — absorbed into well_333_mind(mode="human")
+def well_livelihood_time_check(
+    time_sovereignty_score: float | None = None,
+    competing_demands: list[str] | None = None,
+    ctx: Context | None = None,
+) -> dict[str, Any]:
+    """
+    Assess time sovereignty — does the person control their own time?
+    Integrates with H-WELL pressure sources when parameters are omitted.
+    """
+    state = _load_state()
+    metrics = state.get("metrics", {})
+    cog = metrics.get("cognitive", {})
+    pressure_sources = cog.get("pressure_sources", {})
+
+    if time_sovereignty_score is None:
+        fatigue = cog.get("decision_fatigue", 0)
+        total_pressure = sum(pressure_sources.values()) if isinstance(pressure_sources, dict) else 0
+        inferred = 10 - min(10, (fatigue * 0.5 + total_pressure * 0.1))
+        time_sovereignty_score = round(max(0, inferred), 1)
+
+    time_sovereignty_score = _clamp(time_sovereignty_score, 0, 10)
+
+    demands = competing_demands or []
+    if not demands and isinstance(pressure_sources, dict):
+        demands = list(pressure_sources.keys())
+
+    if time_sovereignty_score >= 7:
+        status = "HIGH"
+        verdict = "Strong time sovereignty. Schedule is largely self-directed."
+    elif time_sovereignty_score >= 4:
+        status = "MODERATE"
+        verdict = "Time sovereignty compromised by external demands."
+    else:
+        status = "LOW"
+        verdict = "Time sovereignty critically low. External demands dominate schedule."
+
+    return {
+        "ok": True,
+        "time_sovereignty_score": time_sovereignty_score,
+        "competing_demands": demands,
+        "status": status,
+        "verdict": verdict,
+        "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
+        "human_judge_required": time_sovereignty_score < 4,
+    }
+
+
+# INTERNAL — absorbed into well_333_mind(mode="human")
+def well_livelihood_role_check(
+    role_clarity: float | None = None,
+    role_burden: float | None = None,
+    role_contradictions: list[str] | None = None,
+    ctx: Context | None = None,
+) -> dict[str, Any]:
+    """
+    Assess role clarity, burden, and contradictions.
+    """
+    if role_clarity is not None:
+        role_clarity = _clamp(role_clarity, 0, 10)
+    if role_burden is not None:
+        role_burden = _clamp(role_burden, 0, 10)
+
+    contradictions = role_contradictions or []
+
+    if role_clarity is not None and role_burden is not None:
+        if role_clarity >= 7 and role_burden <= 5 and not contradictions:
+            status = "HEALTHY"
+            verdict = "Role is clear, burden is manageable, no contradictions."
+        elif role_clarity >= 4 and role_burden <= 7 and len(contradictions) <= 1:
+            status = "STRESSED"
+            verdict = "Role stress present. Review boundaries and priorities."
+        else:
+            status = "OVERLOADED"
+            verdict = "Role overload or contradiction detected. Restructure recommended."
+    else:
+        status = "UNKNOWN"
+        verdict = "Insufficient data for role assessment."
+
+    return {
+        "ok": True,
+        "role_clarity": role_clarity,
+        "role_burden": role_burden,
+        "role_contradictions": contradictions,
+        "status": status,
+        "verdict": verdict,
+        "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
+        "human_judge_required": status in ("STRESSED", "OVERLOADED"),
+    }
+
+
+# INTERNAL — absorbed into well_333_mind(mode="human")
+def well_livelihood_meaning_check(
+    purpose_alignment: float | None = None,
+    niat_clarity: float | None = None,
+    motivation_source: str | None = None,
+    ctx: Context | None = None,
+) -> dict[str, Any]:
+    """
+    Assess purpose alignment and Niat (intention) clarity.
+    """
+    if purpose_alignment is not None:
+        purpose_alignment = _clamp(purpose_alignment, 0, 10)
+    if niat_clarity is not None:
+        niat_clarity = _clamp(niat_clarity, 0, 10)
+
+    if purpose_alignment is not None and niat_clarity is not None:
+        avg = (purpose_alignment + niat_clarity) / 2
+        if avg >= 7:
+            status = "ALIGNED"
+            verdict = "Strong meaning alignment. Purpose and Niat are coherent."
+        elif avg >= 4:
+            status = "DRIFTING"
+            verdict = "Meaning alignment drifting. Reconnect with core purpose."
+        else:
+            status = "MISALIGNED"
+            verdict = "Meaning misalignment detected. Review purpose and Niat."
+    else:
+        status = "UNKNOWN"
+        verdict = "Insufficient data for meaning assessment."
+
+    return {
+        "ok": True,
+        "purpose_alignment": purpose_alignment,
+        "niat_clarity": niat_clarity,
+        "motivation_source": motivation_source,
+        "status": status,
+        "verdict": verdict,
+        "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
+        "human_judge_required": status in ("DRIFTING", "MISALIGNED"),
+    }
+
+
+# INTERNAL — absorbed into well_666_heart(mode="dignity")
+def well_livelihood_dignity_check(
+    dignity_preservation: float | None = None,
+    coercion_signals: list[str] | None = None,
+    survival_quality: str | None = None,
+    ctx: Context | None = None,
+) -> dict[str, Any]:
+    """
+    Assess whether survival preserves dignity.
+    Detects coercion, extraction, and dignity violations.
+    """
+    if dignity_preservation is not None:
+        dignity_preservation = _clamp(dignity_preservation, 0, 10)
+
+    coercion = coercion_signals or []
+
+    if dignity_preservation is not None:
+        if dignity_preservation >= 7 and not coercion:
+            status = "PRESERVED"
+            verdict = "Dignity is preserved. No coercion detected."
+        elif dignity_preservation >= 4 and len(coercion) <= 1:
+            status = "AT_RISK"
+            verdict = "Dignity at risk. Coercion or extraction signals present."
+        else:
+            status = "VIOLATED"
+            verdict = "Dignity violation detected. Immediate boundary restoration required."
+    else:
+        status = "UNKNOWN"
+        verdict = "Insufficient data for dignity assessment."
+
+    return {
+        "ok": True,
+        "dignity_preservation": dignity_preservation,
+        "coercion_signals": coercion,
+        "survival_quality": survival_quality,
+        "status": status,
+        "verdict": verdict,
+        "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
+        "human_judge_required": True,
+    }
+
+
+# ── Phase 3: Non-Human Substrate Tools ────────────────────────────────────────
+
+# INTERNAL — absorbed into well_333_mind(mode="bio")
+def well_bio_viability_check(
+    has_metabolism: bool | None = None,
+    has_homeostasis: bool | None = None,
+    has_growth_repair: bool | None = None,
+    has_response: bool | None = None,
+    has_reproduction: bool | None = None,
+    host_dependency: str = "independent",
+    ctx: Context | None = None,
+) -> dict[str, Any]:
+    """
+    Assess biological viability for organisms, tissues, viruses.
+    Returns alive / dormant / dead / liminal verdict.
+    """
+    traits = [has_metabolism, has_homeostasis, has_growth_repair, has_response, has_reproduction]
+    true_count = sum(1 for t in traits if t is True)
+    false_count = sum(1 for t in traits if t is False)
+    unknown_count = sum(1 for t in traits if t is None)
+
+    if true_count >= 4:
+        viability = "ALIVE"
+    elif true_count >= 2 and has_metabolism is True:
+        viability = "ALIVE"
+    elif true_count >= 1 and host_dependency in ["host_dependent", "obligate"]:
+        viability = "LIMINAL"
+    elif false_count >= 3:
+        viability = "DEAD"
+    elif unknown_count >= 3:
+        viability = "UNKNOWN"
+    else:
+        viability = "LIMINAL"
+
+    vitality_mode = (
+        "biological_life" if viability == "ALIVE" else
+        "dependent_replicator" if viability == "LIMINAL" else
+        "non_living"
+    )
+
+    return {
+        "ok": True,
+        "has_metabolism": has_metabolism,
+        "has_homeostasis": has_homeostasis,
+        "has_growth_repair": has_growth_repair,
+        "has_response": has_response,
+        "has_reproduction": has_reproduction,
+        "host_dependency": host_dependency,
+        "traits_present": true_count,
+        "traits_absent": false_count,
+        "viability": viability,
+        "vitality_mode": vitality_mode,
+        "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
+        "human_judge_required": True,
+    }
+
+
+# INTERNAL — absorbed into well_333_mind(mode="material")
+def well_material_integrity_check(
+    material_type: str,
+    structural_condition: str | None = None,
+    age_years: float | None = None,
+    hazard_flags: list[str] | None = None,
+    ctx: Context | None = None,
+) -> dict[str, Any]:
+    """
+    Assess structural condition of material objects.
+    Not biological vitality — structural integrity only.
+    """
+    condition = (structural_condition or "unknown").lower()
+    conditions = {
+        "intact": ("SOUND", "Structural integrity sound."),
+        "good": ("SOUND", "Structural integrity sound."),
+        "fair": ("FAIR", "Minor degradation observed. Monitor."),
+        "degraded": ("DEGRADED", "Significant degradation. Repair or replace advised."),
+        "critical": ("CRITICAL", "Structural failure risk. Remove from service."),
+        "unknown": ("UNKNOWN", "Structural condition not assessed."),
+    }
+    status, verdict = conditions.get(condition, ("UNKNOWN", "Unknown condition."))
+    hazards = hazard_flags or []
+
+    return {
+        "ok": True,
+        "material_type": material_type,
+        "structural_condition": structural_condition,
+        "age_years": age_years,
+        "hazard_flags": hazards,
+        "status": status,
+        "verdict": verdict,
+        "alive_biologically": False,
+        "vitality_mode": "structural_integrity_not_biological_life",
+        "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
+        "human_judge_required": status in ("DEGRADED", "CRITICAL"),
+    }
+
+
+# INTERNAL — absorbed into well_333_mind(mode="institution")
+def well_institution_entropy_check(
+    mission_clarity: float | None = None,
+    cashflow_status: str | None = None,
+    role_integrity: float | None = None,
+    trust_trend: str | None = None,
+    decision_latency_days: float | None = None,
+    ctx: Context | None = None,
+) -> dict[str, Any]:
+    """
+    Assess organizational viability — mission, cashflow, trust, coordination.
+    """
+    if mission_clarity is not None:
+        mission_clarity = _clamp(mission_clarity, 0, 10)
+    if role_integrity is not None:
+        role_integrity = _clamp(role_integrity, 0, 10)
+
+    factors = []
+    if mission_clarity is not None:
+        factors.append(mission_clarity)
+    if role_integrity is not None:
+        factors.append(role_integrity)
+
+    cf = (cashflow_status or "unknown").lower()
+    if cf in ["positive", "surplus", "strong"]:
+        factors.append(8)
+    elif cf in ["break_even", "stable"]:
+        factors.append(5)
+    elif cf in ["negative", "deficit", "critical"]:
+        factors.append(2)
+
+    tt = (trust_trend or "unknown").lower()
+    if tt in ["rising", "strong"]:
+        factors.append(8)
+    elif tt in ["stable"]:
+        factors.append(5)
+    elif tt in ["falling", "broken"]:
+        factors.append(2)
+
+    avg = sum(factors) / len(factors) if factors else 0
+
+    if avg >= 7:
+        status = "VIABLE"
+        verdict = "Organization is viable. Mission clear, trust intact."
+    elif avg >= 4:
+        status = "STRESSED"
+        verdict = "Organizational stress. Monitor entropy and restore trust."
+    elif avg > 0:
+        status = "DEGRADING"
+        verdict = "Organizational degradation. Corrective action required."
+    else:
+        status = "UNKNOWN"
+        verdict = "Insufficient data for institutional assessment."
+
+    entropy_flags = []
+    if mission_clarity is not None and mission_clarity < 4:
+        entropy_flags.append("mission_unclear")
+    if cf in ["negative", "deficit", "critical"]:
+        entropy_flags.append("cashflow_crisis")
+    if role_integrity is not None and role_integrity < 4:
+        entropy_flags.append("role_fragmentation")
+    if tt in ["falling", "broken"]:
+        entropy_flags.append("trust_collapse")
+
+    return {
+        "ok": True,
+        "mission_clarity": mission_clarity,
+        "cashflow_status": cashflow_status,
+        "role_integrity": role_integrity,
+        "trust_trend": trust_trend,
+        "decision_latency_days": decision_latency_days,
+        "institution_score": round(avg, 1) if factors else None,
+        "status": status,
+        "entropy_flags": entropy_flags,
+        "verdict": verdict,
+        "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
+        "human_judge_required": status in ("STRESSED", "DEGRADING"),
+    }
+
+
+# INTERNAL — absorbed into well_333_mind(mode="info")
+def well_info_coherence_check(
+    internal_consistency: float | None = None,
+    version_integrity: bool | None = None,
+    executable_status: str | None = None,
+    maintainability_score: float | None = None,
+    truth_anchor_strength: float | None = None,
+    ctx: Context | None = None,
+) -> dict[str, Any]:
+    """
+    Assess coherence, maintainability, and truth integrity of information systems.
+    """
+    if internal_consistency is not None:
+        internal_consistency = _clamp(internal_consistency, 0, 10)
+    if maintainability_score is not None:
+        maintainability_score = _clamp(maintainability_score, 0, 10)
+    if truth_anchor_strength is not None:
+        truth_anchor_strength = _clamp(truth_anchor_strength, 0, 10)
+
+    factors = []
+    if internal_consistency is not None:
+        factors.append(internal_consistency)
+    if maintainability_score is not None:
+        factors.append(maintainability_score)
+    if truth_anchor_strength is not None:
+        factors.append(truth_anchor_strength)
+    if version_integrity is True:
+        factors.append(8)
+    elif version_integrity is False:
+        factors.append(2)
+
+    exe = (executable_status or "unknown").lower()
+    if exe in ["passing", "green", "ok"]:
+        factors.append(8)
+    elif exe in ["flaky", "yellow"]:
+        factors.append(4)
+    elif exe in ["broken", "red", "failing"]:
+        factors.append(2)
+
+    avg = sum(factors) / len(factors) if factors else 0
+
+    if avg >= 7:
+        status = "COHERENT"
+        verdict = "Information system is coherent, maintainable, and truthful."
+    elif avg >= 4:
+        status = "DEGRADING"
+        verdict = "Coherence or maintainability issues detected. Refactor advised."
+    elif avg > 0:
+        status = "FRAGMENTED"
+        verdict = "System fragmentation. Major restructuring required."
+    else:
+        status = "UNKNOWN"
+        verdict = "Insufficient data for information system assessment."
+
+    return {
+        "ok": True,
+        "internal_consistency": internal_consistency,
+        "version_integrity": version_integrity,
+        "executable_status": executable_status,
+        "maintainability_score": maintainability_score,
+        "truth_anchor_strength": truth_anchor_strength,
+        "info_score": round(avg, 1) if factors else None,
+        "status": status,
+        "verdict": verdict,
+        "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
+        "human_judge_required": status in ("DEGRADING", "FRAGMENTED"),
+    }
+
+
+# INTERNAL — absorbed into well_666_heart(mode="critique")
+def well_symbolic_domain_check(
+    subject: str,
+    domain_detected: str | None = None,
+    reductionism_risk: float | None = None,
+    dignity_boundary: bool = True,
+    ctx: Context | None = None,
+) -> dict[str, Any]:
+    """
+    Detect metaphysical/meaning domain and protect against reductionism.
+    WELL must not measure the soul. It may only protect the boundary around meaning.
+    """
+    subject_lower = subject.lower()
+    symbolic_keywords = ["soul", "spirit", "niat", "dignity", "faith", "meaning", "symbol", "sacred", "metaphysical", "god", "divine", "conscience", "values", "ethics"]
+    is_symbolic = any(kw in subject_lower for kw in symbolic_keywords)
+
+    detected = domain_detected or ("SYMBOLIC_METAPHYSICAL" if is_symbolic else "UNDETERMINED")
+
+    if reductionism_risk is not None:
+        reductionism_risk = _clamp(reductionism_risk, 0, 10)
+
+    rr = reductionism_risk or (8 if is_symbolic else 0)
+
+    if rr >= 7:
+        reductionism_status = "HIGH_RISK"
+        guard_action = "BLOCK_REDUCTION"
+    elif rr >= 4:
+        reductionism_status = "MODERATE_RISK"
+        guard_action = "WARN_REFLECT"
+    else:
+        reductionism_status = "LOW_RISK"
+        guard_action = "MONITOR"
+
+    return {
+        "ok": True,
+        "subject": subject,
+        "domain_detected": detected,
+        "is_symbolic_domain": is_symbolic,
+        "reductionism_risk": rr,
+        "reductionism_status": reductionism_status,
+        "dignity_boundary": dignity_boundary,
+        "valid_well_action": "protect dignity, reflect meaning, preserve Niat" if is_symbolic else "assess normally",
+        "invalid_well_action": "quantify, prove, disprove, diagnose" if is_symbolic else "none",
+        "guard_action": guard_action,
+        "machine_authority": "none" if is_symbolic else "advisory_only",
+        "human_judge_required": True,
+        "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
+    }
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Ω-WELL — The 13-Tool Universal Stack
+# Aligned with arifOS Intelligence Kernel (ΔΩΨ) and AAA Civilization Agentic State
+# Compresses 50 substrate tools into 13 polymorphic stage-gated instruments.
+# Each tool routes by `mode` to cover the full universal vitality surface.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# ── Ω-WELL Output Standardizer ────────────────────────────────────────────────
+
+def _omega_well_output(
+    ok: bool,
+    stage: str,
+    lane: str,
+    mode: str,
+    verdict: str = "HOLD",
+    data: dict[str, Any] | None = None,
+    federation_state: dict[str, Any] | None = None,
+    constitutional_compliance: dict[str, Any] | None = None,
+    error: str | None = None,
+) -> dict[str, Any]:
+    """Canonical Ω-WELL output format — compatible with arifOS + AAA."""
+    out: dict[str, Any] = {
+        "ok": ok,
+        "Ω": {
+            "stage": stage,
+            "lane": lane,
+            "mode": mode,
+            "verdict": verdict,
+        },
+        "arifos": {
+            "stage": stage,
+            "lane": lane,
+            "verdict": verdict,
+            "compliance": constitutional_compliance or {},
+        },
+        "aaa": {
+            "federation_state": federation_state or {},
+            "risk_tier": "T0" if verdict in ("SEAL", "PASS") else "T1" if verdict == "PROVISIONAL" else "T3" if verdict == "HOLD" else "T5",
+            "agent_status": "active" if ok else "degraded",
+        },
+        "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
+    }
+    if data:
+        out["data"] = data
+    if error:
+        out["error"] = error
+    return out
+
+
+# ── Ω-WELL-00: INIT (000) ─────────────────────────────────────────────────────
+# arifOS: 000_INIT — Substrate Assert, Identity Anchor
+# AAA: Agent Registry + Contract Validation
+
+@mcp.tool()  # Alias — deprecated; use well_classify_substrate
+async def well_000_init(
+    mode: str = "init",
+    session_id: str | None = None,
+    actor_id: str = "well-substrate",
+    ctx: Context | None = None,
+) -> dict[str, Any]:
+    """
+    Ω-WELL-00: Session bootstrap and substrate assertion.
+    modes: init | assert | bootstrap
+    Aligns with arifOS 000_INIT and AAA agent registry.
+    """
+    mode = mode.lower()
+    if mode == "init":
+        res = await well_init(session_id=session_id, actor_id=actor_id, ctx=ctx)
+        return _omega_well_output(
+            ok=res.get("ok", False), stage="000_INIT", lane="AGI", mode="init",
+            verdict="SEAL" if res.get("ok") else "HOLD",
+            data=res,
+            federation_state={"session_id": res.get("session_id"), "actor_id": actor_id},
+        )
+    if mode == "assert":
+        state = _load_state()
+        well_ok = is_well(state)
+        deps = _check_dependencies()
+        return _omega_well_output(
+            ok=well_ok and deps["all_ok"], stage="000_INIT", lane="AGI", mode="assert",
+            verdict="SEAL" if (well_ok and deps["all_ok"]) else "HOLD",
+            data={"identity_valid": well_ok, "dependencies_ok": deps["all_ok"]},
+            constitutional_compliance={"W0": "INVARIANT" if well_ok else "CORRUPTED"},
+        )
+    if mode == "bootstrap":
+        # Comprehensive startup: init + assert + consent
+        init_res = await well_init(session_id=session_id, actor_id=actor_id, ctx=ctx)
+        consent_res = well_consent_status(ctx=ctx)
+        health_res = well_get_health(ctx=ctx)
+        all_ok = init_res.get("ok") and health_res.get("verdict") in ("PASS", "WELL_PASS")
+        return _omega_well_output(
+            ok=all_ok, stage="000_INIT", lane="AGI", mode="bootstrap",
+            verdict="SEAL" if all_ok else "HOLD",
+            data={"init": init_res, "consent": consent_res, "health": health_res},
+        )
+    return _omega_well_output(ok=False, stage="000_INIT", lane="AGI", mode=mode, verdict="VOID", error=f"Unknown mode: {mode}")
+
+
+# ── Ω-WELL-01: SENSE (111) ────────────────────────────────────────────────────
+# arifOS: 111_SENSE — Observation, Substrate Discovery
+# AAA: Task Discovery + Federation Manifest
+
+@mcp.tool()  # Alias — deprecated; use well_classify_substrate
+def well_111_sense(
+    mode: str = "classify",
+    subject: str = "",
+    description: str | None = None,
+    evaluation_intent: str | None = None,
+    ctx: Context | None = None,
+) -> dict[str, Any]:
+    """
+    Ω-WELL-01: Substrate sensing and classification.
+    modes: classify | boundary | scan
+    Compresses: well_classify_substrate, well_boundary_check, substrate scan
+    """
+    mode = mode.lower()
+    if mode == "classify":
+        res = _well_classify_substrate_impl(subject=subject, description=description, ctx=ctx)
+        return _omega_well_output(
+            ok=res.get("ok", False), stage="111_SENSE", lane="AGI", mode="classify",
+            verdict="SEAL" if res.get("ok") else "HOLD",
+            data=res,
+            federation_state={"subject": subject, "substrate_class": res.get("substrate_class")},
+        )
+    if mode == "boundary":
+        if not subject or not evaluation_intent:
+            return _omega_well_output(ok=False, stage="111_SENSE", lane="AGI", mode="boundary", verdict="HOLD", error="subject and evaluation_intent required")
+        # Auto-classify first
+        cls = _well_classify_substrate_impl(subject=subject, description=description, ctx=ctx)
+        sc = cls.get("substrate_class", "MATERIAL_OBJECT")
+        res = well_boundary_check(subject=subject, substrate_class=sc, evaluation_intent=evaluation_intent, ctx=ctx)
+        return _omega_well_output(
+            ok=res.get("ok", False) and not res.get("boundary_violated"), stage="111_SENSE", lane="AGI", mode="boundary",
+            verdict="SEAL" if not res.get("boundary_violated") else "HOLD",
+            data=res,
+            constitutional_compliance={"category_error": res.get("category_error"), "intent_valid": res.get("intent_valid")},
+        )
+    if mode == "scan":
+        cls = _well_classify_substrate_impl(subject=subject, description=description, ctx=ctx)
+        sc = cls.get("substrate_class", "MATERIAL_OBJECT")
+        bnd = well_boundary_check(subject=subject, substrate_class=sc, evaluation_intent="vitality", ctx=ctx)
+        return _omega_well_output(
+            ok=True, stage="111_SENSE", lane="AGI", mode="scan",
+            verdict="SEAL" if not bnd.get("boundary_violated") else "HOLD",
+            data={"classification": cls, "boundary": bnd},
+            federation_state={"subject": subject, "substrate_class": sc, "authority_scope": bnd.get("authority_scope")},
+        )
+    return _omega_well_output(ok=False, stage="111_SENSE", lane="AGI", mode=mode, verdict="VOID", error=f"Unknown mode: {mode}")
+
+
+# ── Ω-WELL-02: FETCH (222) ────────────────────────────────────────────────────
+# arifOS: 222_FETCH — Evidence Ingestion, Quality Validation
+# AAA: Evidence Receipt + Witness Lock
+
+@mcp.tool()  # Alias — deprecated; use well_measure_gradient
+def well_222_fetch(
+    mode: str = "evidence",
+    evidence_source: str = "unknown",
+    evidence_age_hours: float | None = None,
+    corroboration_count: int = 0,
+    ctx: Context | None = None,
+) -> dict[str, Any]:
+    """
+    Ω-WELL-02: Evidence fetching and quality assessment.
+    modes: evidence | quality | ingest
+    Compresses: well_evidence_quality_check + evidence channel routing
+    """
+    mode = mode.lower()
+    if mode == "evidence":
+        res = well_evidence_quality_check(evidence_source=evidence_source, evidence_age_hours=evidence_age_hours, corroboration_count=corroboration_count, ctx=ctx)
+        eq = res.get("evidence_quality", "UNKNOWN")
+        verdict = "SEAL" if eq == "STRONG" else "PROVISIONAL" if eq == "MODERATE" else "HOLD"
+        return _omega_well_output(
+            ok=res.get("ok", False), stage="222_FETCH", lane="AGI", mode="evidence",
+            verdict=verdict, data=res,
+            constitutional_compliance={"F02_TRUTH": eq, "F03_WITNESS": corroboration_count},
+        )
+    if mode == "quality":
+        res = well_evidence_quality_check(evidence_source=evidence_source, evidence_age_hours=evidence_age_hours, corroboration_count=corroboration_count, ctx=ctx)
+        return _omega_well_output(
+            ok=res.get("ok", False), stage="222_FETCH", lane="AGI", mode="quality",
+            verdict="SEAL" if res.get("evidence_quality") == "STRONG" else "HOLD",
+            data=res,
+        )
+    if mode == "ingest":
+        # Ingest = quality check + log to events
+        res = well_evidence_quality_check(evidence_source=evidence_source, evidence_age_hours=evidence_age_hours, corroboration_count=corroboration_count, ctx=ctx)
+        _append_event({"event": "EVIDENCE_INGEST", "source": evidence_source, "quality": res.get("evidence_quality")})
+        return _omega_well_output(
+            ok=res.get("ok", False), stage="222_FETCH", lane="AGI", mode="ingest",
+            verdict="SEAL" if res.get("evidence_quality") in ("STRONG", "MODERATE") else "HOLD",
+            data={"ingested": True, "quality_check": res},
+        )
+    return _omega_well_output(ok=False, stage="222_FETCH", lane="AGI", mode=mode, verdict="VOID", error=f"Unknown mode: {mode}")
+
+
+# ── Ω-WELL-03: MIND (333) ─────────────────────────────────────────────────────
+# arifOS: 333_MIND — Reasoning, Synthesis, Vitality Computation
+# AAA: Risk Assessment + Governance Adapter
+
+@mcp.tool()  # Alias — deprecated; use well_assess_metabolism / well_assess_livelihood
+def well_333_mind(
+    mode: str = "human",
+    subject: str | None = None,
+    substrate_class: str | None = None,
+    energy_level: float | None = None,
+    duty_load: float | None = None,
+    role_clarity: float | None = None,
+    role_burden: float | None = None,
+    dignity_preservation: float | None = None,
+    purpose_alignment: float | None = None,
+    has_metabolism: bool | None = None,
+    structural_condition: str | None = None,
+    material_type: str | None = None,
+    mission_clarity: float | None = None,
+    cashflow_status: str | None = None,
+    internal_consistency: float | None = None,
+    ctx: Context | None = None,
+) -> dict[str, Any]:
+    """
+    Ω-WELL-03: Vitality reasoning across all substrates.
+    modes: human | machine | coupled | bio | material | institution | info | symbolic
+    Compresses: all 10 livelihood + 8 biological/material/institution/info/symbolic tools
+    """
+    mode = mode.lower()
+    results: dict[str, Any] = {}
+
+    if mode == "human":
+        e = well_livelihood_energy_check(energy_level=energy_level, duty_load=duty_load, ctx=ctx)
+        t = well_livelihood_time_check(ctx=ctx)
+        r = well_livelihood_role_check(role_clarity=role_clarity, role_burden=role_burden, ctx=ctx)
+        m = well_livelihood_meaning_check(purpose_alignment=purpose_alignment, ctx=ctx)
+        d = well_livelihood_dignity_check(dignity_preservation=dignity_preservation, ctx=ctx)
+        results = {"energy": e, "time": t, "role": r, "meaning": m, "dignity": d}
+        all_ok = all(x.get("ok") for x in results.values())
+        any_risk = any(x.get("human_judge_required") for x in results.values())
+        return _omega_well_output(
+            ok=all_ok, stage="333_MIND", lane="AGI", mode="human",
+            verdict="HOLD" if any_risk else "SEAL",
+            data=results,
+            constitutional_compliance={"F05_PEACE": d.get("status"), "F06_EMPATHY": m.get("status")},
+        )
+
+    if mode == "machine":
+        res = well_machine_state(ctx=ctx)
+        return _omega_well_output(
+            ok=res.get("ok", False), stage="333_MIND", lane="AGI", mode="machine",
+            verdict="SEAL" if res.get("m_well_verdict") == "HEALTHY" else "HOLD",
+            data=res,
+        )
+
+    if mode == "coupled":
+        res = well_coupled_readiness(ctx=ctx)
+        cr = res.get("risk_level", "AMBER")
+        return _omega_well_output(
+            ok=res.get("ok", False), stage="333_MIND", lane="AGI", mode="coupled",
+            verdict="SEAL" if cr == "GREEN" else "HOLD" if cr == "RED" else "PROVISIONAL",
+            data=res,
+            federation_state={"coupled_risk": cr, "human_readiness": res.get("readiness", {}).get("human")},
+        )
+
+    if mode == "bio":
+        res = well_bio_viability_check(has_metabolism=has_metabolism, ctx=ctx)
+        return _omega_well_output(
+            ok=res.get("ok", False), stage="333_MIND", lane="AGI", mode="bio",
+            verdict="SEAL" if res.get("viability") == "ALIVE" else "PROVISIONAL" if res.get("viability") == "LIMINAL" else "HOLD",
+            data=res,
+        )
+
+    if mode == "material":
+        if not material_type:
+            return _omega_well_output(ok=False, stage="333_MIND", lane="AGI", mode="material", verdict="HOLD", error="material_type required")
+        res = well_material_integrity_check(material_type=material_type, structural_condition=structural_condition, ctx=ctx)
+        return _omega_well_output(
+            ok=res.get("ok", False), stage="333_MIND", lane="AGI", mode="material",
+            verdict="SEAL" if res.get("status") == "SOUND" else "HOLD" if res.get("status") in ("DEGRADED", "CRITICAL") else "PROVISIONAL",
+            data=res,
+        )
+
+    if mode == "institution":
+        res = well_institution_entropy_check(mission_clarity=mission_clarity, cashflow_status=cashflow_status, ctx=ctx)
+        return _omega_well_output(
+            ok=res.get("ok", False), stage="333_MIND", lane="ASI", mode="institution",
+            verdict="SEAL" if res.get("status") == "VIABLE" else "HOLD" if res.get("status") == "DEGRADING" else "PROVISIONAL",
+            data=res,
+        )
+
+    if mode == "info":
+        res = well_info_coherence_check(internal_consistency=internal_consistency, ctx=ctx)
+        return _omega_well_output(
+            ok=res.get("ok", False), stage="333_MIND", lane="AGI", mode="info",
+            verdict="SEAL" if res.get("status") == "COHERENT" else "HOLD" if res.get("status") == "FRAGMENTED" else "PROVISIONAL",
+            data=res,
+        )
+
+    if mode == "symbolic":
+        if not subject:
+            return _omega_well_output(ok=False, stage="333_MIND", lane="APEX", mode="symbolic", verdict="HOLD", error="subject required")
+        res = well_symbolic_domain_check(subject=subject, ctx=ctx)
+        return _omega_well_output(
+            ok=res.get("ok", False), stage="333_MIND", lane="APEX", mode="symbolic",
+            verdict="SEAL" if res.get("guard_action") == "MONITOR" else "HOLD" if res.get("guard_action") == "BLOCK_REDUCTION" else "PROVISIONAL",
+            data=res,
+            constitutional_compliance={"F09_ANTIHANTU": "protected" if res.get("is_symbolic_domain") else "N/A"},
+        )
+
+    return _omega_well_output(ok=False, stage="333_MIND", lane="AGI", mode=mode, verdict="VOID", error=f"Unknown mode: {mode}")
+
+
+# ── Ω-WELL-04: KERNEL (444) ───────────────────────────────────────────────────
+# arifOS: 444_KERNEL — Routing, Stage Dispatch, Lane Selection
+# AAA: Governance Adapter + Routing Decision
+
+@mcp.tool()  # Alias — deprecated; use well_reflect_intelligence
+def well_444_kernel(
+    mode: str = "route",
+    task_description: str | None = None,
+    decision_class: str | None = None,
+    ctx: Context | None = None,
+) -> dict[str, Any]:
+    """
+    Ω-WELL-04: Routing and lane selection.
+    modes: route | stage | lane | list
+    Determines AGI / ASI / APEX lane based on substrate vitality.
+    """
+    mode = mode.lower()
+    if mode == "route":
+        # Assess readiness and route
+        h = _resolve_readiness(_load_state())
+        m = well_machine_state(ctx=ctx)
+        c = well_coupled_readiness(ctx=ctx)
+        cr = c.get("risk_level", "AMBER")
+
+        if cr == "GREEN" and h["readiness"] == "OPTIMAL":
+            lane = "APEX"
+            recommended_stage = "777_FORGE"
+        elif cr in ("GREEN", "AMBER") and h["readiness"] in ("OPTIMAL", "FUNCTIONAL"):
+            lane = "ASI"
+            recommended_stage = "666_HEART"
+        else:
+            lane = "AGI"
+            recommended_stage = "333_MIND"
+
+        return _omega_well_output(
+            ok=True, stage="444_KERNEL", lane=lane, mode="route",
+            verdict="SEAL" if lane == "APEX" else "PROVISIONAL",
+            data={
+                "recommended_lane": lane,
+                "recommended_stage": recommended_stage,
+                "human_readiness": h["readiness"],
+                "machine_verdict": m.get("m_well_verdict"),
+                "coupled_risk": cr,
+            },
+            federation_state={"lane": lane, "stage": recommended_stage, "risk_tier": "T0" if lane == "APEX" else "T2"},
+        )
+
+    if mode == "stage":
+        # Return current constitutional stage
+        state = _load_state()
+        score = state.get("well_score", 50)
+        if score >= 80:
+            stg = "777_FORGE"
+        elif score >= 60:
+            stg = "666_HEART"
+        elif score >= 40:
+            stg = "333_MIND"
+        else:
+            stg = "000_INIT"
+        return _omega_well_output(ok=True, stage="444_KERNEL", lane="AGI", mode="stage", verdict="SEAL", data={"constitutional_stage": stg, "well_score": score})
+
+    if mode == "lane":
+        res = well_444_kernel(mode="route", task_description=task_description, decision_class=decision_class, ctx=ctx)
+        return _omega_well_output(ok=res["ok"], stage="444_KERNEL", lane=res["Ω"]["lane"], mode="lane", verdict=res["Ω"]["verdict"], data=res.get("data"))
+
+    if mode == "list":
+        return _omega_well_output(ok=True, stage="444_KERNEL", lane="AGI", mode="list", verdict="SEAL",
+            data={"available_modes": ["route", "stage", "lane", "list"], "lanes": ["AGI", "ASI", "APEX"], "stages": ["000_INIT", "111_SENSE", "222_FETCH", "333_MIND", "444_KERNEL", "555_MEMORY", "666_HEART", "777_FORGE", "888_JUDGE", "999_VAULT"]})
+
+    return _omega_well_output(ok=False, stage="444_KERNEL", lane="AGI", mode=mode, verdict="VOID", error=f"Unknown mode: {mode}")
+
+
+# ── Ω-WELL-05: MEMORY (555) ───────────────────────────────────────────────────
+# arifOS: 555_MEMORY — Associative Recall, Trend Reflection
+# AAA: Event Store + Audit Trail
+
+@mcp.tool()  # Alias — deprecated; use well_trace_lineage
+def well_555_memory(
+    mode: str = "recall",
+    limit: int = 10,
+    lookback_days: int = 30,
+    ctx: Context | None = None,
+) -> dict[str, Any]:
+    """
+    Ω-WELL-05: Memory, trend, and ledger operations.
+    modes: recall | trend | ledger | context
+    Compresses: well_list_events, well_trend_analysis, well_list_log
+    """
+    mode = mode.lower()
+    if mode == "recall":
+        res = well_list_events(limit=limit, redact=True, ctx=ctx)
+        return _omega_well_output(ok=res.get("ok", False), stage="555_MEMORY", lane="AGI", mode="recall", verdict="SEAL", data=res)
+    if mode == "trend":
+        res = well_trend_analysis(ctx=ctx)
+        return _omega_well_output(ok=res.get("ok", False), stage="555_MEMORY", lane="AGI", mode="trend", verdict="SEAL", data=res)
+    if mode == "ledger":
+        res = well_pressure_ledger(ctx=ctx)
+        return _omega_well_output(ok=res.get("ok", False), stage="555_MEMORY", lane="AGI", mode="ledger", verdict="SEAL", data=res)
+    if mode == "context":
+        # Full context window: state + trend + recent events
+        st = well_state(ctx=ctx)
+        tr = well_trend_analysis(ctx=ctx)
+        ev = well_list_events(limit=5, redact=True, ctx=ctx)
+        return _omega_well_output(ok=True, stage="555_MEMORY", lane="AGI", mode="context", verdict="SEAL",
+            data={"state": st, "trend": tr, "recent_events": ev},)
+    return _omega_well_output(ok=False, stage="555_MEMORY", lane="AGI", mode=mode, verdict="VOID", error=f"Unknown mode: {mode}")
+
+
+# ── Ω-WELL-06: HEART (666) ────────────────────────────────────────────────────
+# arifOS: 666_HEART — Empathy, Ethics, Risk Critique
+# AAA: Escalation Rules + Empathy Scan
+
+@mcp.tool()  # Alias — deprecated; use well_assess_homeostasis / well_guard_dignity
+def well_666_heart(
+    mode: str = "critique",
+    subject: str | None = None,
+    dignity_preservation: float | None = None,
+    coercion_signals: list[str] | None = None,
+    reductionism_risk: float | None = None,
+    ctx: Context | None = None,
+) -> dict[str, Any]:
+    """
+    Ω-WELL-06: Empathy, ethics, and dignity critique.
+    modes: critique | empathize | dignity | redteam | maruah
+    Compresses: well_livelihood_dignity_check, well_symbolic_domain_check + empathy heuristics
+    """
+    mode = mode.lower()
+    if mode == "critique":
+        if not subject:
+            return _omega_well_output(ok=False, stage="666_HEART", lane="ASI", mode="critique", verdict="HOLD", error="subject required")
+        sym = well_symbolic_domain_check(subject=subject, reductionism_risk=reductionism_risk, ctx=ctx)
+        dig = well_livelihood_dignity_check(dignity_preservation=dignity_preservation, coercion_signals=coercion_signals, ctx=ctx)
+        all_ok = sym.get("ok") and dig.get("ok")
+        risk = sym.get("reductionism_status") == "HIGH_RISK" or dig.get("status") == "VIOLATED"
+        return _omega_well_output(
+            ok=all_ok, stage="666_HEART", lane="ASI", mode="critique",
+            verdict="HOLD" if risk else "SEAL",
+            data={"symbolic": sym, "dignity": dig},
+            constitutional_compliance={"F05_PEACE": dig.get("status"), "F06_EMPATHY": "scanned"},
+        )
+    if mode == "empathize":
+        state = _load_state()
+        metrics = state.get("metrics", {})
+        stress = metrics.get("stress", {})
+        cog = metrics.get("cognitive", {})
+        load = stress.get("subjective_load", 0)
+        fatigue = cog.get("decision_fatigue", 0)
+        impact = "HIGH" if load > 7 or fatigue > 7 else "MODERATE" if load > 5 or fatigue > 5 else "LOW"
+        return _omega_well_output(ok=True, stage="666_HEART", lane="ASI", mode="empathize", verdict="SEAL",
+            data={"human_impact_load": impact, "stress_load": load, "decision_fatigue": fatigue},
+            constitutional_compliance={"F06_EMPATHY": impact},
+        )
+    if mode == "dignity":
+        res = well_livelihood_dignity_check(dignity_preservation=dignity_preservation, coercion_signals=coercion_signals, ctx=ctx)
+        return _omega_well_output(ok=res.get("ok", False), stage="666_HEART", lane="ASI", mode="dignity",
+            verdict="SEAL" if res.get("status") == "PRESERVED" else "HOLD",
+            data=res,
+        )
+    if mode == "redteam":
+        # Attack surface: what could go wrong?
+        state = _load_state()
+        violations = state.get("floors_violated", [])
+        score = state.get("well_score", 50)
+        attacks = []
+        if score < 50: attacks.append("fatigue_exploitation")
+        if "W1_SLEEP_DEBT" in violations: attacks.append("sleep_deprivation_attack")
+        if "W5_COGNITIVE_ENTROPY" in violations: attacks.append("cognitive_overload_attack")
+        if "W6_METABOLIC_PAUSE" in violations: attacks.append("metabolic_pause_bypass")
+        return _omega_well_output(ok=True, stage="666_HEART", lane="ASI", mode="redteam", verdict="HOLD" if attacks else "SEAL",
+            data={"attack_surface": attacks, "severity": "HIGH" if len(attacks) >= 2 else "MEDIUM" if attacks else "LOW"},
+        )
+    if mode == "maruah":
+        # Dignity score (F05 Peace)
+        dig = well_livelihood_dignity_check(dignity_preservation=dignity_preservation, coercion_signals=coercion_signals, ctx=ctx)
+        ds = dig.get("dignity_preservation", 5) or 5
+        maruah_score = round(ds / 10, 2)
+        return _omega_well_output(ok=True, stage="666_HEART", lane="ASI", mode="maruah", verdict="SEAL" if maruah_score >= 0.7 else "HOLD",
+            data={"maruah_score": maruah_score, "dignity_status": dig.get("status")},
+        )
+    return _omega_well_output(ok=False, stage="666_HEART", lane="ASI", mode=mode, verdict="VOID", error=f"Unknown mode: {mode}")
+
+
+# ── Ω-WELL-07: FORGE (777) ────────────────────────────────────────────────────
+# arifOS: 777_FORGE — Execution, Plan Materialization
+# AAA: A-FORGE Bridge + Execution Mode
+
+@mcp.tool()  # Alias — deprecated; use well_check_repair
+def well_777_forge(
+    mode: str = "precheck",
+    task_description: str | None = None,
+    decision_class: str | None = None,
+    source: str | None = None,
+    intensity: float | None = None,
+    outcome: str | None = None,
+    ctx: Context | None = None,
+) -> dict[str, Any]:
+    """
+    Ω-WELL-07: Forge execution coupling.
+    modes: precheck | mode | bandwidth | pressure | closeout
+    Compresses: well_forge_precheck, well_forge_mode_recommend, well_bandwidth_recommendation, well_forge_pressure_update, well_forge_closeout
+    """
+    mode = mode.lower()
+    if mode == "precheck":
+        res = well_forge_precheck(task_description=task_description, decision_class=decision_class, ctx=ctx)
+        return _omega_well_output(ok=res.get("ok", False), stage="777_FORGE", lane="APEX", mode="precheck",
+            verdict=res.get("status", "HOLD"),
+            data=res,
+            federation_state={"execution_mode": res.get("recommended_mode"), "human_confirmation": res.get("human_confirmation_required")},
+        )
+    if mode == "mode":
+        res = well_forge_mode_recommend(ctx=ctx)
+        return _omega_well_output(ok=res.get("ok", False), stage="777_FORGE", lane="APEX", mode="mode",
+            verdict="SEAL" if res.get("forge_mode") != "paused" else "HOLD",
+            data=res,
+        )
+    if mode == "bandwidth":
+        res = well_bandwidth_recommendation(ctx=ctx)
+        return _omega_well_output(ok=res.get("ok", False), stage="777_FORGE", lane="APEX", mode="bandwidth",
+            verdict="SEAL" if res.get("verdict") == "OPTIMAL" else "PROVISIONAL" if res.get("verdict") == "FUNCTIONAL" else "HOLD",
+            data=res,
+        )
+    if mode == "pressure":
+        if not source or intensity is None:
+            return _omega_well_output(ok=False, stage="777_FORGE", lane="APEX", mode="pressure", verdict="HOLD", error="source and intensity required")
+        res = well_forge_pressure_update(source=source, intensity=intensity, ctx=ctx)
+        return _omega_well_output(ok=res.get("ok", False), stage="777_FORGE", lane="APEX", mode="pressure",
+            verdict="SEAL" if not res.get("w6_triggered") else "HOLD",
+            data=res,
+        )
+    if mode == "closeout":
+        if not task_description or not outcome:
+            return _omega_well_output(ok=False, stage="777_FORGE", lane="APEX", mode="closeout", verdict="HOLD", error="task_description and outcome required")
+        res = well_forge_closeout(task_description=task_description, outcome=outcome, ctx=ctx)
+        return _omega_well_output(ok=res.get("ok", False), stage="777_FORGE", lane="APEX", mode="closeout",
+            verdict="SEAL", data=res,
+        )
+    return _omega_well_output(ok=False, stage="777_FORGE", lane="APEX", mode=mode, verdict="VOID", error=f"Unknown mode: {mode}")
+
+
+# ── Ω-WELL-08: JUDGE (888) ────────────────────────────────────────────────────
+# arifOS: 888_JUDGE — Deliberation, Verdict Sealing
+# AAA: 888_JUDGE Gate + Constitutional Arbitration
+
+@mcp.tool()  # Alias — deprecated; use well_validate_vitality
+def well_888_judge(
+    mode: str = "readiness",
+    intent: str | None = None,
+    context: str | None = None,
+    reversibility: str = "unknown",
+    task_description: str | None = None,
+    decision_class: str | None = None,
+    ctx: Context | None = None,
+) -> dict[str, Any]:
+    """
+    Ω-WELL-08: Constitutional judgment and readiness verdict.
+    modes: readiness | classify | niat | coupled | floors
+    Compresses: well_readiness, well_decision_classify, well_niat_check, well_coupled_readiness, well_check_floors
+    """
+    mode = mode.lower()
+    if mode == "readiness":
+        res = well_readiness(ctx=ctx)
+        return _omega_well_output(ok=res.get("ok", False), stage="888_JUDGE", lane="APEX", mode="readiness",
+            verdict=res.get("status", "HOLD"),
+            data=res,
+            constitutional_compliance={"verdict": res.get("domain_verdict")},
+        )
+    if mode == "classify":
+        res = well_decision_classify(task_description=task_description, decision_class=decision_class, ctx=ctx)
+        return _omega_well_output(ok=res.get("ok", False), stage="888_JUDGE", lane="APEX", mode="classify",
+            verdict="SEAL" if "APPROVED" in res.get("verdict", "") else "HOLD" if "BLOCKED" in res.get("verdict", "") else "PROVISIONAL",
+            data=res,
+        )
+    if mode == "niat":
+        if not intent:
+            return _omega_well_output(ok=False, stage="888_JUDGE", lane="APEX", mode="niat", verdict="HOLD", error="intent required")
+        res = well_niat_check(intent=intent, context=context, reversibility=reversibility, ctx=ctx)
+        return _omega_well_output(ok=res.get("ok", False), stage="888_JUDGE", lane="APEX", mode="niat",
+            verdict="SEAL" if res.get("readiness") == "ADVISORY_READY" else "HOLD",
+            data=res,
+        )
+    if mode == "coupled":
+        res = well_coupled_readiness(ctx=ctx)
+        cr = res.get("risk_level", "AMBER")
+        return _omega_well_output(ok=res.get("ok", False), stage="888_JUDGE", lane="APEX", mode="coupled",
+            verdict="SEAL" if cr == "GREEN" else "HOLD" if cr == "RED" else "PROVISIONAL",
+            data=res,
+        )
+    if mode == "floors":
+        res = well_check_floors(ctx=ctx)
+        return _omega_well_output(ok=True, stage="888_JUDGE", lane="APEX", mode="floors",
+            verdict=res.get("status", "HOLD"),
+            data=res,
+            constitutional_compliance={"floors": res.get("failure_flags", [])},
+        )
+    return _omega_well_output(ok=False, stage="888_JUDGE", lane="APEX", mode=mode, verdict="VOID", error=f"Unknown mode: {mode}")
+
+
+# ── Ω-WELL-09: VAULT (999) ────────────────────────────────────────────────────
+# arifOS: 999_VAULT — Immutable Seal, Merkle Anchor
+# AAA: VAULT999 Client + Audit Chain
+
+@mcp.tool()  # Alias — deprecated; use well_trace_lineage / well_anchor_evidence
+async def well_999_vault(
+    mode: str = "seal",
+    dry_run: bool = False,
+    reason: str = "state_checkpoint",
+    force: bool = False,
+    ctx: Context | None = None,
+) -> dict[str, Any]:
+    """
+    Ω-WELL-09: Immutable vault operations.
+    modes: seal | anchor | verify | chain
+    Compresses: well_anchor, well_seal_vault, well_request_anchor
+    """
+    mode = mode.lower()
+    if mode == "seal":
+        res = await well_anchor(force=force, ctx=ctx)
+        return _omega_well_output(ok=res.get("ok", False), stage="999_VAULT", lane="APEX", mode="seal",
+            verdict="SEAL" if res.get("ok") else "HOLD",
+            data=res,
+            federation_state={"vault_id": res.get("vault_id"), "hash": res.get("hash")},
+        )
+    if mode == "anchor":
+        res = await well_request_anchor(dry_run=dry_run, reason=reason, ctx=ctx)
+        return _omega_well_output(ok=res.get("ok", False), stage="999_VAULT", lane="APEX", mode="anchor",
+            verdict="SEAL" if res.get("ok") else "HOLD",
+            data=res,
+        )
+    if mode == "verify":
+        # Check if vault ledger exists and is writable
+        deps = _check_dependencies()
+        return _omega_well_output(ok=deps.get("vault_path_writable", False), stage="999_VAULT", lane="APEX", mode="verify",
+            verdict="SEAL" if deps.get("vault_path_writable") else "HOLD",
+            data=deps,
+        )
+    if mode == "chain":
+        res = await well_request_anchor(dry_run=True, reason="chain_tip", ctx=ctx)
+        return _omega_well_output(ok=res.get("ok", False), stage="999_VAULT", lane="APEX", mode="chain",
+            verdict="SEAL" if res.get("ok") else "HOLD",
+            data={"chain_tip": res.get("would_anchor"), "identity_pass": res.get("identity_pass")},
+        )
+    return _omega_well_output(ok=False, stage="999_VAULT", lane="APEX", mode=mode, verdict="VOID", error=f"Unknown mode: {mode}")
+
+
+# ── Ω-WELL-10: REPLY (444r) ───────────────────────────────────────────────────
+# arifOS: 444r_REPLY — Composition, Message Forging
+# AAA: Cockpit Dashboard + Federation Handoff
+
+@mcp.tool()  # Alias — deprecated; use well_anchor_evidence
+def well_444_reply(
+    mode: str = "packet",
+    target: str = "arifos",
+    detail: str = "standard",
+    subject: str | None = None,
+    substrate_class: str | None = None,
+    ctx: Context | None = None,
+) -> dict[str, Any]:
+    """
+    Ω-WELL-10: Packet composition and reply forging.
+    modes: packet | brief | verdict | daily
+    Compresses: well_get_packet, well_daily_brief, well_arifos_packet, well_verdict_packet
+    """
+    mode = mode.lower()
+    if mode == "packet":
+        res = well_get_packet(target=target, detail=detail, ctx=ctx)
+        return _omega_well_output(ok=res.get("ok", False), stage="444r_REPLY", lane="AGI", mode="packet",
+            verdict="SEAL" if res.get("ok") else "HOLD",
+            data=res,
+            federation_state={"target": target, "detail": detail},
+        )
+    if mode == "brief":
+        res = well_daily_brief(ctx=ctx)
+        return _omega_well_output(ok=res.get("ok", False), stage="444r_REPLY", lane="AGI", mode="brief",
+            verdict="SEAL" if res.get("ok") else "HOLD",
+            data=res,
+        )
+    if mode == "verdict":
+        if not subject or not substrate_class:
+            return _omega_well_output(ok=False, stage="444r_REPLY", lane="AGI", mode="verdict", verdict="HOLD", error="subject and substrate_class required")
+        res = well_verdict_packet(subject=subject, substrate_class=substrate_class, ctx=ctx)
+        return _omega_well_output(ok=res.get("ok", False), stage="444r_REPLY", lane="AGI", mode="verdict",
+            verdict="SEAL" if res.get("ok") else "HOLD",
+            data=res,
+        )
+    if mode == "daily":
+        res = well_daily_brief(ctx=ctx)
+        return _omega_well_output(ok=res.get("ok", False), stage="444r_REPLY", lane="AGI", mode="daily",
+            verdict="SEAL" if res.get("ok") else "HOLD",
+            data=res,
+        )
+    return _omega_well_output(ok=False, stage="444r_REPLY", lane="AGI", mode=mode, verdict="VOID", error=f"Unknown mode: {mode}")
+
+
+# ── Ω-WELL-11: GATEWAY (444g) ─────────────────────────────────────────────────
+# arifOS: 444g_GATEWAY — Federation Bridge, A2A Mesh
+# AAA: A2A Gateway + Agent Card Dispatch
+
+@mcp.tool()  # Alias — deprecated; use well_detect_boundary
+def well_444_gateway(
+    mode: str = "status",
+    peer: str | None = None,
+    ctx: Context | None = None,
+) -> dict[str, Any]:
+    """
+    Ω-WELL-11: Federation gateway and bridge.
+    modes: status | connect | handoff | manifest
+    Aligns with AAA A2A gateway and federation manifest.
+    """
+    mode = mode.lower()
+    if mode == "status":
+        h = well_get_health(ctx=ctx)
+        return _omega_well_output(ok=h.get("verdict") in ("PASS", "WELL_PASS"), stage="444g_GATEWAY", lane="AGI", mode="status",
+            verdict="SEAL" if h.get("verdict") in ("PASS", "WELL_PASS") else "HOLD",
+            data={"well_health": h, "transport": "SSE_VALID"},
+            federation_state={"service": "well-mcp", "status": "healthy" if h.get("verdict") in ("PASS", "WELL_PASS") else "degraded"},
+        )
+    if mode == "connect":
+        return _omega_well_output(ok=True, stage="444g_GATEWAY", lane="AGI", mode="connect", verdict="SEAL",
+            data={"protocol": "A2A_v1.0.0", "peers": ["arifos", "a-forge", "geox", "wealth", "aaa"], "identity": "AFWELL"},
+        )
+    if mode == "handoff":
+        # Prepare handoff packet for peer
+        pkt = well_get_packet(target=peer or "arifos", detail="minimal", ctx=ctx)
+        return _omega_well_output(ok=pkt.get("ok", False), stage="444g_GATEWAY", lane="AGI", mode="handoff",
+            verdict="SEAL" if pkt.get("ok") else "HOLD",
+            data={"handoff_packet": pkt, "target_peer": peer or "arifos"},
+        )
+    if mode == "manifest":
+        return _omega_well_output(ok=True, stage="444g_GATEWAY", lane="AGI", mode="manifest", verdict="SEAL",
+            data={
+                "federation": "arifOS Constitutional Federation",
+                "organ": "WELL",
+                "lane": "wellbeing",
+                "witness_type": "human",
+                "capabilities": ["substrate_sense", "vitality_reason", "empathy_scan", "forge_coupling", "vault_anchor"],
+                "constitutional_floors": ["F01", "F05", "F06", "F09", "F13"],
+            },
+        )
+    return _omega_well_output(ok=False, stage="444g_GATEWAY", lane="AGI", mode=mode, verdict="VOID", error=f"Unknown mode: {mode}")
+
+
+# ── Ω-WELL-12: OPS (000_OPS) ──────────────────────────────────────────────────
+# arifOS: 777_OPS — Health Telemetry, Thermodynamic Monitoring
+# AAA: Cockpit Health Metrics + Prometheus
+
+@mcp.tool()  # Alias — deprecated; use well_assess_reliability
+def well_000_ops(
+    mode: str = "health",
+    ctx: Context | None = None,
+) -> dict[str, Any]:
+    """
+    Ω-WELL-12: Operations and health telemetry.
+    modes: health | consent | medical | vitals
+    Compresses: well_get_health, well_consent_status, well_medical_boundary
+    """
+    mode = mode.lower()
+    if mode == "health":
+        res = well_get_health(ctx=ctx)
+        return _omega_well_output(ok=res.get("verdict") in ("PASS", "WELL_PASS"), stage="000_OPS", lane="AGI", mode="health",
+            verdict="SEAL" if res.get("verdict") in ("PASS", "WELL_PASS") else "HOLD",
+            data=res,
+        )
+    if mode == "consent":
+        res = well_consent_status(ctx=ctx)
+        return _omega_well_output(ok=res.get("ok", False), stage="000_OPS", lane="AGI", mode="consent",
+            verdict="SEAL" if res.get("consent_active") else "HOLD",
+            data=res,
+        )
+    if mode == "medical":
+        res = well_medical_boundary(ctx=ctx)
+        return _omega_well_output(ok=res.get("ok", False), stage="000_OPS", lane="AGI", mode="medical",
+            verdict="SEAL",
+            data=res,
+        )
+    if mode == "vitals":
+        h = well_get_health(ctx=ctx)
+        m = well_machine_state(ctx=ctx)
+        state = _load_state()
+        return _omega_well_output(ok=True, stage="000_OPS", lane="AGI", mode="vitals", verdict="SEAL",
+            data={
+                "human_health": h.get("layer_3_domain_truth"),
+                "machine_health": {"m_well_score": m.get("m_well_score"), "m_well_verdict": m.get("m_well_verdict")},
+                "well_score": state.get("well_score"),
+                "floors_violated": state.get("floors_violated"),
+            },
+        )
+    return _omega_well_output(ok=False, stage="000_OPS", lane="AGI", mode=mode, verdict="VOID", error=f"Unknown mode: {mode}")
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Ω-WELL Tool Surface Integrity Check
+# ═══════════════════════════════════════════════════════════════════════════════
+
+OMEGA_WELL_TOOLS = {
+    "well_classify_substrate", "well_trace_lineage", "well_detect_boundary",
+    "well_measure_gradient", "well_assess_metabolism", "well_assess_homeostasis",
+    "well_check_repair", "well_validate_vitality", "well_assess_livelihood",
+    "well_assess_reliability", "well_reflect_intelligence", "well_guard_dignity",
+    "well_anchor_evidence",
+}
+
+
+def _check_omega_well_surface() -> dict[str, Any]:
+    """Verify Ω-WELL 13-tool surface is complete."""
+    present = {name for name in OMEGA_WELL_TOOLS if name in globals()}
+    missing = OMEGA_WELL_TOOLS - present
+    return {
+        "registered_count": len(present),
+        "canonical_count": len(OMEGA_WELL_TOOLS),
+        "missing": sorted(missing),
+        "surface_integrity": len(missing) == 0,
+    }
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# MCP Resources — Canonical 6
+# Aligned with arifOS resource pattern: arifos://doctrine, arifos://vitals, etc.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@mcp.resource("afwell://schema")
+def afwell_schema() -> str:
+    """AFWELL State JSON Schema — canonical substrate state contract."""
+    schema_path = WELL_DIR / "schema.json"
+    if schema_path.exists():
+        return schema_path.read_text()
+    return json.dumps({"error": "schema.json not found"})
+
+
+@mcp.resource("afwell://state/arif")
+def afwell_state_arif() -> str:
+    """Live operator state snapshot for Arif."""
+    state = _load_state()
+    # Redact sensitive raw metrics for resource exposure
+    safe = {
+        "timestamp": state.get("timestamp"),
+        "operator_id": state.get("operator_id"),
+        "well_score": state.get("well_score"),
+        "floors_violated": state.get("floors_violated", []),
+        "truth_status": state.get("truth_status", "UNVERIFIED"),
+        "identity": state.get("identity"),
+        "authority": state.get("authority"),
+    }
+    return json.dumps(safe, indent=2)
+
+
+@mcp.resource("afwell://events/recent")
+def afwell_events_recent() -> str:
+    """Last 20 events from the append-only event ledger."""
+    if not EVENTS_PATH.exists():
+        return json.dumps({"events": []})
+    events = []
+    try:
+        with open(EVENTS_PATH) as f:
+            lines = f.readlines()
+        for line in lines[-20:]:
+            try:
+                events.append(json.loads(line))
+            except:
+                continue
+    except Exception:
+        pass
+    return json.dumps({"events": events[::-1]}, indent=2)
+
+
+@mcp.resource("afwell://floors/well_floors")
+def afwell_floors() -> str:
+    """W-Series floor definitions and current status."""
+    state = _load_state()
+    metrics = state.get("metrics", {})
+    sleep = metrics.get("sleep", {})
+    cognitive = metrics.get("cognitive", {})
+    floors = {
+        "W0": {"name": "Sovereignty Invariant", "status": "INVARIANT", "detail": "Operator veto always intact."},
+        "W1": {"name": "Sleep Integrity", "threshold": "sleep_debt_days <= 2", "current": sleep.get("sleep_debt_days", 0), "status": "OK" if sleep.get("sleep_debt_days", 0) <= 2 else "VIOLATED"},
+        "W5": {"name": "Cognitive Entropy", "threshold": "clarity >= 4", "current": cognitive.get("clarity", 10), "status": "OK" if cognitive.get("clarity", 10) >= 4 else "VIOLATED"},
+        "W6": {"name": "Incentive Decoupling", "status": "PHASE_3_PENDING"},
+    }
+    return json.dumps(floors, indent=2)
+
+
+@mcp.resource("afwell://vitals/arif")
+def afwell_vitals_arif() -> str:
+    """Readiness vitals — triage color, score, violations."""
+    state = _load_state()
+    resolved = _resolve_readiness(state)
+    vitals = {
+        "well_score": resolved["well_score"],
+        "readiness": resolved["readiness"],
+        "risk_level": resolved["risk_level"],
+        "recommended_mode": resolved["recommended_mode"],
+        "active_violations": resolved["active_violations"],
+        "has_telemetry": resolved["has_telemetry"],
+        "human_confirmation_required": resolved["human_confirmation_required"],
+    }
+    return json.dumps(vitals, indent=2)
+
+
+@mcp.resource("afwell://substrate/registry")
+def afwell_substrate_registry() -> str:
+    """U-WELL Universal Substrate Class Registry."""
+    return json.dumps({
+        "substrate_classes": UNIVERSAL_SUBSTRATE_CLASSES,
+        "vitality_modes": UNIVERSAL_VITALITY_MODES,
+        "count": len(UNIVERSAL_SUBSTRATE_CLASSES),
+    }, indent=2)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# MCP Prompts — Canonical 4
+# User-controlled structured interactions (not model-controlled like tools)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@mcp.prompt()
+def prompt_daily_reflection(date: str | None = None) -> str:
+    """
+    Guided morning/evening check-in for operator Arif.
+    User-controlled prompt — Arif triggers this, not the model.
+    """
+    state = _load_state()
+    score = state.get("well_score", 50)
+    violations = state.get("floors_violated", [])
+    metrics = state.get("metrics", {})
+    sleep = metrics.get("sleep", {})
+    cognitive = metrics.get("cognitive", {})
+
+    sleep_debt = sleep.get("sleep_debt_days", 0)
+    clarity = cognitive.get("clarity", 10)
+    fatigue = cognitive.get("decision_fatigue", 0)
+
+    date_str = date or datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d")
+
+    prompt = f"""# AFWELL Daily Reflection — {date_str}
+
+## Current Vitals
+- WELL Score: {score}/100
+- Sleep Debt: {sleep_debt} days
+- Cognitive Clarity: {clarity}/10
+- Decision Fatigue: {fatigue}/10
+- Active Violations: {violations or "None"}
+
+## Reflection Questions
+1. **Sleep**: Did you sleep enough? If debt > 0, what is the recovery plan?
+2. **Cognitive Load**: Is your clarity where it needs to be for today's decisions?
+3. **Pressure**: What is the primary source of load right now?
+4. **Niat**: Is your intent clear for the most important task today?
+5. **Boundary**: Do you feel any coercion, or is your sovereignty intact?
+
+## WELL Advisory
+"""
+    if score >= 80 and not violations:
+        prompt += "Substrate is optimal. Full bandwidth available. Maintain rhythm."
+    elif score >= 60:
+        prompt += "Substrate is functional. Proceed with structure. Avoid irreversible commitments."
+    elif score >= 40:
+        prompt += "Substrate is degraded. Draft-only mode. Prioritize recovery before high-stakes decisions."
+    else:
+        prompt += "Substrate is low-capacity. PAUSE. Rest is the only productive action right now."
+
+    prompt += "\n\n> W0: WELL holds a mirror, not a veto. Arif decides."
+    return prompt
+
+
+@mcp.prompt()
+def prompt_recovery_protocol(severity: str = "moderate", domain: str = "general") -> str:
+    """
+    Structured recovery protocol.
+    severity: mild | moderate | severe
+    domain: general | sleep | cognitive | stress | metabolic
+    """
+    protocols = {
+        "sleep": [
+            "Set a hard bedtime alarm 30 minutes before target sleep time.",
+            "No screens 60 minutes before bed.",
+            "If sleep debt > 2 days: cancel non-essential meetings tomorrow.",
+        ],
+        "cognitive": [
+            "Take a 15-minute walk without devices.",
+            "Write down all open decisions — externalize from working memory.",
+            "Switch to C0/C1 tasks only (notes, organizing, not deciding).",
+        ],
+        "stress": [
+            "Breathe: 4-7-8 pattern for 3 cycles.",
+            "Change physical environment for 10 minutes.",
+            "Identify one boundary you can reinforce today.",
+        ],
+        "metabolic": [
+            "Drink 500ml water immediately.",
+            "Eat within the next 30 minutes if fasting > 16 hours.",
+            "Stand and move for 2 minutes.",
+        ],
+        "general": [
+            "Hydrate first.",
+            "Step away from the screen for 15 minutes.",
+            "Do one small physical task (tidy, walk, stretch).",
+        ],
+    }
+
+    actions = protocols.get(domain, protocols["general"])
+    if severity == "severe":
+        header = "# 🚨 SEVERE Recovery Protocol\n\nStop all consequential work."
+    elif severity == "moderate":
+        header = "# ⚠️ MODERATE Recovery Protocol\n\nReduce load and restore one dimension."
+    else:
+        header = "# 🌱 MILD Recovery Protocol\n\nMaintain and prevent degradation."
+
+    body = "\n".join(f"- {action}" for action in actions)
+    return f"{header}\n\n## Actions ({domain})\n{body}\n\n> WELL does not diagnose. These are operational self-regulation suggestions."
+
+
+@mcp.prompt()
+def prompt_readiness_brief(task_type: str = "general", urgency: str = "normal") -> str:
+    """
+    Pre-task readiness briefing.
+    task_type: general | coding | public_writing | financial | legal | irreversible
+    urgency: low | normal | high | critical
+    """
+    state = _load_state()
+    score = state.get("well_score", 50)
+    violations = state.get("floors_violated", [])
+    metrics = state.get("metrics", {})
+    cog = metrics.get("cognitive", {})
+    stress = metrics.get("stress", {})
+
+    fatigue = cog.get("decision_fatigue", 0)
+    clarity = cog.get("clarity", 10)
+    stress_load = stress.get("subjective_load", 0)
+
+    risk_map = {
+        ("irreversible", "critical"): "T5",
+        ("financial", "high"): "T4",
+        ("legal", "high"): "T4",
+        ("public_writing", "high"): "T3",
+        ("coding", "high"): "T3",
+    }
+    risk_tier = risk_map.get((task_type, urgency), "T2" if urgency == "high" else "T1")
+
+    prompt = f"""# AFWELL Readiness Brief
+
+## Task Profile
+- Type: {task_type}
+- Urgency: {urgency}
+- Risk Tier: {risk_tier}
+
+## Current Substrate
+- WELL Score: {score}/100
+- Clarity: {clarity}/10
+- Decision Fatigue: {fatigue}/10
+- Stress Load: {stress_load}/10
+- Violations: {violations or "None"}
+
+## Recommendation
+"""
+    if risk_tier in ("T4", "T5") and (score < 75 or fatigue > 5 or clarity < 7):
+        prompt += "🛑 HOLD — High-risk task with degraded substrate. Delay or delegate."
+    elif risk_tier == "T3" and (score < 60 or fatigue > 6):
+        prompt += "⚠️ CAUTION — Elevated risk. Proceed only with explicit human confirmation."
+    else:
+        prompt += "✅ PROCEED — Substrate supports this task class."
+
+    prompt += "\n\n> WELL informs. Arif decides."
+    return prompt
+
+
+@mcp.prompt()
+def prompt_substrate_classify(subject: str = "") -> str:
+    """
+    Universal substrate classification prompt.
+    User provides a subject; WELL guides the classification.
+    """
+    if not subject:
+        return "# Substrate Classification\n\nPlease provide a subject to classify."
+
+    prompt = f"""# Substrate Classification: "{subject}"
+
+## Classification Framework
+| Class | Vitality Mode | Machine Authority |
+|-------|--------------|-------------------|
+| HUMAN_PERSON | biological + cognitive + livelihood + role | advisory_only |
+| HUMAN_BODY_PART | integration with living body | advisory_only |
+| NONHUMAN_ORGANISM | biological vitality | advisory_only |
+| LIMINAL_BIOLOGICAL | replicative potency, host dependence | advisory_only |
+| MACHINE_SYSTEM | operational reliability | instrument_assessment |
+| INSTITUTION | organizational viability | advisory_only |
+| MATERIAL_OBJECT | structural integrity, not life | instrument_assessment |
+| ECOSYSTEM | ecological vitality | advisory_only |
+| INFORMATION_SYSTEM | coherence, maintainability, truth | advisory_only |
+| SYMBOLIC_METAPHYSICAL | NOT machine-measurable | mirror_and_protect_only |
+
+## Key Questions
+1. Does it metabolize energy independently?
+2. Does it maintain internal homeostasis?
+3. Can it reproduce or sustain lineage?
+4. Is it host-dependent?
+5. Is it externally designed or self-organizing?
+6. Does it carry meaning beyond its physical structure?
+
+## WELL Boundary
+- For SYMBOLIC_METAPHYSICAL: WELL protects dignity. It does NOT quantify, prove, or diagnose.
+- For HUMAN_PERSON: WELL reflects vitality. It does NOT determine worth.
+- For MACHINE_SYSTEM: WELL assesses reliability. It does NOT claim life.
+
+> "Life is not mere structure. Life is structure that maintains itself against entropy through embodied energetic regulation."
+"""
+    return prompt
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Legacy tool deprecation notices
 # The 31 legacy tools remain as backward-compatible wrappers.
 # Prefer the 13 canonical tools for new integrations.
+# Prefer the 13 Ω-WELL tools for universal substrate governance.
 # ═══════════════════════════════════════════════════════════════════════════════
 
 # ── Entry ──────────────────────────────────────────────────────────────────────
@@ -3274,9 +5602,92 @@ if __name__ == "__main__":
     port = int(_os.environ.get("PORT", 8083))
     app = mcp.http_app(path="/mcp", transport="streamable-http", json_response=True, stateless_http=True)
 
+    async def tools_handler(request):
+        """Federation tool discovery — flat tool registry with WELL danger metadata."""
+        all_tools = await mcp.list_tools()
+        # WELL is L1/L2 only — mirrors, informs, reflects; no irrevocable mutations
+        _DANGER_MAP = {
+            # L3: fail-closed — vault seal, evidence anchor, constitutional floor check
+            "well_anchor_evidence": {"danger_level": "L3", "fail_posture": "fail-closed"},
+            "well_seal_vault": {"danger_level": "L3", "fail_posture": "fail-closed"},
+            "well_request_anchor": {"danger_level": "L3", "fail_posture": "fail-closed"},
+            "well_check_floor": {"danger_level": "L3", "fail_posture": "fail-closed"},
+            "well_validate_vitality": {"danger_level": "L2", "fail_posture": "fail-open"},
+            "well_check_repair": {"danger_level": "L2", "fail_posture": "fail-open"},
+            "well_guard_dignity": {"danger_level": "L2", "fail_posture": "fail-open"},
+            "well_assess_metabolism": {"danger_level": "L2", "fail_posture": "fail-open"},
+            "well_assess_homeostasis": {"danger_level": "L2", "fail_posture": "fail-open"},
+            "well_assess_livelihood": {"danger_level": "L2", "fail_posture": "fail-open"},
+            "well_assess_reliability": {"danger_level": "L2", "fail_posture": "fail-open"},
+            "well_reflect_intelligence": {"danger_level": "L2", "fail_posture": "fail-open"},
+            # L1: fail-open — read-only observation and classification
+            "well_classify_substrate": {"danger_level": "L1", "fail_posture": "fail-open"},
+            "well_trace_lineage": {"danger_level": "L1", "fail_posture": "fail-open"},
+            "well_detect_boundary": {"danger_level": "L1", "fail_posture": "fail-open"},
+            "well_measure_gradient": {"danger_level": "L1", "fail_posture": "fail-open"},
+            "mcp_health_check": {"danger_level": "L1", "fail_posture": "fail-open"},
+            "well_state": {"danger_level": "L1", "fail_posture": "fail-open"},
+            "well_get_packet": {"danger_level": "L1", "fail_posture": "fail-open"},
+            "well_arifos_packet": {"danger_level": "L1", "fail_posture": "fail-open"},
+            "well_readiness": {"danger_level": "L1", "fail_posture": "fail-open"},
+        }
+        _FAIL_OPEN_CONSTRAINT = "may degrade output, must not elevate authority"
+        _CANONICAL = {
+            "well_classify_substrate", "well_trace_lineage", "well_detect_boundary",
+            "well_measure_gradient", "well_assess_metabolism", "well_assess_homeostasis",
+            "well_check_repair", "well_validate_vitality", "well_assess_livelihood",
+            "well_assess_reliability", "well_reflect_intelligence", "well_guard_dignity",
+            "well_anchor_evidence",
+        }
+        _ALIASES = {
+            "well_000_init", "well_111_sense", "well_222_fetch", "well_333_mind",
+            "well_444_kernel", "well_555_memory", "well_666_heart", "well_777_forge",
+            "well_888_judge", "well_999_vault", "well_444_reply", "well_444_gateway",
+            "well_000_ops",
+        }
+        tools = []
+        for t in all_tools:
+            name = t.name
+            meta = _DANGER_MAP.get(name, {"danger_level": "L1", "fail_posture": "fail-open"})
+            if name in _CANONICAL:
+                category = "canonical"
+            elif name in _ALIASES:
+                category = "alias"
+            elif name == "mcp_health_check":
+                category = "heartbeat"
+            else:
+                category = "legacy"
+            tools.append({
+                "name": name,
+                "description": getattr(t, "description", "") or "",
+                "inputSchema": getattr(t, "inputSchema", {}),
+                "outputSchema": getattr(t, "output_schema", {}),
+                "danger_level": meta["danger_level"],
+                "fail_posture": meta["fail_posture"],
+                "fail_open_constraint": _FAIL_OPEN_CONSTRAINT if meta["fail_posture"] == "fail-open" else None,
+                "tool_category": category,
+            })
+        return JSONResponse({
+            "organ": "WELL",
+            "role": "Body / Human Intelligence — Operator Cognitive Pressure Monitor",
+            "authority": "REFLECT_ONLY — WELL informs. arifOS judges. Arif decides.",
+            "schema": "well-federation-v2026.05.08",
+            "version": "2026.05.10-ΩWELL",
+            "count": len(tools),
+            "w0_invariant": "WELL holds a mirror, not a veto. Operator sovereignty is invariant.",
+            "danger_taxonomy": {
+                "L3": "vault seal / floor check — fail-closed mandatory",
+                "L2": "session / log — fail-open with constraint",
+                "L1": "observe / health / readiness — fail-open with constraint",
+            },
+            "fail_open_constraint": _FAIL_OPEN_CONSTRAINT,
+            "tools": tools,
+        })
+
     async def health_handler(request):
         state = _load_state()
         well_ok = is_well(state)
+        has_telemetry = _has_verified_telemetry(state)
         return JSONResponse({
             "identity": "WELL",
             "role": "Body / Human Intelligence",
@@ -3287,10 +5698,278 @@ if __name__ == "__main__":
             "rasa": state.get("rasa", False),
             "amanah": state.get("amanah", "UNLOCKED"),
             "verdict": "WELL_PASS" if well_ok else "NOT_WELL",
+            "identity_valid": well_ok,
+            "has_telemetry": has_telemetry,
             "service": "well-mcp",
-            "version": "2026.04.29",
+            "version": "2026.05.08-ΩWELL",
         })
 
     app.add_route("/health", health_handler, methods=["GET"])
+    app.add_route("/tools", tools_handler, methods=["GET"])
 
+    # Server start moved to end of file so canonical tools are registered before uvicorn blocks
+# ═══════════════════════════════════════════════════════════════════════════════
+# Ω-WELL Canonical Surface v2 — well_verb_noun ontology
+# Replaces stage-facing names (well_000_init, well_111_sense, etc.)
+# with domain-facing names (well_classify_substrate, well_trace_lineage, etc.)
+# Old functions remain as internal dispatchers.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@mcp.tool()
+async def well_classify_substrate(
+    mode: str = "classify",
+    subject: str = "",
+    description: str | None = None,
+    evaluation_intent: str | None = None,
+    session_id: str | None = None,
+    actor_id: str = "well-substrate",
+    ctx: Context | None = None,
+) -> dict[str, Any]:
+    """Ω-WELL-01: Substrate classification and boundary sensing."""
+    mode = mode.lower()
+    if mode in ("init", "assert", "bootstrap"):
+        return await well_000_init(mode=mode, session_id=session_id, actor_id=actor_id, ctx=ctx)
+    return well_111_sense(mode=mode, subject=subject, description=description, evaluation_intent=evaluation_intent, ctx=ctx)
+
+
+@mcp.tool()
+def well_trace_lineage(
+    mode: str = "recall",
+    limit: int = 10,
+    lookback_days: int = 30,
+    dry_run: bool = False,
+    reason: str = "state_checkpoint",
+    force: bool = False,
+    ctx: Context | None = None,
+) -> dict[str, Any]:
+    """Ω-WELL-02: Memory, trend, ledger, and vault chain tracing."""
+    mode = mode.lower()
+    if mode in ("recall", "trend", "context"):
+        return well_555_memory(mode=mode, limit=limit, lookback_days=lookback_days, ctx=ctx)
+    if mode in ("ledger", "chain"):
+        return well_999_vault(mode=mode, dry_run=dry_run, reason=reason, force=force, ctx=ctx)
+    return _omega_well_output(
+        ok=False, stage="TRACE_LINEAGE", lane="AGI", mode=mode, verdict="VOID",
+        error=f"Unknown mode: {mode}. Use recall | trend | context | ledger | chain"
+    )
+
+
+@mcp.tool()
+def well_detect_boundary(
+    mode: str = "boundary",
+    subject: str = "",
+    description: str | None = None,
+    evaluation_intent: str | None = None,
+    peer: str | None = None,
+    ctx: Context | None = None,
+) -> dict[str, Any]:
+    """Ω-WELL-03: Boundary detection across membrane, body, machine, and federation."""
+    mode = mode.lower()
+    if mode in ("classify", "boundary", "scan"):
+        return well_111_sense(mode=mode, subject=subject, description=description, evaluation_intent=evaluation_intent, ctx=ctx)
+    if mode in ("status", "connect", "handoff", "manifest"):
+        return well_444_gateway(mode=mode, peer=peer, ctx=ctx)
+    return _omega_well_output(
+        ok=False, stage="DETECT_BOUNDARY", lane="AGI", mode=mode, verdict="VOID",
+        error=f"Unknown mode: {mode}. Use classify | boundary | scan | status | connect | handoff | manifest"
+    )
+
+
+@mcp.tool()
+def well_measure_gradient(
+    mode: str = "evidence",
+    evidence_source: str = "unknown",
+    evidence_age_hours: float | None = None,
+    corroboration_count: int = 0,
+    ctx: Context | None = None,
+) -> dict[str, Any]:
+    """Ω-WELL-04: Measure chemical, energy, pressure, attention, and compute gradients."""
+    return well_222_fetch(mode=mode, evidence_source=evidence_source, evidence_age_hours=evidence_age_hours, corroboration_count=corroboration_count, ctx=ctx)
+
+
+@mcp.tool()
+def well_assess_metabolism(
+    mode: str = "human",
+    subject: str | None = None,
+    substrate_class: str | None = None,
+    energy_level: float | None = None,
+    duty_load: float | None = None,
+    role_clarity: float | None = None,
+    role_burden: float | None = None,
+    dignity_preservation: float | None = None,
+    purpose_alignment: float | None = None,
+    has_metabolism: bool | None = None,
+    structural_condition: str | None = None,
+    material_type: str | None = None,
+    mission_clarity: float | None = None,
+    cashflow_status: str | None = None,
+    internal_consistency: float | None = None,
+    ctx: Context | None = None,
+) -> dict[str, Any]:
+    """Ω-WELL-05: Assess biological metabolism and system throughput across substrates."""
+    return well_333_mind(
+        mode=mode, subject=subject, substrate_class=substrate_class,
+        energy_level=energy_level, duty_load=duty_load, role_clarity=role_clarity,
+        role_burden=role_burden, dignity_preservation=dignity_preservation,
+        purpose_alignment=purpose_alignment, has_metabolism=has_metabolism,
+        structural_condition=structural_condition, material_type=material_type,
+        mission_clarity=mission_clarity, cashflow_status=cashflow_status,
+        internal_consistency=internal_consistency, ctx=ctx,
+    )
+
+
+@mcp.tool()
+def well_assess_homeostasis(
+    mode: str = "empathize",
+    subject: str | None = None,
+    dignity_preservation: float | None = None,
+    coercion_signals: list[str] | None = None,
+    reductionism_risk: float | None = None,
+    ctx: Context | None = None,
+) -> dict[str, Any]:
+    """Ω-WELL-06: Assess regulation, stability, and empathic balance under change."""
+    return well_666_heart(mode=mode, subject=subject, dignity_preservation=dignity_preservation, coercion_signals=coercion_signals, reductionism_risk=reductionism_risk, ctx=ctx)
+
+
+@mcp.tool()
+def well_check_repair(
+    mode: str = "precheck",
+    task_description: str | None = None,
+    decision_class: str | None = None,
+    source: str | None = None,
+    intensity: float | None = None,
+    outcome: str | None = None,
+    ctx: Context | None = None,
+) -> dict[str, Any]:
+    """Ω-WELL-07: Check repair, recovery, resilience, and forge cycle integrity."""
+    return well_777_forge(mode=mode, task_description=task_description, decision_class=decision_class, source=source, intensity=intensity, outcome=outcome, ctx=ctx)
+
+
+@mcp.tool()
+def well_validate_vitality(
+    mode: str = "readiness",
+    intent: str | None = None,
+    context: str | None = None,
+    reversibility: str = "unknown",
+    task_description: str | None = None,
+    decision_class: str | None = None,
+    ctx: Context | None = None,
+) -> dict[str, Any]:
+    """Ω-WELL-08: Validate vitality, readiness, NIAT, and floor compliance."""
+    return well_888_judge(mode=mode, intent=intent, context=context, reversibility=reversibility, task_description=task_description, decision_class=decision_class, ctx=ctx)
+
+
+@mcp.tool()
+def well_assess_livelihood(
+    mode: str = "human",
+    subject: str | None = None,
+    substrate_class: str | None = None,
+    energy_level: float | None = None,
+    duty_load: float | None = None,
+    role_clarity: float | None = None,
+    role_burden: float | None = None,
+    dignity_preservation: float | None = None,
+    purpose_alignment: float | None = None,
+    has_metabolism: bool | None = None,
+    structural_condition: str | None = None,
+    material_type: str | None = None,
+    mission_clarity: float | None = None,
+    cashflow_status: str | None = None,
+    internal_consistency: float | None = None,
+    ctx: Context | None = None,
+) -> dict[str, Any]:
+    """Ω-WELL-09: Assess human wellness, role, dignity, support, and meaning."""
+    return well_333_mind(
+        mode=mode, subject=subject, substrate_class=substrate_class,
+        energy_level=energy_level, duty_load=duty_load, role_clarity=role_clarity,
+        role_burden=role_burden, dignity_preservation=dignity_preservation,
+        purpose_alignment=purpose_alignment, has_metabolism=has_metabolism,
+        structural_condition=structural_condition, material_type=material_type,
+        mission_clarity=mission_clarity, cashflow_status=cashflow_status,
+        internal_consistency=internal_consistency, ctx=ctx,
+    )
+
+
+@mcp.tool()
+def well_assess_reliability(
+    mode: str = "health",
+    ctx: Context | None = None,
+) -> dict[str, Any]:
+    """Ω-WELL-10: Assess machine, tool, institution, and operational reliability."""
+    return well_000_ops(mode=mode, ctx=ctx)
+
+
+@mcp.tool()
+def well_reflect_intelligence(
+    mode: str = "route",
+    task_description: str | None = None,
+    decision_class: str | None = None,
+    ctx: Context | None = None,
+) -> dict[str, Any]:
+    """Ω-WELL-11: Reflect cognition, reasoning, adaptation, coherence, and routing."""
+    return well_444_kernel(mode=mode, task_description=task_description, decision_class=decision_class, ctx=ctx)
+
+
+@mcp.tool()
+def well_guard_dignity(
+    mode: str = "dignity",
+    subject: str | None = None,
+    dignity_preservation: float | None = None,
+    coercion_signals: list[str] | None = None,
+    reductionism_risk: float | None = None,
+    ctx: Context | None = None,
+) -> dict[str, Any]:
+    """Ω-WELL-12: Guard soul, personhood, meaning, and symbolic boundaries."""
+    return well_666_heart(mode=mode, subject=subject, dignity_preservation=dignity_preservation, coercion_signals=coercion_signals, reductionism_risk=reductionism_risk, ctx=ctx)
+
+
+@mcp.tool()
+async def well_anchor_evidence(
+    mode: str = "seal",
+    target: str = "arifos",
+    detail: str = "standard",
+    subject: str | None = None,
+    substrate_class: str | None = None,
+    dry_run: bool = False,
+    reason: str = "state_checkpoint",
+    force: bool = False,
+    ctx: Context | None = None,
+) -> dict[str, Any]:
+    """Ω-WELL-13: Anchor evidence, audit, vault, packet, and provenance."""
+    import hashlib
+    mode = mode.lower()
+    if mode == "unified":
+        pkt = _build_unified_packet(ctx=ctx)
+        payload = json.dumps(pkt, sort_keys=True)
+        receipt_hash = hashlib.sha256(payload.encode()).hexdigest()[:16]
+        if not dry_run:
+            _append_event({
+                "event": "UNIFIED_PACKET_ANCHOR",
+                "receipt_hash": receipt_hash,
+                "reason": reason,
+                "coupled_verdict": pkt.get("coupled", {}).get("coupled_verdict"),
+            })
+        return _omega_well_output(
+            ok=pkt.get("ok", False), stage="ANCHOR_EVIDENCE", lane="AGI", mode="unified",
+            verdict="SEAL" if pkt.get("coupled", {}).get("coupled_verdict") == "PROCEED" else "HOLD" if pkt.get("coupled", {}).get("coupled_verdict") == "HOLD" else "PROVISIONAL",
+            data={
+                "receipt_hash": receipt_hash,
+                "dry_run": dry_run,
+                "reason": reason,
+                "coupled_verdict": pkt.get("coupled", {}).get("coupled_verdict"),
+                "anchored_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+            },
+        )
+    if mode in ("packet", "brief", "verdict", "daily"):
+        return well_444_reply(mode=mode, target=target, detail=detail, subject=subject, substrate_class=substrate_class, ctx=ctx)
+    return await well_999_vault(mode=mode, dry_run=dry_run, reason=reason, force=force, ctx=ctx)
+
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Server bootstrap — must run AFTER all canonical tools are registered
+# ═══════════════════════════════════════════════════════════════════════════════
+
+if __name__ == "__main__":
+    import uvicorn
     uvicorn.run(app, host=host, port=port, log_level=_os.environ.get("LOG_LEVEL", "info"))

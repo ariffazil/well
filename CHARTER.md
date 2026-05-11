@@ -1,5 +1,5 @@
 # 🧬 WELL Charter: Human Substrate Governance
-**Version:** 1.0.0 (Phase 1: Passive/Ledger)
+**Version:** 2.0.0 (Phase 2–3: Readiness Scores + Federation Bridge)
 **Motto:** *Body is the Substrate. Mind is the Operator. WELL is the Sovereign.*
 
 ## I. Mission
@@ -18,15 +18,16 @@ WELL governs the biological state of the human operator (arif) to ensure the int
 - **W6 — Incentive Decoupling:** Identifies high-frequency repetitive intent loops that suggest biological capture (addiction-mimicry). If detected, WELL enforces a mandatory 15-minute "Metabolic Pause" before any further forge.
 
 ## IV. Phased Implementation
-- **Phase 1 (Active):** Immutable Ledger & Observability.
-- **Phase 2 (Pending):** Readiness Scores (Soft Constraints).
-- **Phase 3 (Pending):** Hard Veto (Constitutional Floors).
-- **Phase 4 (Future):** Wearable/Biomarker Integration.
+- **Phase 1 (Complete):** Immutable Ledger & Observability.
+- **Phase 2 (Active):** Readiness Scores (Soft Constraints) — well_score, cognitive entropy, bandwidth recommendation.
+- **Phase 3 (Active):** Constitutional Floors (W1–W6) — sleep integrity, cognitive entropy, incentive decoupling, metabolic pause.
+- **Phase 4 (In Progress):** Universal Substrate Classification — human + machine + MCP coupled verdict.
+- **Phase 5 (Future):** Wearable/Biomarker Integration.
 
 ## IV. The WELL Floor Protocol
 WELL informs the `arifos` JUDGE kernel. If biological floors are violated, the scope of allowed action in A-FORGE is automatically throttled.
 
 ---
-**SEALED v2026.04.16 — 999_ALIVE**
+**SEALED v2026.05.08 — 999_ALIVE**
 
 
