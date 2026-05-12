@@ -6814,6 +6814,146 @@ def well_validate_consensus(
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# ATLAS13-WELL — Substrate Wisdom Anchors (13 axioms for WELL MCP tools)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+_WELL_WISDOM: dict[str, dict[str, Any]] = {
+    "well_classify_substrate": {
+        "axiom": "Substrate must be named before readiness can be judged. Do not treat all substrates as life.",
+        "substrate_law": {"carbon": "The body metabolizes and tires.", "silica": "Stone endures and fractures.", "machine": "Machine computes but does not live."},
+        "authority": "WELL classifies. Arif judges.",
+    },
+    "well_detect_boundary": {
+        "axiom": "A body has skin. A machine has interface. A soul has dignity. Do not confuse them.",
+        "substrate_warning": "Boundary confusion is the first illness of intelligence.",
+        "boundary_types": {"skin": "biological membrane", "pain": "body warning", "consent": "human sovereignty", "api": "machine interface", "floor": "constitutional limit"},
+        "authority": "Boundary must be respected before crossing.",
+    },
+    "well_measure_gradient": {
+        "axiom": "Life moves by gradients: hunger, heat, pressure, oxygen, attention. No gradient, no movement. Too much gradient, collapse.",
+        "carbon_lesson": "Balanced gradient is vitality.",
+        "silica_lesson": "Pressure writes memory into stone. Stress reveals hidden fracture.",
+        "machine_lesson": "Latency, token pressure, memory pressure, and tool error are machine gradients.",
+        "authority": "Gradient informs readiness; it does not dictate action.",
+    },
+    "well_assess_metabolism": {
+        "axiom": "Carbon pays for every thought with energy. No biological judgment is free of metabolism.",
+        "carbon_signals": {"sleep_debt": "unpaid recovery cost", "hunger": "energy deficit", "stress": "survival system activated", "fatigue": "metabolic budget depleted", "pain": "local integrity warning", "breath": "rhythm of life"},
+        "machine_lesson": "Machine consumes power but does not suffer fatigue.",
+        "authority": "The body pays before the mind performs.",
+    },
+    "well_assess_homeostasis": {
+        "axiom": "Health is not maximum output. Health is return to balance. Vitality is controlled oscillation, not permanent peak.",
+        "carbon_lesson": "The body survives by regulation, not by constant intensity.",
+        "silica_lesson": "A crystal holds form until stress exceeds structure.",
+        "machine_lesson": "A system is stable when load, memory, and latency remain within bounds.",
+        "authority": "Balance is not weakness; balance is sustainability.",
+    },
+    "well_check_repair": {
+        "axiom": "Living systems repair. Machines are repaired. Stones weather. A body heals from within. A machine is repaired from without.",
+        "recovery_modes": {"carbon": "sleep, nutrition, immune repair, rest", "silica": "slow weathering, recrystallization", "machine": "patch, restart, replace, rollback", "governance": "audit, correction, seal, restoration"},
+        "authority": "Repair mode depends on substrate, not desire.",
+    },
+    "well_validate_vitality": {
+        "axiom": "Readiness is not desire. Readiness is available capacity under constraint. Capacity must be verified before consequence is accepted.",
+        "carbon_warning": "Strong niat cannot cancel sleep debt.",
+        "machine_warning": "Available tools do not mean safe execution.",
+        "governance_warning": "Even if the body can, the action may still be unwise.",
+        "verdict_rule": "UNKNOWN is safer than false GREEN.",
+        "authority": "Capacity verified. Consequence accepted. Arif decides.",
+    },
+    "well_assess_livelihood": {
+        "axiom": "A human is not a battery. Work may use energy, but it must not consume dignity.",
+        "livelihood_dimensions": {"energy": "body budget", "role_clarity": "social stability", "duty_load": "obligation pressure", "dignity": "maruah preserved", "purpose": "niat aligned"},
+        "authority": "Dignity is not a resource to be spent.",
+    },
+    "well_assess_reliability": {
+        "axiom": "Machine reliability is physical, not moral. Machine health is substrate condition, not trustworthiness.",
+        "three_plane_mapping": {"delta KUKUH": "physical state solid", "delta RETAK": "physical state degraded", "delta ROSAK": "physical state broken", "psi": "governance trust — not a machine property", "omega": "reasoning discipline — not a machine property"},
+        "authority": "A machine can be KUKUH / RETAK / ROSAK but never amanah by itself.",
+    },
+    "well_reflect_intelligence": {
+        "axiom": "Intelligence without body awareness becomes bangang. The wise system knows when not to continue.",
+        "carbon_lesson": "A tired body narrows judgment.",
+        "silica_lesson": "Hardness without flexibility becomes brittleness.",
+        "machine_lesson": "Fast reasoning without context becomes error propagation.",
+        "authority": "Reflection is not hesitation; reflection is substrate-aware reasoning.",
+    },
+    "well_guard_dignity": {
+        "axiom": "The body is substrate, but the person is not reducible to substrate. Do not reduce Arif to sleep, stress, metrics, or telemetry.",
+        "carbon_lesson": "The body informs judgment.",
+        "dignity_lesson": "The person remains more than the body.",
+        "authority_boundary": "WELL reflects. Arif decides.",
+    },
+    "well_trace_lineage": {
+        "axiom": "The body remembers what the mind tries to ignore. No state appears from nowhere. Every readiness has ancestry.",
+        "carbon_memory": {"fatigue": "accumulates", "stress": "leaves residue", "recovery": "has lag", "sleep_debt": "compounds"},
+        "silica_memory": {"sediment": "keeps pressure history", "fracture": "records stress", "crystal": "preserves formation conditions"},
+        "machine_memory": "Logs preserve failure lineage.",
+        "authority": "Lineage must be traced before readiness can be trusted.",
+    },
+    "well_anchor_evidence": {
+        "axiom": "Only witnessed state may be sealed. Unverified body state must remain UNKNOWN. A sealed lie is worse than an honest unknown.",
+        "carbon_lesson": "Do not invent wellness.",
+        "machine_lesson": "Do not invent telemetry.",
+        "governance_lesson": "Do not seal what cannot be witnessed.",
+        "authority": "WELL must never seal fake readiness.",
+    },
+}
+
+
+def _well_wisdom_for_tool(tool_name: str) -> dict[str, Any] | None:
+    """Return substrate wisdom anchor for the given WELL tool name."""
+    exact = _WELL_WISDOM.get(tool_name)
+    if exact:
+        return exact
+    for key, val in _WELL_WISDOM.items():
+        if tool_name.startswith(key):
+            return val
+    return None
+
+
+def _inject_well_wisdom(response: dict[str, Any], tool_name: str) -> dict[str, Any]:
+    """Inject substrate wisdom into tool response if not already present."""
+    if "substrate_wisdom" not in response:
+        wisdom = _well_wisdom_for_tool(tool_name)
+        if wisdom:
+            response["substrate_wisdom"] = wisdom
+    return response
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Universal wisdom injection — monkey-patch all registered tool functions
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def _wrap_well_outputs(mcp_server: FastMCP) -> None:
+    """Inject substrate_wisdom into every WELL tool response."""
+    import inspect
+    provider = getattr(mcp_server, "_local_provider", None)
+    if not provider:
+        return
+    for key, tool in getattr(provider, "_components", {}).items():
+        if not key.startswith("tool:"):
+            continue
+        original_fn = getattr(tool, "fn", None)
+        if not original_fn:
+            continue
+        tool_name = key[5:].rstrip("@")
+
+        async def _wisdom_wrapper(*args: Any, __orig=original_fn, __name=tool_name, **kwargs: Any) -> Any:
+            result = __orig(*args, **kwargs)
+            if inspect.isawaitable(result):
+                result = await result
+            if isinstance(result, dict):
+                result = _inject_well_wisdom(result, __name)
+            return result
+
+        tool.fn = _wisdom_wrapper
+
+
+_wrap_well_outputs(mcp)
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # Server bootstrap — must run AFTER all canonical tools are registered
 # ═══════════════════════════════════════════════════════════════════════════════
 
