@@ -57,15 +57,22 @@ WELL informs  →  arifOS judges  →  A-FORGE executes  →  VAULT999 remembers
 
 | Capability | Count | Status |
 |------------|-------|--------|
-| **Tools** | 63 (13 canonical verb_noun + 13 stage aliases + 3 G-WELL governance + 34 legacy) | ✅ Active |
+| **Tools** | 75 total (15 visible in prod, 75 in dev) | ✅ Active |
 | **Resources** | 6 canonical | ✅ Active |
 | **Prompts** | 4 canonical | ✅ Active |
 | **Instructions** | 1 server-level | ✅ Active |
+| **Metabolic Flux** | `well_compute_metabolic_flux` with 0.40/0.65/0.85 thresholds | ✅ Active |
+| **Somatic Boundary** | 15 visible, 60 autonomic — gated by `FEDERATION_SOMATIC_BOUNDARY` | ✅ Active |
 
-WELL exposes **two canonical tool layers**:
+WELL exposes **15 somatic tools** in production (75 total in dev mode). The 60 autonomic tools remain callable internally via canonical dispatchers but are hidden from agent tool listing.
 
-1. **Ω-WELL (13 tools)** — The compressed universal stack. Aligned with arifOS intelligence kernel stages (000–999) and AAA civilization agentic state. **Prefer these for all new integrations.**
-2. **Legacy / Expanded tools (27 exposed)** — The underlying flat tool surface. Backward-compatible. Used internally by Ω-WELL modes. 19 redundant tools removed from MCP surface and absorbed into Ω-WELL modes.
+**Production surface (15 somatic):**
+`mcp_health_check`, `well_classify_substrate`, `well_trace_lineage`, `well_detect_boundary`, `well_measure_gradient`, `well_assess_metabolism`, `well_assess_homeostasis`, `well_check_repair`, `well_validate_vitality`, `well_assess_livelihood`, `well_assess_reliability`, `well_compute_metabolic_flux`, `well_reflect_intelligence`, `well_guard_dignity`, `well_anchor_evidence`
+
+**New: Thermodynamic Flux Engine**
+- `well_compute_metabolic_flux` computes unified `metabolic_flux` = cognitive_entropy_rate + machine_entropy
+- Thresholds: 0.40 = warning, 0.65 = compulsory reallocation, 0.85 = system hold (888 intervention)
+- Wired to 441_SURPRISE via metabolic umbilical in arifOS kernel_route
 
 ---
 
@@ -366,8 +373,21 @@ Human / Agent request
 
 | Surface | URL |
 |---------|-----|
+| WELL MCP | https://well.arif-fazil.com/health |
 | arifOS | https://arifosmcp.arif-fazil.com/ |
 | Human | https://arif-fazil.com/ |
+
+## Quick Start (Local)
+
+```bash
+# Run WELL server (no auth needed for stdio)
+python server.py
+
+# Production mode (Docker)
+FEDERATION_SOMATIC_BOUNDARY=1 python server.py
+```
+
+**Auth:** No `GEOX_SECRET_TOKEN` required — stdio bypass enabled. Remote HTTP requires `GEOX_SECRET_TOKEN` (fail-closed).
 
 ---
 
