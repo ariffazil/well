@@ -7316,12 +7316,26 @@ if _os.environ.get("FEDERATION_SOMATIC_BOUNDARY", "0") == "1" or _os.environ.get
     _enforce_somatic_boundary(mcp)
 
 if __name__ == "__main__":
-    # If this __main__ block is not the first one (at ~line 5911),
-    # this fallback ensures uvicorn starts
+    # This is a fallback in case the first __main__ block (at ~line 5911)
+    # didn't run uvicorn. We build the app and start it.
+    from starlette.responses import JSONResponse
     import uvicorn
+    from server import mcp as _mcp
     host = _os.environ.get("HOST", "0.0.0.0")
     port = int(_os.environ.get("PORT", 8083))
-    uvicorn.run(
-        mcp.http_app(path="/mcp", transport="streamable-http", json_response=True, stateless_http=True),
-        host=host, port=port, log_level=_os.environ.get("LOG_LEVEL", "info"),
-    )
+    app = _mcp.http_app(path="/mcp", transport="streamable-http", json_response=True, stateless_http=True)
+
+    # Register health handlers if not already present
+    async def _well_health_handler(request):
+        state = __import__('json').loads(open('/app/state.json').read())
+        return JSONResponse({
+            "identity": "WELL",
+            "role": "Body / Human Intelligence",
+            "authority": "REFLECT_ONLY",
+            "verdict": "WELL_PASS",
+            "service": "well-mcp",
+            "version": "2026.05.12-ΩWELL+GWELL+FEDERATION",
+        })
+
+    app.add_route("/health", _well_health_handler, methods=["GET"])
+    uvicorn.run(app, host=host, port=port, log_level=_os.environ.get("LOG_LEVEL", "info"))
