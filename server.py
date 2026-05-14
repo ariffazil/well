@@ -7293,8 +7293,13 @@ SOMATIC_TOOLS = {
 # ── Federation Tool Manifest Registration ──────────────────────────────────────
 # Populates FEDERATION_TOOLS with cognitive_axis for every WELL MCP tool.
 # Replaces ad-hoc SOMATIC_TOOLS set with manifest-based filtering.
-_WELL_MANIFEST: list[dict[str, object]] = [
-    # Somatic (visible) tools with cognitive axis
+#
+# Manifest/listing invariant: if expose=False, the tool must NOT appear in
+# public tool listings. Autonomic tools are kept in a separate internal list
+# so FEDERATION_TOOLS only contains the public (somatic) surface.
+
+_WELL_SOMATIC_MANIFEST: list[dict[str, object]] = [
+    # Somatic (visible) tools — these are the public MCP surface
     {"name": "mcp_health_check",            "axis": "identity",   "expose": True},
     {"name": "well_classify_substrate",     "axis": "identity",   "expose": True},
     {"name": "well_trace_lineage",          "axis": "trace",      "expose": True},
@@ -7307,10 +7312,10 @@ _WELL_MANIFEST: list[dict[str, object]] = [
     {"name": "well_assess_livelihood",      "axis": "vitality",   "expose": True},
     {"name": "well_assess_reliability",     "axis": "vitality",   "expose": True},
     {"name": "well_compute_metabolic_flux", "axis": "vitality",   "expose": True},
+]
+
+_WELL_AUTONOMIC_TOOLS: list[dict[str, object]] = [
     # REMOVED from public surface — constitutional overlap with arifOS
-    # {"name": "well_reflect_intelligence",   "axis": "reflect",    "expose": True},
-    # {"name": "well_guard_dignity",          "axis": "critique",   "expose": True},
-    # {"name": "well_anchor_evidence",        "axis": "seal",       "expose": True},
     {"name": "well_reflect_intelligence",   "axis": "reflect",    "expose": False},
     {"name": "well_guard_dignity",          "axis": "critique",   "expose": False},
     {"name": "well_anchor_evidence",        "axis": "seal",       "expose": False},
@@ -7399,14 +7404,19 @@ _WELL_MANIFEST: list[dict[str, object]] = [
     {"name": "well_symbolic_domain_check",  "axis": "critique",   "expose": False},
 ]
 
+# Backward-compat alias: _WELL_MANIFEST is the public somatic surface only
+_WELL_MANIFEST = _WELL_SOMATIC_MANIFEST
+
 try:
     from federation.tool_manifest import FEDERATION_TOOLS, ToolManifest, CognitiveAxis as _CA, is_tool_somatic
-    for _entry in _WELL_MANIFEST:
+    # Only register SOMATIC tools in the federation manifest.
+    # Autonomic tools remain internal to WELL and must not appear in public listings.
+    for _entry in _WELL_SOMATIC_MANIFEST:
         _name = str(_entry["name"])
         FEDERATION_TOOLS[_name] = ToolManifest(
             name=_name,
             description="",
-            expose=bool(_entry["expose"]),
+            expose=True,
             cognitive_axis=_CA(str(_entry["axis"])),
             organ="well",
         )
