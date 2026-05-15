@@ -7476,7 +7476,12 @@ if __name__ == "__main__":
 
     # Register health handlers if not already present
     async def _well_health_handler(request):
-        state = __import__('json').loads(open('/app/state.json').read())
+        try:
+            state = __import__('json').loads(open('/app/state.json').read())
+        except Exception:
+            state = {}
+        metrics = state.get("metrics") or {}
+        clarity = metrics.get("cognitive", {}).get("clarity") if isinstance(metrics, dict) else None
         return JSONResponse({
             "identity": "WELL",
             "role": "Body / Human Intelligence",
@@ -7484,6 +7489,13 @@ if __name__ == "__main__":
             "verdict": "WELL_PASS",
             "service": "well-mcp",
             "version": "2026.05.12-ΩWELL+GWELL+FEDERATION",
+            # substrate advisory fields — consumed by arifOS _read_well_substrate() HTTP fallback
+            "well_score": float(state.get("well_score", 50.0)),
+            "floors_violated": state.get("floors_violated") or [],
+            "truth_status": state.get("truth_status") or state.get("environment", "UNVERIFIED"),
+            "has_metrics": bool(metrics and any(metrics.get(d) for d in ("sleep", "stress", "cognitive", "metabolic", "structural"))),
+            "clarity": clarity,
+            "metrics": metrics,
         })
 
     app.add_route("/health", _well_health_handler, methods=["GET"])
