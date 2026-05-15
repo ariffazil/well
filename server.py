@@ -702,7 +702,7 @@ def _mcp_health_check_impl() -> dict:
         "status": status,
         "transport": "SSE_VALID",
         "auth": "OK",
-        "schema_version": "2026.05.12",
+        "schema_version": "2026.05.15",
         "read_only": True,
         "final_authority": "ARIF",
         "identity_valid": well_ok,
@@ -6064,7 +6064,7 @@ if __name__ == "__main__":
             "role": "Body / Human Intelligence — Operator Cognitive Pressure Monitor",
             "authority": "REFLECT_ONLY — WELL informs. arifOS judges. Arif decides.",
             "schema": "well-federation-v2026.05.08",
-            "version": "2026.05.12-ΩWELL+GWELL",
+            "version": "2026.05.15-ΩWELL+GWELL",
             "count": len(tools),
             "w0_invariant": "WELL holds a mirror, not a veto. Operator sovereignty is invariant.",
             "danger_taxonomy": {
@@ -6080,6 +6080,8 @@ if __name__ == "__main__":
         state = _load_state()
         well_ok = is_well(state)
         has_telemetry = _has_verified_telemetry(state)
+        # W-1: expose substrate advisory fields so arifOS judge HTTP fallback can consume them
+        _clarity = state.get("metrics", {}).get("cognitive", {}).get("clarity")
         return JSONResponse({
             "identity": "WELL",
             "role": "Body / Human Intelligence",
@@ -6093,7 +6095,12 @@ if __name__ == "__main__":
             "identity_valid": well_ok,
             "has_telemetry": has_telemetry,
             "service": "well-mcp",
-            "version": "2026.05.12-ΩWELL+GWELL",
+            "version": "2026.05.15-ΩWELL+GWELL",
+            # W-1 substrate advisory fields — consumed by judge.py HTTP fallback
+            "well_score": float(state.get("well_score", 50.0)),
+            "floors_violated": state.get("floors_violated") or [],
+            "truth_status": state.get("truth_status", "UNVERIFIED"),
+            "clarity": _clarity,
         })
 
     app.add_route("/health", health_handler, methods=["GET"])
@@ -7488,7 +7495,7 @@ if __name__ == "__main__":
             "authority": "REFLECT_ONLY",
             "verdict": "WELL_PASS",
             "service": "well-mcp",
-            "version": "2026.05.12-ΩWELL+GWELL+FEDERATION",
+            "version": "2026.05.15-ΩWELL+GWELL+FEDERATION",
             # substrate advisory fields — consumed by arifOS _read_well_substrate() HTTP fallback
             "well_score": float(state.get("well_score", 50.0)),
             "floors_violated": state.get("floors_violated") or [],
