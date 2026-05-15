@@ -1,0 +1,33 @@
+{
+  "mcpVersion": "2025-11-25",
+  "protocolVersion": "2024-11-05",
+  "name": "AFWELL",
+  "version": "2026.05.12-ΩWELL+GWELL+FEDERATION",
+  "description": "WELL — Universal Substrate Vitality Mirror for arifOS. Reflects biological, cognitive, machine, and governance state. W0 Sovereignty: WELL holds a mirror, not a veto. DITEMPA BUKAN DIBERI.",
+  "vendor": {
+    "name": "Muhammad Arif bin Fazil",
+    "url": "https://arif-fazil.com"
+  },
+  "homepage": "https://github.com/ariffazil/well",
+  "capabilities": {
+    "tools": true,
+    "resources": false,
+    "prompts": false,
+    "streaming": true
+  },
+  "serverUrl": "https://well.arif-fazil.com",
+  "tools": [
+    { "name": "mcp_health_check" },
+    { "name": "well_classify_substrate" },
+    { "name": "well_trace_lineage" },
+    { "name": "well_detect_boundary" },
+    { "name": "well_measure_gradient" },
+    { "name": "well_assess_metabolism" },
+    { "name": "well_assess_homeostasis" },
+    { "name": "well_check_repair" },
+    { "name": "well_validate_vitality" },
+    { "name": "well_assess_livelihood" },
+    { "name": "well_assess_reliability" },
+    { "name": "well_compute_metabolic_flux" }
+  ]
+}
