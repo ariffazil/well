@@ -1702,6 +1702,9 @@ def _compose_verdict(
 # ── Tools ──────────────────────────────────────────────────────────────────────
 
 
+# DEPRECATED: Use well_validate_vitality(mode="state") instead.
+# @mcp.tool() restored — test compatibility only. Internal callers should use
+# well_validate_vitality directly.
 @mcp.tool()
 def well_state(ctx: Context | None = None) -> dict[str, Any]:
     """
@@ -1865,6 +1868,9 @@ def well_log(
     }
 
 
+# DEPRECATED: Use well_validate_vitality(mode="readiness") instead.
+# @mcp.tool() restored — test compatibility only. Internal callers should use
+# well_validate_vitality directly.
 @mcp.tool()
 def well_readiness(ctx: Context | None = None) -> dict[str, Any]:
     """
@@ -2059,7 +2065,8 @@ def well_contrast_report(
     }
 
 
-@mcp.tool()
+# DEPRECATED: Use well_classify_substrate instead.
+# @mcp.tool() removed — internal use only.
 async def well_init(
     session_id: str | None = None,
     actor_id: str = "well-substrate",
@@ -3708,7 +3715,8 @@ def well_daily_brief(ctx: Context | None = None) -> dict[str, Any]:
 
 
 # M-WELL State — loads machine telemetry from state.json (m_machine section)
-@mcp.tool()
+# DEPRECATED: Use well_assess_reliability(mode="vitals") instead.
+# @mcp.tool() removed — internal use only.
 def well_machine_state(ctx: Context | None = None) -> dict[str, Any]:
     """
     Read current machine substrate state.
@@ -4670,7 +4678,8 @@ def _check_data_freshness(state: dict[str, Any]) -> dict[str, Any]:
 
 
 # ── WELL-01 well_get_health ───────────────────────────────────────────────────
-@mcp.tool()
+# DEPRECATED: Use well_assess_reliability(mode="health") instead.
+# @mcp.tool() removed — internal use only (called by well_000_ops).
 def well_get_health(ctx: Context | None = None) -> dict[str, Any]:
     """
     Canonical three-layer health check.
@@ -9333,7 +9342,8 @@ async def well_anchor_evidence(
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
-@mcp.tool()
+# DEPRECATED: Governance assessment now handled by arifOS constitutional kernel.
+# @mcp.tool() removed — internal use only (used by well_validate_vitality path).
 def well_assess_governance(
     mode: str = "coherence",
     target: str = "local",

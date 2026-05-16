@@ -8,7 +8,7 @@ WORKDIR /app
 COPY --from=ghcr.io/astral-sh/uv:0.6.16 /uv /usr/local/bin/uv
 
 # Copy project files. state.json and events.jsonl are mutable runtime state.
-COPY pyproject.toml server.py vault_bridge.py schema.json ./
+COPY pyproject.toml server.py schema.json ./
 COPY .well-known ./.well-known
 
 # Install dependencies
