@@ -1,7 +1,6 @@
 from fastmcp import FastMCP
 import json
 import os
-import sys
 import functools
 import hashlib
 import time
@@ -21,8 +20,21 @@ def governed_tool(fn):
 # Initialize FastMCP
 mcp = FastMCP("WELL — Biological Substrate")
 
-# Constants - Updated path to /var/lib for service access
-WELL_STATE_PATH = Path(os.environ.get("WELL_STATE_PATH", "/var/lib/arifosmcp/WELL/state.json"))
+# Constants - Updated path to /var/lib for service access with local fallback
+WELL_STATE_PATH_RAW = os.environ.get("WELL_STATE_PATH", "/var/lib/arifosmcp/WELL/state.json")
+WELL_STATE_PATH = Path(WELL_STATE_PATH_RAW)
+
+# 666 RISK FIX: Local fallback if system path is missing
+if not WELL_STATE_PATH.exists():
+    # Priority 1: data/ (Canonical)
+    DATA_STATE = Path(__file__).parent.parent / "data" / "state.json"
+    # Priority 2: current dir (Legacy/Local)
+    LOCAL_STATE = Path(__file__).parent / "state.json"
+    
+    if DATA_STATE.exists():
+        WELL_STATE_PATH = DATA_STATE
+    elif LOCAL_STATE.exists():
+        WELL_STATE_PATH = LOCAL_STATE
 
 try:
     from arifosmcp.runtime.vault_postgres import SupabaseStateStore, log_tool_call
@@ -44,7 +56,7 @@ def vault_tool(fn):
             else:
                 result = fn(*args, **kwargs)
             return result
-        except Exception as e:
+        except Exception:
             result_code = "ERROR"
             raise
         finally:
@@ -81,8 +93,8 @@ def _get_raw_state() -> Dict[str, Any]:
     try:
         with open(WELL_STATE_PATH, "r") as f:
             return json.load(f)
-    except Exception as e:
-        return {"error": str(e), "ok": False}
+    except Exception:
+        return {"ok": False, "error": "failed to read state"}
 
 def _save_state(state: Dict[str, Any]) -> bool:
     """Helper to save WELL state (Dual-Write)."""
