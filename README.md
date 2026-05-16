@@ -1,26 +1,58 @@
-﻿# well — Human Bio-Telemetry Substrate
+﻿# WELL — Human Substrate & Metabolic State
 
-> **Status:** HARDENED | **Organ:** SUBSTRATE | **Authority:** arifOS
+> **Status:** OPERATIONAL | **Organ:** SUBSTRATE (Ω-WELL) | **Authority:** arifOS
+> **Domain:** `well.arif-fazil.com`
 
 ## 🏛️ What this repo is
-Governs the biological feedback loop. Monitors human readiness and health telemetry.
+
+The human bio-telemetry and metabolic state organ within the arifOS federation. WELL monitors the coupled human-machine system state through a FastMCP surface of ~60 tools spanning biometric readiness, machine substrate telemetry, and coupled vitality metrics. All WELL data passes through the F5 PEACE and F6 EMPATHY floors before being used in any governance decision.
+
+**WELL owns the SUBSTRATE — the living layer that keeps the human in the loop.**
 
 ## 📦 Ownership
-- **Owns**: Bio-telemetry server, readiness audit logs, `state.json` persistence.
-- **Does NOT own**: Deployment orchestration (A-FORGE).
+
+- **Owns**: Human biometric readiness (H-WELL), machine substrate telemetry (M-WELL), coupled vitality state (C-WELL), governance telemetry (G-WELL).
+- **Does NOT own**: Constitutional judgment (arifOS), economic logic (WEALTH).
 
 ## 🏗️ Current Structure
-- src/: Telemetry server and logic.
-- data/: Canonical `state.json` persistence.
-- docs/audit/: Readiness and health audit logs.
-- specs/: Bio-governance contracts.
+
+```
+WELL/
+├── server.py              # FastMCP server (~60 tools: 13 Ω-WELL + aliases)
+├── vault_bridge.py        # VAULT999 append-only ledger client
+├── gate/
+│   └── well_gate.py      # Pre-JUDGE biological readiness mirror
+├── test_well.py          # Audit / adversarial test suite (plain Python, NOT pytest)
+├── state.json            # Live operator state snapshot
+├── events.jsonl          # Event stream
+├── Dockerfile            # Container image
+├── deploy.sh             # Docker build & deploy script
+├── docs/                # Governance specs and telemetry docs
+├── specs/               # W-Floor specifications
+└── scripts/             # Operational scripts
+```
 
 ## 🚀 Verified Commands
-- `python src/server.py`: Start the WELL telemetry node.
+
+```bash
+# Install
+pip install -e .
+
+# Start server
+python server.py
+
+# Run tests (plain Python, NOT pytest)
+python test_well.py
+
+# Docker build & deploy
+./deploy.sh [TAG]
+```
 
 ## 🔗 Federation Loop
-- [arifOS](https://github.com/ariffazil/arifOS) (Kernel)
-- [A-FORGE](https://github.com/ariffazil/A-FORGE) (Forge)
+
+- [arifOS](https://github.com/ariffazil/arifOS) — Kernel (constitutional judgment, F5/F6 enforcement)
+- [WEALTH](https://github.com/ariffazil/wealth) — Capital (economic constraints on human flourishing)
 
 ---
+
 *Last Verified: 2026.05.16 | 999 SEAL ALIVE*
