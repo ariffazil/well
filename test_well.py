@@ -1629,6 +1629,303 @@ def test_well_registry_status_tool():
     print("✅ well_registry_status tool tests passed")
 
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# CONTRAST ENGINE — Anomalous Biological Contrast Detection Tests
+# W→P→C→M→G→J loop validation
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+def _write_events(entries: list[dict]) -> None:
+    """Append WELL_LOG entries to events.jsonl (in test temp dir)."""
+    events_path = server_module.EVENTS_PATH
+    with open(events_path, "a") as f:
+        for e in entries:
+            f.write(json.dumps(e) + "\n")
+
+
+def _clear_events() -> None:
+    """Clear events file (called per test to ensure isolation)."""
+    server_module.EVENTS_PATH.write_text("")
+
+
+def _append_event(
+    event_type: str,
+    well_score: float,
+    floors_violated: list,
+    note: str = "log entry",
+) -> None:
+    """Append a single WELL_LOG event to events.jsonl (note avoids 'test' for contamination guard)."""
+    _write_events(
+        [
+            {
+                "event": event_type,
+                "well_score": well_score,
+                "floors_violated": floors_violated,
+                "tier": "GREEN",
+                "note": note,
+                "epoch": server_module.datetime.datetime.now(
+                    server_module.datetime.timezone.utc
+                ).isoformat(),
+            }
+        ]
+    )
+
+
+def test_contrast_normal_no_anomaly():
+    """NORMAL: current score matches baseline mean — no z-score breach."""
+    _clear_events()
+
+    # Baseline: 5 events with mean=80 (scores: 79-81 range, centered on 80)
+    for score in [79.0, 80.0, 81.0, 79.5, 80.5]:
+        _append_event("WELL_LOG", score, [])
+
+    # Current state matches baseline mean → z=0 → no anomaly
+    _write_canonical_state(well_score=80.0, floors_violated=[])
+
+    result = server_module.well_contrast_report()
+    data = result if isinstance(result, dict) else get_data(result)
+
+    assert data["severity_tier"] == "NORMAL", (
+        f"Expected NORMAL, got {data['severity_tier']} (z={data['contrast_findings'].get('well_score', {}).get('z_score')})"
+    )
+    assert data["anomaly_count"] == 0, (
+        f"Expected 0 anomalies, got {data['anomaly_count']}"
+    )
+    assert len(data["hypotheses"]) == 0, "No hypotheses expected for NORMAL"
+    assert data["coupled_verdict"] == "PROCEED"
+    print("  ✅ NORMAL: no anomalous contrast detected")
+
+
+def test_contrast_watch_minor_z():
+    """WATCH: mild z-score breach on well_score (|z| in [1.5, 2.0))."""
+    _clear_events()
+
+    # Baseline: [65, 66, 67, 68, 69] → mean=67, stdev=1.58
+    # Current: 64 → z = (64-67)/1.58 = -1.90 → ANOMALY, DEGRADING
+    for score in [65.0, 66.0, 67.0, 68.0, 69.0]:
+        _append_event("WELL_LOG", score, [])
+
+    _write_canonical_state(well_score=64.0, floors_violated=[])
+
+    result = server_module.well_contrast_report()
+    data = result if isinstance(result, dict) else get_data(result)
+
+    score_finding = data["contrast_findings"].get("well_score", {})
+    z = score_finding.get("z_score", 0)
+    assert data["severity_tier"] == "WATCH", (
+        f"Expected WATCH (|z|={z:.2f}), got {data['severity_tier']}"
+    )
+    assert score_finding.get("anomaly") is True, (
+        f"well_score should be anomalous, got {score_finding}"
+    )
+    assert score_finding.get("direction") == "DEGRADING", (
+        f"Expected DEGRADING, got {score_finding.get('direction')}"
+    )
+    print(f"  ✅ WATCH: z={z:.2f} detected")
+
+
+def test_contrast_concern_high_z():
+    """CONCERN: large z-score breach (|z| ≥ 2.0)."""
+    _clear_events()
+
+    # Baseline: [79, 80, 81, 79, 80] → mean=79.8, stdev≈0.84
+    # Current: 60 → z = (60-79.8)/0.84 ≈ -23.6 → CONCERN
+    for score in [79.0, 80.0, 81.0, 79.0, 80.0]:
+        _append_event("WELL_LOG", score, [])
+
+    _write_canonical_state(well_score=60.0, floors_violated=["W5_COGNITIVE_ENTROPY"])
+
+    result = server_module.well_contrast_report()
+    data = result if isinstance(result, dict) else get_data(result)
+
+    assert data["severity_tier"] == "CONCERN", (
+        f"Expected CONCERN, got {data['severity_tier']}"
+    )
+    assert data["anomaly_count"] >= 1
+    score_finding = data["contrast_findings"].get("well_score", {})
+    assert abs(score_finding.get("z_score", 0)) >= 2.0, (
+        f"Expected |z|≥2, got {score_finding.get('z_score')}"
+    )
+    print(f"  ✅ CONCERN: z={score_finding.get('z_score')} detected")
+
+
+def test_contrast_critical_systemic():
+    """CRITICAL: well_score degraded AND floors_violated increased simultaneously."""
+    _clear_events()
+
+    # Baseline: good scores with VARIABLE violations (stdev>0 required for z_violations)
+    # Mean violations = 0.4, stdev ≈ 0.55 → current=2 → z_viol ≈ 2.91 → anomaly
+    event_violations = [[], [], ["W5_COGNITIVE_ENTROPY"], [], []]
+    for score, viol in zip([90.0, 89.0, 91.0, 90.0, 89.0], event_violations):
+        _append_event("WELL_LOG", score, viol)  # mean=89.8, stdev≈0.84
+
+    # Current: degraded score + more violations → z_score<0 AND z_viol>0 → systemic
+    _write_canonical_state(
+        well_score=65.0,
+        floors_violated=["W1_SLEEP_DEBT", "W5_COGNITIVE_ENTROPY"],
+    )
+
+    result = server_module.well_contrast_report()
+    data = result if isinstance(result, dict) else get_data(result)
+
+    assert data["severity_tier"] == "CRITICAL", (
+        f"Expected CRITICAL, got {data['severity_tier']}"
+    )
+    assert data["coupled_verdict"] == "HOLD"
+    assert data["human_confirmation_required"] is True
+    assert data["w_floor_flags"]  # Should have W-floor flags
+    print(f"  ✅ CRITICAL: systemic degradation detected, hold required")
+
+
+def test_contrast_insufficient_baseline():
+    """Insufficient events → confidence LOW, anomaly not flagged (no false positive)."""
+    _clear_events()
+
+    # Only 2 events (below CONTRAST_MIN_EVENTS=3) → no baseline
+    _append_event("WELL_LOG", 80.0, [])
+    _append_event("WELL_LOG", 79.0, [])
+
+    # Current state very different from any baseline
+    _write_canonical_state(well_score=50.0, floors_violated=["W1_SLEEP_DEBT"])
+
+    result = server_module.well_contrast_report()
+    data = result if isinstance(result, dict) else get_data(result)
+
+    assert data["baseline_established"] is False, (
+        "Baseline should not be established with <3 events"
+    )
+    assert "LOW" in data["confidence_band"], (
+        f"Expected LOW confidence, got {data['confidence_band']}"
+    )
+    print(f"  ✅ Insufficient baseline → confidence LOW ({data['confidence_band']})")
+
+
+def test_contrast_hypotheses_inferred():
+    """Systemic degradation triggers hypothesis inference with correct epistemic tag."""
+    _clear_events()
+
+    # Baseline: moderate scores
+    for score in [82.0, 81.0, 80.0, 83.0, 81.0]:
+        _append_event("WELL_LOG", score, [])  # mean=81.4
+
+    # Current: score degraded + violations accumulating
+    _write_canonical_state(
+        well_score=60.0,
+        floors_violated=["W1_SLEEP_DEBT"],
+        metrics={
+            "sleep": {"last_night_hours": 4, "sleep_debt_days": 3, "quality_score": 4},
+            "stress": {"subjective_load": 8, "restlessness": 5},
+            "cognitive": {"clarity": 3, "decision_fatigue": 8, "focus_durability": 4},
+            "metabolic": {
+                "fasting_window_hours": 0,
+                "perceived_stability": 3,
+                "hydration_status": "DEHYDRATED",
+            },
+            "structural": {"pain_map": [], "movement_frequency_daily": 2},
+        },
+    )
+
+    result = server_module.well_contrast_report()
+    data = result if isinstance(result, dict) else get_data(result)
+
+    assert len(data["hypotheses"]) >= 1, (
+        "Should infer at least one hypothesis for systemic degradation"
+    )
+    for h in data["hypotheses"]:
+        assert "epistemic_tag" in h, f"Hypothesis missing epistemic_tag: {h}"
+        assert h["epistemic_tag"] in ("HYPOTHESIS", "PLAUSIBLE"), (
+            f"Invalid epistemic tag: {h['epistemic_tag']}"
+        )
+    hypo_texts = [h["hypothesis"].lower() for h in data["hypotheses"]]
+    found_sleep = any("sleep" in t or "debt" in t for t in hypo_texts)
+    found_cognitive = any("cognitive" in t or "clarity" in t for t in hypo_texts)
+    assert found_sleep or found_cognitive, (
+        f"Expected sleep or cognitive hypothesis, got: {hypo_texts}"
+    )
+    print(
+        f"  ✅ {len(data['hypotheses'])} hypothesis(es) inferred, all properly tagged"
+    )
+
+
+def test_contrast_test_entries_excluded():
+    """Test entries in events.jsonl are excluded from baseline (F2 contamination guard)."""
+    _clear_events()
+    _write_canonical_state(well_score=80.0, floors_violated=[])
+
+    # Mix of real and test entries
+    _append_event("WELL_LOG", 80.0, [], note="Morning log")
+    _append_event(
+        "WELL_LOG", 79.0, [], note="test path entry"
+    )  # should be excluded (contains "test path")
+    _append_event(
+        "WELL_LOG", 81.0, [], note="mocked session log"
+    )  # should be excluded (contains "mocked")
+    _append_event("WELL_LOG", 78.0, [], note="Evening log")
+
+    events = server_module._load_events()
+    notes = [e.get("note", "") for e in events]
+    # "test path entry" and "mocked session log" should be excluded
+    assert all("test" not in n.lower() and "mocked" not in n.lower() for n in notes), (
+        f"Test entries should be filtered: {notes}"
+    )
+    assert len(events) == 2, f"Expected 2 real events, got {len(events)}: {notes}"
+    print(f"  ✅ Test entries excluded ({len(events)} real events: {notes})")
+
+
+def test_contrast_tool_schema():
+    """well_contrast_report returns correct output schema."""
+    _clear_events()
+
+    for score in [80.0, 81.0, 79.0, 82.0, 80.0]:
+        _append_event("WELL_LOG", score, [])
+    _write_canonical_state(well_score=80.0, floors_violated=[])
+
+    result = server_module.well_contrast_report()
+    data = result if isinstance(result, dict) else get_data(result)
+
+    required_fields = [
+        "severity_tier",
+        "recommended_action",
+        "contrast_findings",
+        "anomaly_count",
+        "baseline_summary",
+        "baseline_events_used",
+        "baseline_established",
+        "hypotheses",
+        "w_floor_flags",
+        "confidence_band",
+        "well_score",
+        "coupled_verdict",
+        "human_confirmation_required",
+        "authority",
+    ]
+    for field in required_fields:
+        assert field in data, f"Missing required field: {field}"
+    assert data["authority"] == "REFLECT_ONLY", "WELL must always be REFLECT_ONLY"
+    print("  ✅ well_contrast_report schema complete")
+
+
+def test_contrast_watch_verb_only():
+    """WATCH severity: recommended_action is advisory, not executive (W0 boundary)."""
+    _clear_events()
+
+    # Baseline: [65, 66, 67, 68, 69] → mean=67, stdev=1.58
+    # Current: 64 → z=-1.90 → ANOMALY, DEGRADING → WATCH
+    for score in [65.0, 66.0, 67.0, 68.0, 69.0]:
+        _append_event("WELL_LOG", score, [])
+    _write_canonical_state(well_score=64.0, floors_violated=[])
+
+    result = server_module.well_contrast_report()
+    data = result if isinstance(result, dict) else get_data(result)
+
+    action = data.get("recommended_action", "")
+    assert "block" not in action.lower() and "approve" not in action.lower(), (
+        f"Action must not be executive: {action}"
+    )
+    assert data["severity_tier"] == "WATCH"
+    print("  ✅ WATCH verb is advisory, not executive")
+
+
 if __name__ == "__main__":
     try:
         test_identity_invariants()
@@ -1643,6 +1940,16 @@ if __name__ == "__main__":
         test_well_output_federation_format()
         test_well_no_telemetry_invariant()
         test_well_registry_status_tool()
+        # Contrast engine tests
+        test_contrast_normal_no_anomaly()
+        test_contrast_watch_minor_z()
+        test_contrast_concern_high_z()
+        test_contrast_critical_systemic()
+        test_contrast_insufficient_baseline()
+        test_contrast_hypotheses_inferred()
+        test_contrast_test_entries_excluded()
+        test_contrast_tool_schema()
+        test_contrast_watch_verb_only()
         print("\n✅ All AFWELL Audit tests passed!")
     except Exception as e:
         print(f"\n❌ Test failed: {e}")

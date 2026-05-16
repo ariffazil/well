@@ -314,6 +314,345 @@ FLUX_VERDICTS = {
 }
 
 
+# ── Contrast Detection Engine (W→P→C→M→G→J for biology) ──────────────────────
+# Maps GEOX anomalous_contrast pattern onto human biological telemetry.
+# Stage 1: establish baseline from events.jsonl rolling window
+# Stage 2: detect per-dimension contrast (z-score vs baseline)
+# Stage 3: infer possible causes from anomaly patterns
+# Stage 4: route to W-floor guards
+
+CONTRAST_BASELINE_WINDOW_DAYS = 14
+CONTRAST_MIN_EVENTS = 3  # minimum events needed for a valid baseline
+
+# Per-dimension z-score thresholds and direction
+# z_thresh: absolute z-score to trigger anomaly flag
+# higher_is_worse: direction of degradation
+CONTRAST_DIMENSION_CONFIG = {
+    "well_score": {"z_thresh": 1.5, "higher_is_worse": False},
+    "sleep_debt_days": {"z_thresh": 1.5, "higher_is_worse": True},
+    "sleep_hours": {"z_thresh": 1.5, "higher_is_worse": False},
+    "sleep_quality": {"z_thresh": 1.5, "higher_is_worse": False},
+    "stress_load": {"z_thresh": 1.0, "higher_is_worse": True},
+    "clarity": {"z_thresh": 1.5, "higher_is_worse": False},
+    "decision_fatigue": {"z_thresh": 1.0, "higher_is_worse": True},
+    "metabolic_stability": {"z_thresh": 1.5, "higher_is_worse": False},
+    "pain_level": {"z_thresh": 1.0, "higher_is_worse": True},
+}
+
+
+def _load_events(lookback_days: int = CONTRAST_BASELINE_WINDOW_DAYS) -> list[dict]:
+    """Load non-test WELL_LOG events from events.jsonl within lookback window.
+
+    Returns list of event dicts sorted oldest→newest.
+    Excludes events where note contains 'test' (test contamination guard).
+    """
+    if not EVENTS_PATH.exists():
+        return []
+    cutoff = (
+        datetime.datetime.now(datetime.timezone.utc)
+        - datetime.timedelta(days=lookback_days)
+    ).isoformat()
+    events = []
+    try:
+        with open(EVENTS_PATH) as f:
+            for line in f:
+                try:
+                    e = json.loads(line.strip())
+                    if e.get("event") != "WELL_LOG":
+                        continue
+                    note = e.get("note", "") or ""
+                    # F2 / test-contamination guard: skip test entries
+                    if (
+                        note.lower().startswith("test ")
+                        or "test path" in note.lower()
+                        or "mocked" in note.lower()
+                    ):
+                        continue
+                    epoch = e.get("epoch", "")
+                    if epoch and epoch < cutoff:
+                        continue
+                    events.append(e)
+                except Exception:
+                    continue
+    except Exception:
+        pass
+    return events
+
+
+def _compute_baseline(events: list[dict]) -> dict[str, dict]:
+    """Establish per-dimension baseline statistics from event history.
+
+    Computes rolling mean and stdev for well_score and floors_violated count
+    over the event window. Requires CONTRAST_MIN_EVENTS to emit a baseline.
+
+    Returns:
+        {
+            "well_score": {"mean": float, "stdev": float, "n": int},
+            "floors_violated": {"mean": float, "stdev": float, "n": int},
+            ...
+        }
+    """
+    if len(events) < CONTRAST_MIN_EVENTS:
+        return {}
+
+    scores = [
+        e.get("well_score", 50.0) for e in events if e.get("well_score") is not None
+    ]
+    violation_counts = [len(e.get("floors_violated", [])) for e in events]
+
+    baseline = {}
+
+    if len(scores) >= CONTRAST_MIN_EVENTS:
+        mean_s = sum(scores) / len(scores)
+        variance = sum((s - mean_s) ** 2 for s in scores) / max(len(scores) - 1, 1)
+        stdev_s = variance**0.5
+        baseline["well_score"] = {
+            "mean": round(mean_s, 2),
+            "stdev": round(stdev_s, 2),
+            "n": len(scores),
+        }
+
+    if len(violation_counts) >= CONTRAST_MIN_EVENTS:
+        mean_v = sum(violation_counts) / len(violation_counts)
+        variance = sum((v - mean_v) ** 2 for v in violation_counts) / max(
+            len(violation_counts) - 1, 1
+        )
+        stdev_v = variance**0.5
+        baseline["floors_violated"] = {
+            "mean": round(mean_v, 2),
+            "stdev": round(stdev_v, 2),
+            "n": len(violation_counts),
+        }
+
+    return baseline
+
+
+def _detect_contrast(
+    current_state: dict[str, Any],
+    baseline: dict[str, dict],
+) -> dict[str, dict]:
+    """Detect per-dimension anomalous contrast against established baseline.
+
+    Uses z-score: z = (current - mean) / stdev.
+    Anomaly flagged when |z| > dimension threshold AND direction matches.
+    Stores raw z and absolute deviation for downstream meaning inference.
+
+    Returns:
+        {
+            "well_score": {"anomaly": bool, "z_score": float, "deviation": float,
+                           "current": float, "baseline_mean": float, "direction": str},
+            ...
+        }
+    """
+    results = {}
+    current_score = current_state.get("well_score", 50.0)
+    current_violations = len(current_state.get("floors_violated", []))
+
+    # well_score contrast
+    bs = baseline.get("well_score", {})
+    if bs and bs.get("stdev", 0) > 0:
+        z = (current_score - bs["mean"]) / bs["stdev"]
+        cfg = CONTRAST_DIMENSION_CONFIG["well_score"]
+        is_anomaly = abs(z) > cfg["z_thresh"]
+        # Degradation = lower score (higher_is_worse=False → anomaly means worse)
+        is_degradation = (
+            z < -cfg["z_thresh"] if not cfg["higher_is_worse"] else z > cfg["z_thresh"]
+        )
+        results["well_score"] = {
+            "anomaly": is_anomaly,
+            "z_score": round(z, 3),
+            "deviation": round(current_score - bs["mean"], 2),
+            "current": current_score,
+            "baseline_mean": bs["mean"],
+            "direction": "DEGRADING"
+            if is_degradation
+            else ("IMPROVING" if abs(z) > cfg["z_thresh"] else "STABLE"),
+        }
+    else:
+        results["well_score"] = {
+            "anomaly": False,
+            "z_score": 0.0,
+            "deviation": 0.0,
+            "current": current_score,
+            "baseline_mean": bs.get("mean", None),
+            "direction": "UNKNOWN",
+        }
+
+    # floors_violated count contrast
+    bv = baseline.get("floors_violated", {})
+    if bv and bv.get("stdev", 0) > 0:
+        z = (current_violations - bv["mean"]) / bv["stdev"]
+        cfg_z = 1.5  # more violations = worse, symmetric
+        is_anomaly = abs(z) > cfg_z
+        is_degradation = z > cfg_z  # more violations = degradation
+        results["floors_violated"] = {
+            "anomaly": is_anomaly,
+            "z_score": round(z, 3),
+            "deviation": round(current_violations - bv["mean"], 2),
+            "current": current_violations,
+            "baseline_mean": round(bv["mean"], 2),
+            "direction": "DEGRADING"
+            if is_degradation
+            else ("IMPROVING" if z < -cfg_z else "STABLE"),
+        }
+    else:
+        results["floors_violated"] = {
+            "anomaly": False,
+            "z_score": 0.0,
+            "deviation": 0.0,
+            "current": current_violations,
+            "baseline_mean": bv.get("mean", None),
+            "direction": "UNKNOWN",
+        }
+
+    return results
+
+
+def _infer_meaning(
+    contrast: dict[str, dict],
+    current_state: dict[str, Any],
+) -> list[dict]:
+    """Infer possible causes from detected anomalous contrast patterns.
+
+    Pattern-matches anomaly signatures against known biological causation chains.
+    Returns list of hypotheses sorted by confidence.
+    Each hypothesis: {hypothesis, affected_dimensions, confidence, evidence}
+    W0: This is meaning-inference, NOT diagnosis. All outputs are HYPOTHESIS-tagged.
+    """
+    hypotheses = []
+
+    score_anomaly = contrast.get("well_score", {}).get("anomaly", False)
+    score_z = contrast.get("well_score", {}).get("z_score", 0.0)
+    score_dir = contrast.get("well_score", {}).get("direction", "UNKNOWN")
+    violations_anomaly = contrast.get("floors_violated", {}).get("anomaly", False)
+    violations_z = contrast.get("floors_violated", {}).get("z_score", 0.0)
+
+    metrics = current_state.get("metrics", {})
+
+    # Pattern: well_score degrading AND floors_violated increasing
+    # → systemic degradation, possible overwork / accumulated stress
+    if score_anomaly and violations_anomaly and score_z < 0 and violations_z > 0:
+        hypotheses.append(
+            {
+                "hypothesis": "Systemic degradation — possible accumulated overwork or stress cascade",
+                "affected_dimensions": ["well_score", "floors_violated"],
+                "confidence": "MEDIUM",
+                "evidence": f"well_score z={score_z:.2f}, violations z={violations_z:.2f}",
+                "epistemic_tag": "HYPOTHESIS",
+            }
+        )
+
+    # Pattern: well_score improving (recovery signal)
+    if score_anomaly and score_z > 0 and score_dir == "IMPROVING":
+        hypotheses.append(
+            {
+                "hypothesis": "Positive trajectory — possible recovery, rest, or effective intervention",
+                "affected_dimensions": ["well_score"],
+                "confidence": "MEDIUM",
+                "evidence": f"well_score z={score_z:.2f} above baseline mean",
+                "epistemic_tag": "PLAUSIBLE",
+            }
+        )
+
+    # Pattern: well_score degrading but violations stable
+    # → subtle degradation not yet manifesting as floor violations
+    if score_anomaly and not violations_anomaly and score_z < 0:
+        # Look for per-dimension signals in metrics
+        sleep = metrics.get("sleep", {})
+        stress = metrics.get("stress", {})
+        cognitive = metrics.get("cognitive", {})
+        metabolic = metrics.get("metabolic", {})
+
+        if sleep.get("sleep_debt_days", 0) >= 2:
+            hypotheses.append(
+                {
+                    "hypothesis": "Sleep debt accumulation — cognitive substrate not yet compromised but trending",
+                    "affected_dimensions": ["well_score", "sleep"],
+                    "confidence": "LOW",
+                    "evidence": f"sleep_debt_days={sleep.get('sleep_debt_days')}, score z={score_z:.2f}",
+                    "epistemic_tag": "HYPOTHESIS",
+                }
+            )
+        if stress.get("subjective_load", 0) >= 7:
+            hypotheses.append(
+                {
+                    "hypothesis": "Elevated stress load — substrate under chronic pressure, floor violations latent",
+                    "affected_dimensions": ["well_score", "stress"],
+                    "confidence": "LOW",
+                    "evidence": f"stress_load={stress.get('subjective_load')}/10, score z={score_z:.2f}",
+                    "epistemic_tag": "HYPOTHESIS",
+                }
+            )
+        if cognitive.get("clarity", 10) < 4:
+            hypotheses.append(
+                {
+                    "hypothesis": "Cognitive entropy onset — W5 floor boundary, decision capacity degrading",
+                    "affected_dimensions": ["well_score", "cognitive"],
+                    "confidence": "MEDIUM",
+                    "evidence": f"clarity={cognitive.get('clarity')}/10, score z={score_z:.2f}",
+                    "epistemic_tag": "HYPOTHESIS",
+                }
+            )
+        if metabolic.get("perceived_stability", 10) < 5:
+            hypotheses.append(
+                {
+                    "hypothesis": "Metabolic instability — possible caloric deficit, dehydration, or illness onset",
+                    "affected_dimensions": ["well_score", "metabolic"],
+                    "confidence": "LOW",
+                    "evidence": f"perceived_stability={metabolic.get('perceived_stability')}/10",
+                    "epistemic_tag": "HYPOTHESIS",
+                }
+            )
+
+    return hypotheses
+
+
+def _compute_contrast_severity(contrast: dict[str, dict]) -> tuple[str, str]:
+    """Compute overall contrast severity tier and recommended action.
+
+    Tiers:
+      NORMAL   — no anomalies detected
+      WATCH    — 1 anomaly, modest z
+      CONCERN  — 1 anomaly with high z OR 2+ anomalies
+      CRITICAL — systemic degradation (well_score AND violations both anomalous in bad direction)
+
+    Returns: (severity_tier, recommended_action)
+    """
+    anomalies = {k: v for k, v in contrast.items() if v.get("anomaly", False)}
+    if not anomalies:
+        return "NORMAL", "No anomalous contrast detected. Continue monitoring."
+
+    # Check for systemic degradation
+    score = contrast.get("well_score", {})
+    viol = contrast.get("floors_violated", {})
+    systemic = (
+        score.get("anomaly")
+        and score.get("z_score", 0) < 0
+        and viol.get("anomaly")
+        and viol.get("z_score", 0) > 0
+    )
+    if systemic:
+        return (
+            "CRITICAL",
+            "Systemic degradation detected. Human confirmation required before strategic forge actions. Route to arifOS 888_JUDGE.",
+        )
+
+    # Count anomalies and max |z|
+    max_z = max(abs(v.get("z_score", 0)) for v in anomalies.values())
+    if len(anomalies) >= 2 or max_z >= 2.0:
+        return (
+            "CONCERN",
+            "Significant contrast anomaly. Review recommended before high-stakes decisions.",
+        )
+    elif len(anomalies) == 1 and max_z >= 1.5:
+        return (
+            "WATCH",
+            "Minor contrast anomaly. Note in substrate record. No action required.",
+        )
+
+    return "WATCH", "Subtle contrast signal. Continue monitoring."
+
+
 def _compute_cognitive_entropy_rate(state: dict[str, Any]) -> float:
     """Compute cognitive_entropy_rate from contradiction tracking.
 
@@ -1594,6 +1933,130 @@ def well_readiness(ctx: Context | None = None) -> dict[str, Any]:
         next_safe_action=resolved["reason"],
         federation_reconcile=reconcile,
     )
+
+
+@mcp.tool()
+def well_contrast_report(
+    lookback_days: int = 14,
+    ctx: Context | None = None,
+) -> dict[str, Any]:
+    """
+    Detect anomalous biological contrast — deviation from operator baseline.
+
+    Implements the W→P→C→M→G→J metabolic loop for human vitality:
+      W  Witness     — current state + events.jsonl rolling window
+      P  Perception  — parse and structure current metrics
+      C  Contrast    — z-score anomaly detection vs established baseline
+      M  Meaning     — pattern-match anomaly signatures to infer possible causes
+      G  Guard       — route anomalies through W-floor thresholds
+      J  Judgment    — severity tier + recommended action
+
+    W0: WELL holds a mirror, not a veto. All outputs are HYPOTHESIS-tagged.
+    This is not diagnosis. Arif remains final judge.
+
+    Output schema:
+      - severity_tier: NORMAL | WATCH | CONCERN | CRITICAL
+      - baseline_summary: per-dimension baseline statistics
+      - contrast_findings: per-dimension z-scores and anomaly flags
+      - hypotheses: ranked possible causes, epistemic-tagged
+      - w_floor_flags: W-floor rules triggered by anomalous dimensions
+      - confidence_band: bounded by event count and telemetry freshness
+    """
+    state = _load_state()
+
+    # W: Witness — load event history
+    events = _load_events(lookback_days=lookback_days)
+
+    # P: Perception — establish baseline from events
+    baseline = _compute_baseline(events)
+
+    # C: Contrast — detect anomalous deviation
+    contrast = _detect_contrast(state, baseline)
+
+    # M: Meaning — infer possible causes from anomaly patterns
+    hypotheses = _infer_meaning(contrast, state)
+
+    # G: Guard — route to W-floor thresholds
+    severity, recommended_action = _compute_contrast_severity(contrast)
+
+    # Build W-floor flag list from anomalous dimensions
+    w_floor_flags: list[dict] = []
+    if contrast.get("well_score", {}).get("anomaly", False):
+        z = contrast["well_score"].get("z_score", 0)
+        if z < 0:
+            w_floor_flags.append(
+                {
+                    "floor": "W_SCORE_DEGRADING",
+                    "verdict": "VIOLATION_TRENDING",
+                    "detail": f"well_score z={z:.2f} below baseline",
+                    "w0_route": True,
+                }
+            )
+    if contrast.get("floors_violated", {}).get("anomaly", False):
+        z = contrast["floors_violated"].get("z_score", 0)
+        if z > 0:
+            w_floor_flags.append(
+                {
+                    "floor": "W_COMPOUNDING_VIOLATIONS",
+                    "verdict": "VIOLATION_ACCELERATING",
+                    "detail": f"floors_violated z={z:.2f} above baseline",
+                    "w0_route": True,
+                }
+            )
+
+    # Confidence band: bounded by event count and telemetry freshness
+    freshness_band = _get_freshness_band(state)
+    if len(events) < CONTRAST_MIN_EVENTS:
+        confidence_band = "LOW — insufficient baseline events"
+        confidence_level = 0.3
+    elif freshness_band == "STALE":
+        confidence_band = "LOW — telemetry stale"
+        confidence_level = 0.4
+    elif freshness_band == "AGED":
+        confidence_band = "MEDIUM — telemetry aged"
+        confidence_level = 0.6
+    else:
+        confidence_band = "HIGH — fresh telemetry, robust baseline"
+        confidence_level = 0.8
+
+    anomaly_count = sum(1 for v in contrast.values() if v.get("anomaly", False))
+
+    return {
+        "ok": True,
+        "authority": "REFLECT_ONLY",
+        "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
+        # ── Judgment ────────────────────────────────────────────────────────────
+        "severity_tier": severity,
+        "recommended_action": recommended_action,
+        "human_confirmation_required": severity in ("CONCERN", "CRITICAL"),
+        "coupled_verdict": "PROCEED"
+        if severity == "NORMAL"
+        else "CAUTION"
+        if severity == "WATCH"
+        else "HOLD",
+        # ── Contrast (C) ─────────────────────────────────────────────────────────
+        "contrast_findings": contrast,
+        "anomaly_count": anomaly_count,
+        # ── Baseline (P) ─────────────────────────────────────────────────────────
+        "baseline_summary": baseline,
+        "baseline_events_used": len(events),
+        "baseline_window_days": lookback_days,
+        "baseline_established": len(events) >= CONTRAST_MIN_EVENTS,
+        # ── Meaning (M) ─────────────────────────────────────────────────────────
+        "hypotheses": hypotheses,
+        # ── Guard (G) ────────────────────────────────────────────────────────────
+        "w_floor_flags": w_floor_flags,
+        # ── Metadata ─────────────────────────────────────────────────────────────
+        "confidence_band": confidence_band,
+        "confidence_level": confidence_level,
+        "freshness_band": freshness_band,
+        "truth_status": state.get("truth_status", "UNVERIFIED"),
+        "well_score": state.get("well_score", 50.0),
+        "floors_violated": state.get("floors_violated", []),
+        "metrics": state.get("metrics", {}),
+        "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        "boundary_notice": "Not diagnosis. Not therapy. Reflective contrast only. Arif remains final judge.",
+    }
 
 
 @mcp.tool()
