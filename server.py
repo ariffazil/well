@@ -9083,17 +9083,20 @@ def well_validate_vitality(
     ctx: Context | None = None,
 ) -> dict[str, Any]:
     """Ω-WELL-08: Validate vitality, readiness, and NIAT. (Floor compliance removed — arifOS adjudicates floors.)"""
-    return _to_federation_output(
-        well_888_judge(
-            mode=mode,
-            intent=intent,
-            context=context,
-            reversibility=reversibility,
-            task_description=task_description,
-            decision_class=decision_class,
-            ctx=ctx,
-        ),
+    internal = well_888_judge(
+        mode=mode,
+        intent=intent,
+        context=context,
+        reversibility=reversibility,
+        task_description=task_description,
+        decision_class=decision_class,
+        ctx=ctx,
+    )
+    from contracts.enrich_well import build_metabolic_output
+
+    return build_metabolic_output(
         tool_name="well_validate_vitality",
+        internal_result=internal,
     )
 
 
@@ -9146,9 +9149,12 @@ def well_assess_reliability(
     ctx: Context | None = None,
 ) -> dict[str, Any]:
     """Ω-WELL-10: Assess machine, tool, institution, and operational reliability."""
-    return _to_federation_output(
-        well_000_ops(mode=mode, ctx=ctx),
+    internal = well_000_ops(mode=mode, ctx=ctx)
+    from contracts.enrich_well import build_metabolic_output
+
+    return build_metabolic_output(
         tool_name="well_assess_reliability",
+        internal_result=internal,
     )
 
 
@@ -9226,11 +9232,17 @@ def well_reflect_intelligence(
     ctx: Context | None = None,
 ) -> dict[str, Any]:
     """Ω-WELL-11: Reflect cognition, reasoning, adaptation, coherence, and routing."""
-    return well_444_kernel(
+    internal = well_444_kernel(
         mode=mode,
         task_description=task_description,
         decision_class=decision_class,
         ctx=ctx,
+    )
+    from contracts.enrich_well import build_metabolic_output
+
+    return build_metabolic_output(
+        tool_name="well_reflect_intelligence",
+        internal_result=internal,
     )
 
 
