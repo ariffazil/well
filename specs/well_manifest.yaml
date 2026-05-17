@@ -1,0 +1,265 @@
+# WELL Canonical Tool Manifest
+# Version: 2026.05.16
+# Source: /root/WELL/specs/well_manifest.yaml
+# Authority: Arif Fazil
+# Motto: DITEMPA BUKAN DIBERI — Forged, Not Given.
+#
+# This manifest is the single source of truth for the WELL tool surface.
+# Updated: 2026-05-16
+#
+# Invariants:
+#   W0  — Arif remains final judge.
+#   W11 — Registry truth outranks documentation.
+#   W13 — If uncertain, say UNKNOWN.
+#
+# Tool categories:
+#   CANONICAL      — Primary implementation (use these)
+#   DEPRECATED     — Wrapper to canonical (still callable, emits advisory)
+#   ALIAS          — Internal routing alias (Ω-WELL namespace)
+#   AUTONOMIC      — Internal only, not on public MCP surface
+#   PHANTOM        — Listed in docs but not registered in runtime
+
+schema_version: "2026.05.16"
+
+# ── Canonical 13-Tool Spine (Ω-WELL Public Surface) ─────────────────────────
+#
+# These are the only tools agents should rely on.
+# All are advisory-only. arifOS adjudicates. Arif decides.
+canonical_tools:
+  - name: well_classify_substrate
+    omega: "Ω-01"
+    axis: identity
+    modes: [assert, classify, bootstrap, boundary, scan]
+    returns: substrate_class, vitality_mode, uncertainty, constraints
+    medical_boundary: NON_DIAGNOSTIC
+    authority: ADVISORY_ONLY
+
+  - name: well_trace_lineage
+    omega: "Ω-02"
+    axis: memory
+    modes: [recall, trend, context, ledger, chain]
+    returns: state_history, trends, lineage, vault_chain
+    medical_boundary: NON_DIAGNOSTIC
+    authority: ADVISORY_ONLY
+
+  - name: well_detect_boundary
+    omega: "Ω-03"
+    axis: gateway
+    modes: [classify, boundary, scan, status, connect, handoff, manifest]
+    returns: boundary_status, federation_state, A2A_status
+    medical_boundary: NON_DIAGNOSTIC
+    authority: ADVISORY_ONLY
+
+  - name: well_measure_gradient
+    omega: "Ω-04"
+    axis: evidence
+    modes: [evidence, quality, ingest]
+    returns: evidence_quality, freshness_band, corroboration_count
+    medical_boundary: NON_DIAGNOSTIC
+    authority: ADVISORY_ONLY
+
+  - name: well_assess_metabolism
+    omega: "Ω-05"
+    axis: mind
+    modes: [human, machine, coupled, bio, material, institution, info, symbolic]
+    returns: energy, dignity, vitality, substrate_assessment
+    medical_boundary: NON_DIAGNOSTIC
+    authority: ADVISORY_ONLY
+
+  - name: well_assess_homeostasis
+    omega: "Ω-06"
+    axis: heart
+    modes: [critique, empathize, dignity, redteam, maruah]
+    returns: human_impact_load, attack_surface, dignity_score
+    medical_boundary: NON_DIAGNOSTIC
+    authority: ADVISORY_ONLY
+
+  - name: well_check_repair
+    omega: "Ω-07"
+    axis: forge
+    modes: [precheck, mode, bandwidth, pressure, closeout]
+    returns: recommended_mode, fatigue_delta, repair_suggestions
+    medical_boundary: NON_DIAGNOSTIC
+    authority: ADVISORY_ONLY
+
+  - name: well_validate_vitality
+    omega: "Ω-08"
+    axis: judge
+    modes: [readiness, classify, niat, coupled]
+    returns: readiness_verdict, domain_verdict, confidence, risk_level
+    medical_boundary: NON_DIAGNOSTIC
+    authority: ADVISORY_ONLY
+    invariant: |
+      WHEN has_telemetry == false
+      THEN readiness.human MUST be UNKNOWN
+      AND readiness.human MUST NOT be OPTIMAL | GREEN | READY | HIGH
+
+  - name: well_assess_livelihood
+    omega: "Ω-09"
+    axis: livelihood
+    modes: [human, energy, time, role, meaning, dignity]
+    returns: livelihood_status, energy_balance, role_clarity, dignity_preservation
+    medical_boundary: NON_DIAGNOSTIC
+    authority: ADVISORY_ONLY
+
+  - name: well_assess_reliability
+    omega: "Ω-10"
+    axis: ops
+    modes: [health, vitals, machine, institutional]
+    returns: machine_verdict, latency_ms, tool_availability, compute_budget_pct
+    medical_boundary: NON_DIAGNOSTIC
+    authority: ADVISORY_ONLY
+
+  - name: well_compute_metabolic_flux
+    omega: "Ω-10b"
+    axis: ops
+    modes: [compute, status, trigger]
+    returns: metabolic_flux, verdict, compulsory_reallocation_signal
+    medical_boundary: NON_DIAGNOSTIC
+    authority: ADVISORY_ONLY
+
+  - name: well_guard_dignity
+    omega: "Ω-gateway"
+    axis: heart
+    modes: [scan, protect, detect]
+    returns: dignity_preservation_score, coercion_signals, shame_signals
+    medical_boundary: NON_DIAGNOSTIC
+    authority: ADVISORY_ONLY
+
+  - name: well_registry_status
+    omega: "Ω-ops"
+    axis: registry
+    modes: [status]
+    returns: intended_count, registered_count, callable_count, phantom_tools, verdict
+    medical_boundary: NON_DIAGNOSTIC
+    authority: ADVISORY_ONLY
+
+# ── Deprecated Tools (Callable Wrappers → Canonical) ───────────────────────────
+#
+# These tools still work but emit advisory banners.
+# Do NOT use in new integrations. Use canonical tools above.
+deprecated_tools:
+  - legacy: well_get_health
+    canonical: well_assess_reliability
+    mode: "health"
+    deprecation_epoch: "2026-Q3"
+    still_callable: true
+
+  - legacy: well_state
+    canonical: well_validate_vitality
+    mode: "state"
+    deprecation_epoch: "2026-Q3"
+    still_callable: true
+
+  - legacy: well_readiness
+    canonical: well_validate_vitality
+    mode: "readiness"
+    deprecation_epoch: "2026-Q3"
+    still_callable: true
+
+  - legacy: well_init
+    canonical: well_init
+    deprecation_epoch: "2026-Q3"
+    still_callable: true
+
+  - legacy: well_machine_state
+    canonical: well_assess_reliability
+    mode: "machine"
+    deprecation_epoch: "2026-Q3"
+    still_callable: true
+
+  - legacy: well_get_packet
+    canonical: well_assess_livelihood
+    mode: "packet"
+    deprecation_epoch: "2026-Q3"
+    still_callable: true
+
+  - legacy: well_medical_boundary
+    canonical: well_assess_reliability
+    mode: "health"
+    deprecation_epoch: "2026-Q3"
+    still_callable: true
+
+  - legacy: well_assess_governance
+    canonical: well_assess_reliability
+    mode: "health"
+    deprecation_epoch: "2026-Q3"
+    still_callable: true
+
+# ── Ω-WELL Aliases (Internal Routing Only) ───────────────────────────────────
+#
+# These are NOT public surface. They route to canonical implementations.
+# Not callable directly by external agents unless somatic boundary is off.
+aliases:
+  well_000_init: well_init
+  well_111_sense: well_classify_substrate
+  well_222_fetch: well_measure_gradient
+  well_333_mind: well_assess_metabolism
+  well_444_kernel: well_assess_livelihood
+  well_555_memory: well_trace_lineage
+  well_666_heart: well_assess_homeostasis
+  well_777_forge: well_check_repair
+  well_888_judge: well_validate_vitality
+  well_999_vault: well_assess_reliability
+  well_000_ops: well_assess_reliability
+  well_444_reply: well_assess_livelihood
+  well_444_gateway: well_detect_boundary
+
+# ── No-Telemetry Invariant ─────────────────────────────────────────────────────
+#
+# Critical W-Invariant for all readiness tools:
+#   WHEN has_telemetry == false
+#   THEN human_readiness MUST be UNKNOWN
+#   AND human_readiness MUST NOT be: OPTIMAL | GREEN | READY | HIGH
+#
+# This prevents WELL from fabricating biological confidence.
+telemetry_invariant:
+  rule_id: W-INV-T1
+  condition: has_verified_telemetry == false
+  then:
+    human_readiness: UNKNOWN
+    confidence: LOW
+    risk_level: UNKNOWN
+    recommended_mode: draft_only
+    human_confirmation_required: true
+  never:
+    - OPTIMAL
+    - GREEN
+    - READY
+    - HIGH
+  applies_to:
+    - well_validate_vitality
+    - well_assess_metabolism
+    - well_readiness
+    - well_check_repair
+
+# ── Federation Output Schema ───────────────────────────────────────────────────
+#
+# Every public WELL tool MUST return this schema:
+output_schema:
+  required_fields:
+    - domain
+    - authority
+    - medical_boundary
+    - final_authority
+    - evidence_status
+    - confidence
+    - recommended_mode
+    - next_safe_action
+  optional_fields:
+    - well_score
+    - readiness
+    - risk_level
+    - assumptions
+  forbidden_fields:
+    - diagnosis
+    - prescription
+    - BLOCKED (use ADVISORY only)
+    - SEAL | HOLD | VOID (arifOS owns constitutional verdicts)
+
+# ── 168-Hard Ceiling ──────────────────────────────────────────────────────────
+#
+# If state telemetry age > 168 hours:
+#   → WELL CANNOT infer human readiness
+#   → MUST return DO_NOT_INFER + human_confirmation_required = true
+state_age_ceiling_hours: 168

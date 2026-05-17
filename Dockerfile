@@ -8,7 +8,7 @@ WORKDIR /app
 COPY --from=ghcr.io/astral-sh/uv:0.6.16 /uv /usr/local/bin/uv
 
 # Copy project files. state.json and events.jsonl are mutable runtime state.
-COPY pyproject.toml server.py vault_bridge.py schema.json ./
+COPY pyproject.toml server.py schema.json ./
 COPY .well-known ./.well-known
 
 # Install dependencies
@@ -26,6 +26,7 @@ ENV WELL_EVENTS_PATH=/app/events.jsonl
 ENV HOST=0.0.0.0
 ENV PORT=8083
 ENV LOG_LEVEL=info
+ENV FEDERATION_SOMATIC_BOUNDARY=1
 
 EXPOSE 8083
 
