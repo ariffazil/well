@@ -9,6 +9,8 @@ The human bio-telemetry and metabolic state organ within the arifOS federation. 
 
 **WELL owns the SUBSTRATE — the living layer that keeps the human in the loop.**
 
+> **MCP Surface (live test 2026-05-17):** 15 tools — `mcp_health_check` + 14 Ω-WELL tools. Source has 81 `@mcp.tool` decorators; only 15 exposed on public surface. Internal aliases (well_state, well_log, well_readiness, etc.) are hidden from MCP surface.
+
 ## 📦 Ownership
 
 - **Owns**: Human biometric readiness (H-WELL), machine substrate telemetry (M-WELL), coupled vitality state (C-WELL), governance telemetry (G-WELL).
