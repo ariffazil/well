@@ -7696,6 +7696,7 @@ def well_444_reply(
 # AAA: A2A Gateway + Agent Card Dispatch
 
 
+@mcp.tool()  # Alias — deprecated; use well_detect_boundary / AAA gateway status
 def well_444_gateway(
     mode: str = "status",
     peer: str | None = None,
