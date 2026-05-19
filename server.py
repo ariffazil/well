@@ -41,6 +41,9 @@ WELL_ENVIRONMENTS = {
     "TEST": "test_environment",
     "DEV": "development",
 }
+
+# ── Force PROD environment unless explicit ──────────────────────────────────
+CURRENT_ENV = _os.environ.get("WELL_ENVIRONMENT", "PROD")
 WELL_TELEMETRY_STATUS = {
     "LIVE": "fresh data, within expected interval",
     "STALE": "older than 24h, verify before high-stakes use",
@@ -760,11 +763,26 @@ def _compute_metabolic_flux(state: dict[str, Any]) -> dict[str, Any]:
     # Reallocation signal
     compulsory = flux >= FLUX_THRESHOLDS["COMPULSORY_REALLOCATION"]
 
+    # ── False-calm guard ──────────────────────────────────────────────────────────
+    # When telemetry is absent, flux=0.0 + verdict=NOMINAL looks healthy but is
+    # actually unmeasured. We expose telemetry_status and calm_state explicitly.
+    if _m_machine_absent and _cognitive_absent:
+        telemetry_status = "absent"
+        calm_state = "unknown"
+        # Override verdict to prevent false-calm interpretation
+        verdict = "VOID_TELEMETRY"
+    elif _m_machine_absent or _cognitive_absent:
+        telemetry_status = "partial"
+        calm_state = "assumed"
+    else:
+        telemetry_status = "present"
+        calm_state = "observed"
+
     return {
         "ok": True,
         "metabolic_flux": flux,
         "verdict": verdict,
-        "verdict_message": FLUX_VERDICTS[verdict],
+        "verdict_message": FLUX_VERDICTS.get(verdict, "Telemetry status unknown — cannot assess metabolic state."),
         "components": {
             "cognitive_entropy": cognitive_entropy,
             "machine_entropy": machine_entropy,
@@ -782,6 +800,9 @@ def _compute_metabolic_flux(state: dict[str, Any]) -> dict[str, Any]:
         "reallocation_target": "441_SURPRISE" if compulsory else None,
         "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
         "data_quality": data_quality,
+        "telemetry_status": telemetry_status,
+        "calm_state": calm_state,
+        "false_calm_warning": calm_state == "unknown" and flux < FLUX_THRESHOLDS["WARNING"],
     }
 
 
@@ -6275,6 +6296,42 @@ WELL_BOUNDARY_NOTICE = (
 )
 
 
+# ── Constitutional verdict → advisory signal mapping ───────────────────────────
+# WELL is advisory-only (biological_substrate). It observes, assesses, and signals
+# — but never adjudicates. All legacy verdicts are translated into advisory signals.
+_WELL_ADVISORY_SIGNAL_MAP: dict[str, str] = {
+    "SEAL": "stable_signal",
+    "PASS": "stable_signal",
+    "WELL_PASS": "stable_signal",
+    "PROVISIONAL": "recovery_needed",
+    "HOLD": "readiness_low",
+    "WARN": "unsafe_to_interpret",
+    "VOID": "unsafe_to_interpret",
+    "VOID_TELEMETRY": "unsafe_to_interpret",
+    "UNKNOWN": "insufficient_context",
+    "FAIL": "unsafe_to_interpret",
+    "NOMINAL": "stable_signal",
+    "WARNING": "readiness_low",
+    "COMPULSORY_REALLOCATION": "readiness_low",
+    "SYSTEM_HOLD": "unsafe_to_interpret",
+    "888-HOLD": "readiness_low",
+    "QUALIFY": "recovery_needed",
+    "SABAR": "recovery_needed",
+    "CLEAN": "stable_signal",
+    "DIRTY": "unsafe_to_interpret",
+    "HEALTHY": "stable_signal",
+    "FRAGMENTED": "unsafe_to_interpret",
+    "PRESERVED": "stable_signal",
+    "PAUSED": "readiness_low",
+    "ADVISORY_READY": "stable_signal",
+}
+
+
+def _verdict_to_signal(verdict: str) -> str:
+    """Map any internal verdict string to a WELL advisory signal."""
+    return _WELL_ADVISORY_SIGNAL_MAP.get(str(verdict).upper(), "insufficient_context")
+
+
 def _omega_well_output(
     ok: bool,
     stage: str,
@@ -6285,30 +6342,63 @@ def _omega_well_output(
     federation_state: dict[str, Any] | None = None,
     constitutional_compliance: dict[str, Any] | None = None,
     error: str | None = None,
+    telemetry_status: str = "unknown",
 ) -> dict[str, Any]:
-    """Canonical Ω-WELL output format — compatible with arifOS + AAA."""
+    """Canonical Ω-WELL output format — compatible with arifOS + AAA.
+
+    NOTE: WELL is advisory-only. The `verdict` field is preserved for backward
+    compatibility but agents MUST use `signal` for all decision logic.
+    `calm_state` guards against false-calm (metrics stable but telemetry absent).
+    """
+    signal = _verdict_to_signal(verdict)
+
+    # False-calm guard: if telemetry is absent/stale but signal says stable,
+    # force signal to indicate the uncertainty.
+    calm_state = "observed"
+    if telemetry_status in ("absent", "unknown"):
+        calm_state = "unknown"
+        if signal == "stable_signal":
+            signal = "insufficient_context"
+    elif telemetry_status == "stale":
+        calm_state = "assumed"
+        if signal == "stable_signal":
+            signal = "recovery_needed"
+
     out: dict[str, Any] = {
         "ok": ok,
+        "signal": signal,
+        "calm_state": calm_state,
+        "telemetry_status": telemetry_status,
+        "constitutional_boundary_notice": (
+            "WELL is advisory-only. It observes biological substrate state and signals "
+            "readiness — but NEVER adjudicates constitutional verdicts. "
+            "Use `signal` (not `verdict`) for all downstream logic. "
+            "arifOS 888_JUDGE is the sole constitutional authority."
+        ),
         "Ω": {
             "stage": stage,
             "lane": lane,
             "mode": mode,
+            # verdict kept for backward compat — agents should ignore
             "verdict": verdict,
+            "signal": signal,
         },
         "arifos": {
             "stage": stage,
             "lane": lane,
+            # verdict kept for backward compat — agents should ignore
             "verdict": verdict,
+            "signal": signal,
             "compliance": constitutional_compliance or {},
         },
         "aaa": {
             "federation_state": federation_state or {},
             "risk_tier": "T0"
-            if verdict in ("SEAL", "PASS")
+            if signal == "stable_signal"
             else "T1"
-            if verdict == "PROVISIONAL"
+            if signal == "recovery_needed"
             else "T3"
-            if verdict == "HOLD"
+            if signal == "readiness_low"
             else "T5",
             "agent_status": "active" if ok else "degraded",
         },
@@ -6343,20 +6433,34 @@ def _to_federation_output(
 
     ok = data.get("ok", True)
     omega = data.get("Ω", {})
+    # Prefer advisory signal over constitutional verdict
+    signal = omega.get("signal") if isinstance(omega, dict) else None
+    if signal is None:
+        signal = data.get("signal", None)
     verdict = omega.get("verdict") if isinstance(omega, dict) else None
     if verdict is None:
         verdict = data.get("verdict", "UNKNOWN")
+    # If no signal but we have a verdict, derive signal (covers raw flux data paths)
+    if signal is None and verdict:
+        signal = _verdict_to_signal(verdict)
 
+    # Use signal for uncertainty mapping if available, else fall back to verdict
+    _uncertainty_key = signal if signal else verdict
     uncertainty_map = {
+        "stable_signal": 0.05,
         "SEAL": 0.05,
         "PASS": 0.05,
+        "recovery_needed": 0.25,
         "PROVISIONAL": 0.25,
+        "readiness_low": 0.50,
         "HOLD": 0.50,
+        "unsafe_to_interpret": 0.75,
         "WARN": 0.75,
         "VOID": 0.90,
+        "insufficient_context": 0.50,
         "UNKNOWN": 0.50,
     }
-    uncertainty = uncertainty_map.get(verdict, 0.50)
+    uncertainty = uncertainty_map.get(_uncertainty_key, 0.50)
     if not ok and uncertainty < 0.75:
         uncertainty = 0.75
 
@@ -6367,7 +6471,7 @@ def _to_federation_output(
         observation = {
             k: v
             for k, v in data.items()
-            if k not in ("ok", "Ω", "arifos", "aaa", "w0", "verdict", "error")
+            if k not in ("ok", "Ω", "arifos", "aaa", "w0", "verdict", "signal", "error")
         }
 
     constraints = [
@@ -6379,21 +6483,31 @@ def _to_federation_output(
         constraints.append(f"error: {data['error']}")
 
     recommended_next_organ = None
-    if verdict in ("HOLD", "WARN", "VOID") or not ok:
+    if signal in ("readiness_low", "unsafe_to_interpret") or verdict in ("HOLD", "WARN", "VOID") or not ok:
         recommended_next_organ = "arifOS"
     elif tool_name in ("well_assess_metabolism", "well_assess_livelihood"):
         recommended_next_organ = "WEALTH"
     elif tool_name in ("well_compute_metabolic_flux", "well_check_repair"):
         recommended_next_organ = "A-FORGE"
 
-    return {
+    out = {
         "observation": observation,
         "uncertainty": uncertainty,
+        "signal": signal,
         "constraints": constraints,
         "recommended_next_organ": recommended_next_organ,
         # P0-4: Non-medical boundary — required on all human-facing outputs
         "boundary_notice": WELL_BOUNDARY_NOTICE,
     }
+    # Propagate false-calm guard fields if present
+    if "telemetry_status" in data:
+        out["telemetry_status"] = data["telemetry_status"]
+    if "calm_state" in data:
+        out["calm_state"] = data["calm_state"]
+    if data.get("false_calm_warning"):
+        out["false_calm_warning"] = True
+        constraints.append("FALSE_CALM: metabolic_flux is low but telemetry is absent — do not trust this reading")
+    return out
 
 
 # ── Ω-WELL-00: INIT (000) ─────────────────────────────────────────────────────
@@ -10631,13 +10745,13 @@ if __name__ == "__main__":
             state_age_hours = None
         # truth_status: TEST overrides everything; else derive from freshness
         raw_truth = state.get("truth_status", "UNVERIFIED")
-        environment = state.get("environment", "PROD")
-        if raw_truth in ("TEST", "VOID"):
+        environment = CURRENT_ENV
+        if raw_truth in ("VOID",):
             truth_status = raw_truth
         elif environment == "TEST":
             truth_status = "TEST"
         else:
-            # Derive from freshness band
+            # Derive from freshness band for PROD
             truth_status = {
                 "FRESH": "VERIFIED",
                 "CURRENT": "VERIFIED",
@@ -10696,3 +10810,9 @@ if __name__ == "__main__":
     uvicorn.run(
         app, host=host, port=port, log_level=_os.environ.get("LOG_LEVEL", "info")
     )
+
+
+@mcp.tool()
+def mcp_health_check() -> dict[str, Any]:
+    """Basic L1 liveness check for WELL MCP server."""
+    return {"status": "healthy", "service": "well-mcp", "ok": True}
