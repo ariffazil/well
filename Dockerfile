@@ -13,7 +13,7 @@ COPY .well-known ./.well-known
 COPY contracts ./contracts/
 
 # Install dependencies
-RUN uv pip install --system fastmcp>=2.0 uvicorn \
+RUN uv pip install --system "fastmcp>=3.2.4,<4.0" uvicorn \
     && python -c 'import json, datetime; state = {"timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(), "identity": "WELL", "role": "Body / Human Intelligence", "authority": "REFLECT_ONLY", "environment": "PROD", "delta_s": 0.0, "peace2": 1.0, "kappa_r": 0.95, "rasa": True, "amanah": "LOCK", "operator_id": "arif", "truth_status": "UNVERIFIED", "metrics": {}, "well_score": 50, "floors_violated": []}; open("state.json", "w").write(json.dumps(state, indent=2)); open("events.jsonl", "a").close()'
 
 # Create non-root user for runtime security
