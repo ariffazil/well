@@ -95,11 +95,40 @@ canonical_tools:
     requires_ack: false
     description: "Ω-10: Machine/tool/infra reliability + medical boundary (modes: health|consent|medical|vitals)"
 
+  - tool: well_compute_metabolic_flux
+    type: reader
+    mutation: false
+    irreversible: false
+    requires_ack: false
+    description: "Ω-10b: Unified thermodynamic entropy rate (modes: compute|status|trigger)"
+
+  - tool: well_guard_dignity
+    type: reflector
+    mutation: false
+    irreversible: false
+    requires_ack: false
+    description: "Ω-12: Soul, personhood, meaning, symbolic boundaries (modes: dignity|critique|guard)"
+
+  - tool: well_system_registry_status
+    type: reader
+    mutation: false
+    irreversible: false
+    requires_ack: false
+    description: "Registry truth probe — somatic surface vs autonomic internals"
+
+  - tool: well_registry_status
+    type: reader
+    mutation: false
+    irreversible: false
+    requires_ack: false
+    description: "Registry truth diagnostic — blueprint canonical format"
+
   # REMOVED per orthogonal MCP alignment (2026-05-14):
   # well_reflect_intelligence  → REFLECT/routing (arifOS 444_KERNEL)
-  # well_guard_dignity         → CRITIQUE/meaning (arifOS 666_HEART)
   # well_anchor_evidence       → SEAL/vault (arifOS 999_VAULT)
   # These tools are now autonomic-only (not on public MCP surface).
+  # NOTE: well_guard_dignity was promoted back to somatic (2026-05-16) — dignity
+  # protection is WELL's substrate responsibility, not arifOS constitutional routing.
 
 # ── G-WELL Governance Abstraction Tools (Machine Governance Mirror) ────────────
 # REMOVED per orthogonal MCP alignment (2026-05-14):

@@ -10538,6 +10538,7 @@ _WELL_SOMATIC_MANIFEST: list[dict[str, object]] = [
     {"name": "well_compute_metabolic_flux", "axis": "vitality", "expose": True},
     {"name": "well_guard_dignity", "axis": "critique", "expose": True},
     {"name": "well_system_registry_status", "axis": "identity", "expose": True},
+    {"name": "well_registry_status", "axis": "identity", "expose": True},
 ]
 
 _WELL_AUTONOMIC_TOOLS: list[dict[str, object]] = [
@@ -10813,7 +10814,3 @@ if __name__ == "__main__":
     )
 
 
-@mcp.tool()
-def mcp_health_check() -> dict[str, Any]:
-    """Basic L1 liveness check for WELL MCP server."""
-    return {"status": "healthy", "service": "well-mcp", "ok": True}
