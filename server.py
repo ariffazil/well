@@ -5405,7 +5405,7 @@ def _well_classify_substrate_impl(
         "endpoint",
         "forge",
         "well-mcp",
-        "arif",
+        "arifmcp",
         "geox",
         "wealth",
         "apex",  # was hermes — renamed 2026-05-16
@@ -5922,17 +5922,35 @@ def well_livelihood_dignity_check(
     """
     Assess whether survival preserves dignity.
     Detects coercion, extraction, and dignity violations.
-    """
-    if dignity_preservation is not None:
-        dignity_preservation = _clamp(dignity_preservation, 0, 10)
 
+    Accepts dignity_preservation in 0-1 scale (standard for WELL tools).
+    Falls back to state.json metrics if not provided.
+    """
     coercion = coercion_signals or []
 
+    # Resolve dignity_preservation: explicit value > state fallback > unknown
+    if dignity_preservation is None:
+        state = _load_state()
+        metrics = state.get("metrics", {})
+        cognitive = metrics.get("cognitive", {})
+        # Try to derive from cognitive metrics as proxy
+        derived = cognitive.get("dignity_preservation")
+        if derived is not None:
+            dignity_preservation = derived
+
+    # Normalize: if value looks like 0-1 scale (other WELL tools), convert to 0-10
     if dignity_preservation is not None:
-        if dignity_preservation >= 7 and not coercion:
+        if dignity_preservation <= 1.0:
+            # 0-1 scale → 0-10 scale
+            dignity_preservation_10 = dignity_preservation * 10.0
+        else:
+            dignity_preservation_10 = dignity_preservation
+        dignity_preservation_10 = _clamp(dignity_preservation_10, 0, 10)
+
+        if dignity_preservation_10 >= 7 and not coercion:
             status = "PRESERVED"
             verdict = "Dignity is preserved. No coercion detected."
-        elif dignity_preservation >= 4 and len(coercion) <= 1:
+        elif dignity_preservation_10 >= 4 and len(coercion) <= 1:
             status = "AT_RISK"
             verdict = "Dignity at risk. Coercion or extraction signals present."
         else:
@@ -5941,18 +5959,20 @@ def well_livelihood_dignity_check(
                 "Dignity violation detected. Immediate boundary restoration required."
             )
     else:
+        dignity_preservation_10 = None
         status = "UNKNOWN"
         verdict = "Insufficient data for dignity assessment."
 
     return {
         "ok": True,
         "dignity_preservation": dignity_preservation,
+        "dignity_preservation_10": dignity_preservation_10,
         "coercion_signals": coercion,
         "survival_quality": survival_quality,
         "status": status,
         "verdict": verdict,
         "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
-        "human_judge_required": True,
+        "human_judge_required": status == "UNKNOWN",
     }
 
 
@@ -6618,15 +6638,17 @@ def well_111_sense(
             },
         )
     if mode == "boundary":
-        if not subject or not evaluation_intent:
+        if not subject:
             return _omega_well_output(
                 ok=False,
                 stage="111_SENSE",
                 lane="AGI",
                 mode="boundary",
                 verdict="HOLD",
-                error="subject and evaluation_intent required",
+                error="subject required for boundary detection",
             )
+        if not evaluation_intent:
+            evaluation_intent = "vitality"  # default intent
         # Auto-classify first
         cls = _well_classify_substrate_impl(
             subject=subject, description=description, ctx=ctx
