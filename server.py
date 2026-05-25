@@ -9105,9 +9105,9 @@ def well_machine_health_probe(
 
     probe_targets = targets or ["all"]
     known_services = {
-        "arifos": {"port": 8080, "type": "http"},
-        "geox": {"port": 8081, "type": "http"},
-        "wealth": {"port": 8082, "type": "http"},
+        "arifos": {"port": 8088, "type": "http"},
+        "geox": {"port": 18081, "type": "http"},
+        "wealth": {"port": 18082, "type": "http"},
         "well": {"port": 8083, "type": "http"},
         "aaa": {"port": 3001, "type": "http"},
         "apex": {"port": 3002, "type": "http"},  # was hermes — renamed 2026-05-16
