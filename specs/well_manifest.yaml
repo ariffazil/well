@@ -134,6 +134,14 @@ canonical_tools:
     medical_boundary: NON_DIAGNOSTIC
     authority: ADVISORY_ONLY
 
+  - name: well_system_registry_status
+    omega: "Ω-sys"
+    axis: registry
+    modes: [status]
+    returns: system_status, service_health, version, commit, uptime
+    medical_boundary: NON_DIAGNOSTIC
+    authority: ADVISORY_ONLY
+
 # ── Deprecated Tools (Callable Wrappers → Canonical) ───────────────────────────
 #
 # These tools still work but emit advisory banners.
