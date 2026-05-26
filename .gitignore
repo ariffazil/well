@@ -20,3 +20,7 @@ quarantine/
 # Backup files (any pattern)
 *.bak*
 *.backup*
+
+# Runtime data
+data/
+telemetry/
