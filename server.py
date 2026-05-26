@@ -1338,11 +1338,11 @@ def mcp_health_check() -> dict:
     reliability["schema_version"] = "2026.05.15"
     reliability["read_only"] = True
     reliability["final_authority"] = "ARIF"
-    reliability["tool_count"] = (len(SOMATIC_TOOLS),)  # was hardcoded 79; now dynamic
+    reliability["tool_count"] = len(SOMATIC_TOOLS)  # was hardcoded 79; now dynamic
     reliability["mcp_registered_tools"] = (
-        13,
-    )  # actual MCP tools/list count post-boundary
-    reliability["canonical_tools"] = (len(SOMATIC_TOOLS),)  # SOMATIC_TOOLS set size
+        13  # actual MCP tools/list count post-boundary
+    )
+    reliability["canonical_tools"] = len(SOMATIC_TOOLS)  # SOMATIC_TOOLS set size
     return reliability
 
 
