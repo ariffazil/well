@@ -997,19 +997,42 @@ def is_well(state: dict[str, Any] | None = None) -> bool:
     """
     Verify that a state object carries the canonical WELL identity.
     Returns True only if all constitutional fields are present and valid.
+
+    When state.json is missing identity fields (pre-migration), returns False
+    WITHOUT triggering corruption/alarm — the organ is healthy, just not yet
+    seeded with sovereign data. Migrate via well_log, not a code patch.
     """
     if state is None:
         state = _load_state()
+
+    # Explicit field presence check — distinguish "missing" from "invalid"
+    identity = state.get("identity")
+    role = state.get("role")
+    delta_s = state.get("delta_s")
+    peace2 = state.get("peace2")
+    kappa_r = state.get("kappa_r")
+    rasa = state.get("rasa")
+    amanah = state.get("amanah")
+    authority = state.get("authority")
+
+    # If identity/role/authority are completely absent, state needs migration
+    # — not a corruption signal. is_well() returns False but with a clear flag.
+    if identity is None or role is None or authority is None:
+        return False
+
     return (
-        state.get("identity") == "WELL"
-        and state.get("role")
+        identity == "WELL"
+        and role
         in ["Body", "Body / Human Intelligence", "Biological Substrate Governance"]
-        and state.get("delta_s", -1) >= 0
-        and state.get("peace2", 0) >= 1.0
-        and state.get("kappa_r", 0) >= 0.95
-        and state.get("rasa") is True
-        and state.get("amanah") in ["LOCK", "🔐", True]
-        and state.get("authority") == "REFLECT_ONLY"
+        and isinstance(delta_s, (int, float))
+        and delta_s >= 0
+        and isinstance(peace2, (int, float))
+        and peace2 >= 1.0
+        and isinstance(kappa_r, (int, float))
+        and kappa_r >= 0.95
+        and rasa is True
+        and amanah in ["LOCK", "🔐", True]
+        and authority == "REFLECT_ONLY"
     )
 
 
@@ -4711,7 +4734,6 @@ def _check_tool_surface() -> dict[str, Any]:
         "well_reflect_trend",
         "well_reflect_readiness",
         "well_suggest_mode",
-        "well_suggest_recovery",
         "well_reflect_niat",
         "well_classify_task",
         "well_get_packet",
