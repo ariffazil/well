@@ -10,6 +10,7 @@ from __future__ import annotations
 
 try:
     import uvloop
+
     uvloop.install()
 except ImportError:
     pass  # Windows / dev fallback
@@ -1285,6 +1286,7 @@ def _mcp_health_check_impl() -> dict:
         "schema_version": "2026.05.15",
         "read_only": True,
         "final_authority": "ARIF",
+        "tool_count": 79,
         "identity_valid": well_ok,
         "latency_ms": m_machine.get("latency_ms", 200),
         "tool_availability": m_machine.get("tool_availability", 1.0),
@@ -10856,6 +10858,7 @@ if __name__ == "__main__":
                 "verdict": verdict,
                 "service": "well-mcp",
                 "version": "2026.05.15-ΩWELL+GWELL+FEDERATION",
+                "tool_count": 79,  # canonical tool surface — kept in sync by governance
                 # substrate advisory fields — consumed by arifOS _read_well_substrate() HTTP fallback
                 "well_score": float(state.get("well_score", 50.0)),
                 "floors_violated": state.get("floors_violated") or [],
