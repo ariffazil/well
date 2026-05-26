@@ -20,15 +20,14 @@
 
 ## 1. CURRENT FOCUS (INSTRUCTION POINTER)
 
-- 75-tool MCP surface (full boundary-off mode). 13 Ω-WELL canonical tools. 13 Ω-WELL polymorphic stack (000→999). 3 G-WELL governance tools.
+- 13-tool MCP surface (SOMATIC_TOOLS boundary enforced). 13 Ω-WELL canonical tools. 40 internal helpers stripped at startup.
 - WELL→arifOS bridge live: `_read_well_substrate()` in arifOS judge.py reads WELL state for every verdict. Multi-path file + HTTP fallback.
-- Cognitive clarity surfaced in `mcp_health_check`.
+- Cognitive clarity surfaced in `well_assess_reliability(mode="health")`.
 - MCP identity surface: `.well-known/agent-card.json` + `.well-known/mcp/server.json`.
-- G-WELL Registry Truth Gate: all 11 public tools emit federation-standard output.
 - Schema gate active: Pydantic validation catches invalid inputs.
 - Known gap: No sensor integration (H-WELL runs on self-reported inputs). Phase 5 is wearable/biomarker.
-- WELL is **NOT DEPLOYED** on the VPS. `compose/docker-compose.yml` defines the service but no container is running.
-- Tests: All audit tests pass. All Ω-WELL aliases present.
+- WELL is **DEPLOYED** on bare-metal systemd (port 18083). `well.service` active. No Docker container.
+- Tests: All audit tests pass.
 
 
 ## 2. OPERATIONAL MANDATE
@@ -52,7 +51,7 @@
 ## 4. ACTIVE TOPOLOGY (MEMORY MAP)
 
 - CRITICAL_FILES:
-  - `server.py` → 75-tool FastMCP server. Entry point.
+  - `server.py` → 53-@mcp.tool FastMCP server (~11,243 lines). Entry point.
   - `vault_bridge.py` → VAULT999 append-only ledger client.
   - `gate/well_gate.py` → Pre-JUDGE biological readiness mirror.
   - `.well-known/agent-card.json` → AFWELL MCP identity.
@@ -71,9 +70,8 @@
 
 ## 5. INTERRUPTS & FAULTS (BLOCKERS)
 
-- SOFT_FRICTION: WELL is not deployed. No container is running. `STATUS.md` confirms ⛔ NOT DEPLOYED.
-- SOFT_FRICTION: 15 deprecated tools still exposed. Removal window: 2 epochs. Intentionally retained for backward compat.
-- HARD_BLOCK: None. All tests pass. 75-tool surface verified.
+- SOFT_FRICTION: WELL is deployed and healthy. No container (bare-metal systemd).
+- HARD_BLOCK: None. All tests pass. 13-tool surface verified.
 - KNOWN_GAP: No biometric sensor integration. H-WELL runs on self-reported data. Phase 5 (wearable/HRV/glucose) not built.
 
 
@@ -90,7 +88,8 @@
 |---------|--------|---------|
 | `python server.py` | ✅ | Start WELL MCP server |
 | `python test_well.py` | ✅ | All audit tests pass |
-| `./deploy.sh` | ⛔ NOT DEPLOYED | WELL defined in compose but not running |
+| `systemctl restart well` | ✅ | Restart after code changes |
+| `./deploy.sh` | ⛔ STALE | Docker-era script; WELL now runs bare-metal via systemd |
 
 
 ## 8. PRIVILEGE ESCALATION (888 HOLD)
@@ -103,7 +102,7 @@
 
 ## 9. PIPELINE PREFETCH (NEXT MOVES)
 
-- [ ] Deploy WELL to VPS (decision pending) → push to GHCR → `docker compose up -d` or systemd service
+- [x] Deploy WELL to VPS — bare-metal systemd operational ✅ (2026-05-26)
 - [ ] Freeze `substrate_evidence.schema.json` (P1)
 - [ ] Wire WELL clarity score into arifOS JUDGE gating (P1)
 - [ ] Multi-operator panel for when Arif offline (P2)
