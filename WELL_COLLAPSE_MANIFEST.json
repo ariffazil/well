@@ -1,0 +1,67 @@
+{
+  "manifest": "WELL_COLLAPSE_MANIFEST",
+  "version": "PHOENIX-73F",
+  "date": "2026-05-26",
+  "commit": "aa7b7b5",
+  "tag": "well-phoenix73f-1c",
+  "commits": ["63138ec5", "aa7b7b5", "3f1fa9d1"],
+  "counts": {
+    "total_original": 79,
+    "hidden_internal_1A": 28,
+    "mode_failclosed_1B": 3,
+    "absorbed_1C": 3,
+    "stage_aliases_pending_step2": 13,
+    "mcp_facing_current": 51,
+    "mcp_facing_target": 9,
+    "hold_items": 11,
+    "capability_loss": 0
+  },
+  "steps": {
+    "1A": {"status": "done", "internal_helpers_hidden": 28},
+    "1B": {"status": "done", "mode_fail_closed": 3},
+    "1C": {
+      "status": "done",
+      "absorptions": [
+        "well_contrast_report -> well_state(include=trend)",
+        "well_fatigue_accumulator(mode=check) -> well_assess_homeostasis(mode=fatigue)",
+        "mcp_health_check -> well_assess_reliability(mode=health)"
+      ]
+    },
+    "2": {"status": "pending", "stage_aliases_hidden": 13},
+    "deploy": {"status": "pending", "tool_count": "TBD"},
+    "888": {
+      "status": "pending",
+      "mode_fixes": [
+        "well_assess_livelihood",
+        "well_assess_metabolism",
+        "well_guard_dignity"
+      ],
+      "read_vs_write_audit": "pending"
+    }
+  },
+  "hold_register": "WELL_888_HOLD_REGISTER.md",
+  "tool_surface_after_1C": [
+    "well_assess_homeostasis",
+    "well_assess_livelihood",
+    "well_assess_metabolism",
+    "well_assess_reliability",
+    "well_check_repair",
+    "well_guard_dignity",
+    "well_validate_vitality",
+    "well_contrast_report",
+    "well_fatigue_accumulator",
+    "mcp_health_check",
+    "well_state",
+    "well_log"
+  ],
+  "invariants": {
+    "sovereignty": "PRESERVED",
+    "pipeline_order": "PRESERVED",
+    "data_sensitivity": "PRESERVED",
+    "authority_grammar": "PRESERVED",
+    "w0_mirror_not_veto": "PRESERVED",
+    "five_stage_pipeline": "PRESERVED"
+  },
+  "constitutional_tests": "tests/test_well_constitutional.md",
+  "seal": "PENDING — SHA256 after Step 2 + HOLD resolution"
+}
