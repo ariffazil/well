@@ -23,6 +23,9 @@ from typing import Any
 
 from fastmcp import FastMCP, Context
 
+# ── Paths (defined before use in fallback import) ───────────────────────────────
+WELL_DIR = Path(__file__).parent
+
 # ── Organ Governance (arifOS F1-F13) ─────────────────────────────────────────
 try:
     from organ_governance import check_governance
@@ -32,10 +35,9 @@ except ImportError:
     _sys.path.insert(0, str(WELL_DIR))
     from organ_governance import check_governance
 
-# ── Paths ──────────────────────────────────────────────────────────────────────
+# ── Paths (re-export for external use) ────────────────────────────────────────
 import os as _os
 
-WELL_DIR = Path(__file__).parent
 STATE_PATH = Path(_os.environ.get("WELL_STATE_PATH", "/root/WELL/state.json"))
 EVENTS_PATH = Path(_os.environ.get("WELL_EVENTS_PATH", "/root/WELL/events.jsonl"))
 VAULT_LEDGER_PATH = Path(
@@ -4440,7 +4442,7 @@ def well_forge_precheck(
         avoid.append("complex_architecture")
 
     # Human reconfirmation threshold
-    human_confirmation = (
+    human_confirmation = bool(
         h_verdict in ("DEGRADED", "LOW_CAPACITY")
         or coupled_risk in ("RED", "AMBER")
         or (decision_class and decision_class >= "C4")
@@ -4958,7 +4960,7 @@ def well_check_invariant(
 
 # ── WELL-04 well_log_signal ───────────────────────────────────────────────────
 # internal — not MCP-facing (collapsed 2026-05-26)
-def well_log_signal(
+async def well_log_signal(
     domain: str = "human",
     signal: str = "",
     value: float | str | None = None,
@@ -4979,7 +4981,7 @@ def well_log_signal(
     # Session signals
     if domain == "session":
         if signal == "session_open":
-            return well_init(actor_id="well-session", ctx=ctx)
+            return await well_init(actor_id="well-session", ctx=ctx)
         elif signal == "session_close":
             return well_forge_closeout(
                 task_description="session_close",
