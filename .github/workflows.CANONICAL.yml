@@ -1,0 +1,15 @@
+# ═══════════════════════════════════════════════════════════════
+# WELL Canonical Workflow Manifest
+# Single source of truth for the workflow automation stack.
+# ═══════════════════════════════════════════════════════════════
+
+canonical_workflows:
+  - publish-image.yml        # Build validation + Docker image push
+  - repo-hygiene-weekly.yml  # Weekly automation-health digest
+  - repo-routing-validation.yml # Enforces REPO= trailer on commits
+
+required_checks_for_main:
+  - "WELL CI — Build Validation"
+  - "Repo Routing Validation"
+
+last_audit: "2026-05-26"

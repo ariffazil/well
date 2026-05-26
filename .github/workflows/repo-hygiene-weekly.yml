@@ -1,0 +1,60 @@
+name: Weekly Repo Hygiene
+
+on:
+  schedule:
+    - cron: "30 2 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: read
+  issues: write
+
+concurrency:
+  group: well-hygiene
+  cancel-in-progress: true
+
+jobs:
+  hygiene:
+    name: 📊 Automation Health Digest
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build automation health digest
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          open_prs=$(gh pr list --repo "$REPO" --state open --json number --jq 'length')
+          dep_prs=$(gh pr list --repo "$REPO" --state open --author "dependabot[bot]" \
+            --json number --jq 'length')
+          failed_runs=$(gh run list --repo "$REPO" --status failure \
+            --created "$(date -d '7 days ago' '+%Y-%m-%d')" \
+            --json workflowName,createdAt \
+            --jq '[.[] | {name: .workflowName, time: .createdAt}]' 2>/dev/null || echo "[]")
+          failed_count=$(echo "$failed_runs" | jq 'length')
+
+          report_file=report.md
+          {
+            echo "## 🔬 Automation Health Digest — $(date '+%Y-%m-%d')"
+            echo "- Open PRs: $open_prs | Dependabot PRs: $dep_prs | CI failures (7d): $failed_count"
+            if [ "$failed_count" -gt 0 ]; then
+              echo "$failed_runs" | jq -r '.[] | "  - \(.name) — \(.time)"' | head -5
+            fi
+            echo "### Checklist"
+            echo "- [ ] Dependabot PRs reviewed/merged"
+            echo "- [ ] CI failures root-caused"
+          } > "$report_file"
+
+          issue_title="Weekly Repo Hygiene"
+          existing=$(gh issue list --repo "$REPO" --state open \
+            --search "in:title $issue_title" --json number --jq '.[0].number // empty')
+          if [ -n "$existing" ]; then
+            gh issue comment "$existing" --repo "$REPO" --body-file "$report_file"
+          else
+            gh issue create --repo "$REPO" --title "$issue_title" --body-file "$report_file" 2>/dev/null || true
+          fi
