@@ -1304,8 +1304,21 @@ def _mcp_health_check_impl() -> dict:
 
 @mcp.tool()
 def mcp_health_check() -> dict:
-    """[DEPRECATED — use well_assess_reliability(mode='health')] Federation health stub. Retained for compatibility."""
-    return _to_federation_output(_mcp_health_check_impl(), tool_name="mcp_health_check")
+    """
+    DEPRECATED: use well_assess_reliability(mode='health') instead.
+    Soft alias retained for backward compatibility.
+    """
+    # 1C-C: delegate to canonical reliability tool
+    reliability = well_assess_reliability(mode="health", ctx=None)
+    # Merge MCP-specific fields (schema_version, tool_count, read_only)
+    reliability["mcp"] = "WELL"
+    reliability["schema_version"] = "2026.05.15"
+    reliability["read_only"] = True
+    reliability["final_authority"] = "ARIF"
+    reliability["tool_count"] = (
+        79  # TODO: update when PHOENIX-73F tool collapse completes
+    )
+    return reliability
 
 
 def _build_unified_packet(ctx: Context | None = None) -> dict[str, Any]:
@@ -2024,6 +2037,9 @@ def well_contrast_report(
     ctx: Context | None = None,
 ) -> dict[str, Any]:
     """
+    DEPRECATED: use well_state(include="trend") instead for trend data.
+    Soft alias retained for backward compatibility.
+
     Detect anomalous biological contrast — deviation from operator baseline.
 
     Implements the W→P→C→M→G→J metabolic loop for human vitality:
@@ -2045,7 +2061,8 @@ def well_contrast_report(
       - w_floor_flags: W-floor rules triggered by anomalous dimensions
       - confidence_band: bounded by event count and telemetry freshness
     """
-    state = _load_state()
+    # 1C-A: Source of truth for trend data is now well_state(include="trend")
+    state = well_state(include="trend", ctx=ctx)
 
     # W: Witness — load event history
     events = _load_events(lookback_days=lookback_days)
@@ -8912,13 +8929,16 @@ def well_fatigue_accumulator(
     ctx: Context | None = None,
 ) -> dict[str, Any]:
     """
+    DEPRECATED: use well_assess_homeostasis(mode="fatigue") for check.
+    Soft alias retained for backward compatibility (log/rest/reset remain direct).
+
     Track cognitive fatigue across sessions for multi-day recovery planning.
 
     Modes:
-      check  — Current fatigue state + accumulated load
-      log    — Log a session's fatigue cost
-      rest   — Log a rest period (reduces accumulated fatigue)
-      reset  — Reset accumulator (after full recovery)
+      check  — Delegate to well_assess_homeostasis(mode="fatigue")
+      log    — Log a session's fatigue cost (direct)
+      rest   — Log a rest period (reduces accumulated fatigue) (direct)
+      reset  — Reset accumulator (after full recovery) (direct)
 
     Cross-session fatigue decays at ~2 points per hour of rest.
     Accumulated fatigue > 20 across 48h triggers extended recovery advisory.
@@ -8953,6 +8973,33 @@ def well_fatigue_accumulator(
             acc["total_accumulated"] = max(0.0, acc["total_accumulated"] - decay)
         except Exception:
             pass
+
+    # 1C-B: check mode delegates to canonical well_assess_homeostasis(mode="fatigue")
+    if mode == "check":
+        homeostasis = well_assess_homeostasis(
+            mode="fatigue",
+            ctx=ctx,
+        )
+        result = {
+            "mode": "check",
+            "authority": "REFLECT_ONLY",
+            "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
+            "homeostasis": homeostasis,
+            "accumulated": round(acc["total_accumulated"], 1),
+            "session_count": acc["session_count"],
+        }
+        # Preserve advisory from accumulator state
+        if acc["total_accumulated"] > 20:
+            result["advisory"] = "EXTENDED_RECOVERY_ADVISED"
+            result["recommendation"] = (
+                "Accumulated fatigue exceeds 20. Full rest day recommended."
+            )
+        elif acc["total_accumulated"] > 10:
+            result["advisory"] = "MODERATE_LOAD"
+            result["recommendation"] = (
+                f"Accumulated fatigue at {acc['total_accumulated']:.1f}. Schedule breaks."
+            )
+        return result
 
     result = {
         "mode": mode,
@@ -9527,6 +9574,75 @@ def well_assess_homeostasis(
             "tool": "well_assess_homeostasis",
             "received": mode,
         }
+    # 1C-B: fatigue is a direct computation — implement here, do not delegate to well_666_heart
+    if mode == "fatigue":
+        state = _load_state()
+        metrics = state.get("metrics", {})
+        cog = metrics.get("cognitive", {})
+        sleep_debt = cog.get("sleep_debt_days", 0.0)
+        decision_fatigue = cog.get("decision_fatigue", 0.0)
+        clarity = cog.get("clarity", 5.0)
+        stress_load = metrics.get("stress", {}).get("subjective_load", 0.0)
+        # Decay: 2 points per hour since last session
+        acc = cog.get("fatigue_accumulator", {})
+        last_ts = acc.get("last_rest_epoch") or acc.get("last_session_epoch")
+        accumulated = acc.get("total_accumulated", 0.0)
+        if last_ts:
+            try:
+                last_dt = datetime.datetime.fromisoformat(
+                    last_ts.replace("Z", "+00:00")
+                )
+                hours_since = (
+                    datetime.datetime.now(datetime.timezone.utc) - last_dt
+                ).total_seconds() / 3600
+                accumulated = max(
+                    0.0, accumulated - min(hours_since * 2.0, accumulated)
+                )
+            except Exception:
+                pass
+        # Homeostasis score: high fatigue = low homeostasis (inverted 0-10)
+        raw_fatigue = (
+            (
+                sleep_debt / 10.0 * 3
+                + decision_fatigue / 10.0 * 4
+                + (10 - clarity) / 10.0 * 2
+                + stress_load / 10.0 * 1
+                + accumulated / 10.0 * 2  # accumulated is already in point scale
+            )
+            / 12.0
+            * 10.0
+        )
+        homeostasis_score = max(0.0, min(10.0, 10.0 - raw_fatigue))
+        if homeostasis_score >= 7.0:
+            verdict = "SEAL"
+            status = "OPTIMAL"
+        elif homeostasis_score >= 5.0:
+            verdict = "SEAL"
+            status = "STABLE"
+        elif homeostasis_score >= 3.0:
+            verdict = "HOLD"
+            status = "DEGRADED"
+        else:
+            verdict = "VOID"
+            status = "CRITICAL"
+        return _omega_well_output(
+            ok=status in ("OPTIMAL", "STABLE"),
+            stage="666_HEART",
+            lane="ASI",
+            mode="fatigue",
+            verdict=verdict,
+            data={
+                "homeostasis_score": round(homeostasis_score, 2),
+                "status": status,
+                "sleep_debt_days": sleep_debt,
+                "decision_fatigue": decision_fatigue,
+                "clarity": clarity,
+                "stress_load": stress_load,
+                "accumulated_fatigue": round(accumulated, 2),
+                "raw_fatigue_index": round(raw_fatigue, 2),
+            },
+            constitutional_compliance={"W5_COGNITIVE_ENTROPY": status},
+        )
     return _to_federation_output(
         well_666_heart(
             mode=mode,
