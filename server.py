@@ -10936,9 +10936,9 @@ SOMATIC_TOOLS = {
     "well_assess_reliability",
     "well_compute_metabolic_flux",
     "well_guard_dignity",
-    "well_system_registry_status",
-    "well_registry_status",  # Blueprint canonical registry truth diagnostic
 }
+# NOTE: well_system_registry_status and well_registry_status are internal
+# diagnostic tools (no @mcp.tool decorator). Not part of public MCP surface.
 
 # ── Federation Tool Manifest Registration ──────────────────────────────────────
 # Populates FEDERATION_TOOLS with cognitive_axis for every WELL MCP tool.
@@ -10950,6 +10950,8 @@ SOMATIC_TOOLS = {
 
 _WELL_SOMATIC_MANIFEST: list[dict[str, object]] = [
     # Somatic (visible) tools — these are the public MCP surface
+    # NOTE: well_system_registry_status and well_registry_status are internal
+    # diagnostic tools (no @mcp.tool decorator). Not part of public MCP surface.
     {"name": "mcp_health_check", "axis": "identity", "expose": True},
     {"name": "well_classify_substrate", "axis": "identity", "expose": True},
     {"name": "well_trace_lineage", "axis": "trace", "expose": True},
@@ -10963,8 +10965,6 @@ _WELL_SOMATIC_MANIFEST: list[dict[str, object]] = [
     {"name": "well_assess_reliability", "axis": "vitality", "expose": True},
     {"name": "well_compute_metabolic_flux", "axis": "vitality", "expose": True},
     {"name": "well_guard_dignity", "axis": "critique", "expose": True},
-    {"name": "well_system_registry_status", "axis": "identity", "expose": True},
-    {"name": "well_registry_status", "axis": "identity", "expose": True},
 ]
 
 _WELL_AUTONOMIC_TOOLS: list[dict[str, object]] = [
