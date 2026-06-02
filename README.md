@@ -189,7 +189,7 @@ Move historical seals, session logs, collapse registers, and old release notes i
 
 This repository is one organ of the arifOS federation:
 
-- **Operator Cockpit:** `AAA`
+- **Operator Cockpit:** `AAA-Cockpit` (`ariffazil/AAA`)
 - **Constitutional Kernel:** `arifOS`
 - **Vision Shell:** `A-FORGE`
 - **Geological Engine:** `GEOX`
@@ -198,3 +198,17 @@ This repository is one organ of the arifOS federation:
 - **Informational Surfaces:** `arif-sites`
 
 Unified under the arifOS Sovereign Constitution, with WELL constrained to substrate observation and substrate protection.
+
+### AAA Terminology Note
+
+When WELL docs or agents reference AAA, qualify the surface:
+
+| Term | Surface | Role |
+|------|---------|------|
+| **AAA-HF** | Hugging Face dataset | Supplies doctrine and evaluation references — defines vitality/substrate governance norms |
+| **AAA-Cockpit** | GitHub `ariffazil/AAA` | Displays and routes federation state; monitors WELL substrate readings |
+| **arifOS** | `ariffazil/arifos` | **The judge** — applies F1–F13 (especially F5 PEACE² and F6 EMPATHY) to all WELL observations |
+
+WELL observes substrate state and computes vitality signals only. WELL does not judge. WELL does not define doctrine.
+
+> "AAA is polymorphic by design. When precision matters, qualify the surface."
