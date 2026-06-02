@@ -2643,7 +2643,7 @@ def well_list_log(limit: int = 10, ctx: Context | None = None) -> dict[str, Any]
             for line in lines[-limit:]:
                 try:
                     entries.append(json.loads(line))
-                except:
+                except Exception:
                     continue
     except Exception as e:
         return {"ok": False, "error": str(e)}
@@ -2730,7 +2730,7 @@ def well_trend_analysis(ctx: Context | None = None) -> dict[str, Any]:
                             trend_data["pressure_events"].append(
                                 (epoch, e.get("load_delta", 0))
                             )
-                    except:
+                    except Exception:
                         continue
         except Exception:
             pass
@@ -3667,7 +3667,7 @@ def well_pressure_ledger(
                             source_totals[src] = (
                                 source_totals.get(src, 0) + intensity_val
                             )
-                    except:
+                    except Exception:
                         continue
         except Exception:
             pass
@@ -8056,7 +8056,7 @@ def afwell_events_recent() -> str:
         for line in lines[-20:]:
             try:
                 events.append(json.loads(line))
-            except:
+            except Exception:
                 continue
     except Exception:
         pass
@@ -8861,7 +8861,23 @@ if __name__ == "__main__":
             }
         )
 
+    
+    async def build_info_handler(request):
+        from starlette.responses import JSONResponse
+        return JSONResponse(
+            {
+                "sha": "87c0e6755f44a52526763fceee15ee64740e7918",
+                "short_sha": "87c0e67",
+                "branch": "main",
+                "version": "1.0",
+                "tool_count": 5,
+                "epoch": "2026",
+                "source_repo": "well",
+            }
+        )
+
     app.add_route("/health", health_handler, methods=["GET"])
+    app.add_route("/api/build-info", build_info_handler, methods=["GET"])
     app.add_route("/tools", tools_handler, methods=["GET"])
 
     # Server start moved to end of file so canonical tools are registered before uvicorn blocks
