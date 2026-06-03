@@ -2320,6 +2320,7 @@ async def well_anchor(
 
 
 # internal — not MCP-facing (collapsed 2026-05-26)
+@mcp.tool()
 def well_check_floors(ctx: Context | None = None) -> dict[str, Any]:
     """
     [DEPRECATED — use well_validate_vitality(mode='floors')]
@@ -2458,6 +2459,7 @@ def well_check_floors(ctx: Context | None = None) -> dict[str, Any]:
 
 
 # internal — not MCP-facing (collapsed 2026-05-26)
+@mcp.tool()
 def well_log_state(
     sleep_hours: float | None = None,
     stress_level: float | None = None,
@@ -2480,6 +2482,7 @@ def well_log_state(
 
 
 # internal — not MCP-facing (collapsed 2026-05-26)
+@mcp.tool()
 def well_get_readiness(ctx: Context | None = None) -> dict[str, Any]:
     """
     Return current readiness score + W-floor status (Phase 2).
@@ -2539,6 +2542,7 @@ def well_get_readiness(ctx: Context | None = None) -> dict[str, Any]:
 
 
 # internal — not MCP-facing (collapsed 2026-05-26)
+@mcp.tool()
 def well_check_floor(
     floor_id: str | None = None, ctx: Context | None = None
 ) -> dict[str, Any]:
@@ -2641,6 +2645,7 @@ def well_check_floor(
 
 
 # internal — not MCP-facing (collapsed 2026-05-26)
+@mcp.tool()
 def well_list_log(limit: int = 10, ctx: Context | None = None) -> dict[str, Any]:
     """List recent biological state log entries (Phase 1/2)."""
     if not EVENTS_PATH.exists():
@@ -2662,6 +2667,7 @@ def well_list_log(limit: int = 10, ctx: Context | None = None) -> dict[str, Any]
 
 
 # internal — not MCP-facing (collapsed 2026-05-26)
+@mcp.tool()
 async def well_seal_vault(
     force: bool = False, ctx: Context | None = None
 ) -> dict[str, Any]:
@@ -3037,6 +3043,7 @@ def well_recovery_protocol(ctx: Context | None = None) -> dict[str, Any]:
 
 
 # internal — not MCP-facing (collapsed 2026-05-26)
+@mcp.tool()
 def well_niat_check(
     intent: str,
     context: str | None = None,
@@ -3702,6 +3709,7 @@ def well_pressure_ledger(
 
 
 # internal — not MCP-facing (collapsed 2026-05-26)
+@mcp.tool()
 def well_daily_brief(ctx: Context | None = None) -> dict[str, Any]:
     """
     Daily operator dashboard — one consolidated briefing.
@@ -4341,6 +4349,7 @@ def well_decision_bandwidth(
 
 
 # internal — not MCP-facing (collapsed 2026-05-26)
+@mcp.tool()
 def well_forge_precheck(
     task_description: str | None = None,
     decision_class: str | None = None,
@@ -4637,6 +4646,7 @@ def well_forge_mode_recommend(ctx: Context | None = None) -> dict[str, Any]:
 
 
 # internal — not MCP-facing (collapsed 2026-05-26)
+@mcp.tool()
 def well_forge_closeout(
     task_description: str,
     outcome: str,  # "success" | "partial" | "failed" | "paused"
@@ -4805,6 +4815,7 @@ def _check_data_freshness(state: dict[str, Any]) -> dict[str, Any]:
 # ── WELL-01 well_get_health ───────────────────────────────────────────────────
 # DEPRECATED: Use well_assess_reliability(mode="health") instead.
 # NOTE: Expose=False in SOMATIC_TOOLS — not in public MCP tools/list, not a phantom
+@mcp.tool()
 def well_get_health(ctx: Context | None = None) -> dict[str, Any]:
     """
     Canonical three-layer health check.
@@ -4893,6 +4904,7 @@ def well_get_health(ctx: Context | None = None) -> dict[str, Any]:
 
 # ── WELL-02 well_get_state ────────────────────────────────────────────────────
 # internal — not MCP-facing (collapsed 2026-05-26)
+@mcp.tool()
 def well_get_state(
     domain: str | None = None, ctx: Context | None = None
 ) -> dict[str, Any]:
@@ -4924,6 +4936,7 @@ def well_get_state(
 
 # ── WELL-03 well_check_invariant ──────────────────────────────────────────────
 # internal — not MCP-facing (collapsed 2026-05-26)
+@mcp.tool()
 def well_check_invariant(
     floor_id: str | None = None, ctx: Context | None = None
 ) -> dict[str, Any]:
@@ -4970,6 +4983,7 @@ def well_check_invariant(
 
 # ── WELL-04 well_log_signal ───────────────────────────────────────────────────
 # internal — not MCP-facing (collapsed 2026-05-26)
+@mcp.tool()
 async def well_log_signal(
     domain: str = "human",
     signal: str = "",
@@ -5112,6 +5126,7 @@ async def well_log_signal(
 
 # ── WELL-05 well_list_events ──────────────────────────────────────────────────
 # internal — not MCP-facing (collapsed 2026-05-26)
+@mcp.tool()
 def well_list_events(
     limit: int = 10, redact: bool = True, ctx: Context | None = None
 ) -> dict[str, Any]:
@@ -5168,6 +5183,7 @@ def well_reflect_readiness(
 
 # ── WELL-08 well_suggest_mode ─────────────────────────────────────────────────
 # internal — not MCP-facing (collapsed 2026-05-26)
+@mcp.tool()
 def well_suggest_mode(
     domain: str = "forge",
     task_description: str | None = None,
@@ -5191,7 +5207,8 @@ def well_suggest_mode(
 # ── WELL-09 well_suggest_recovery ─────────────────────────────────────────────
 # [INTERNAL] Suggest non-medical stabilizing actions. Suggest, not prescribe.
 # Use well_recovery_protocol(ctx=ctx) directly instead.
-def _suggest_recovery(ctx: Context | None = None) -> dict[str, Any]:
+@mcp.tool()
+def well_suggest_recovery(ctx: Context | None = None) -> dict[str, Any]:
     return well_recovery_protocol(ctx=ctx)
 
 
@@ -5228,6 +5245,7 @@ def well_classify_task(
 
 # ── WELL-12 well_get_packet ───────────────────────────────────────────────────
 # internal — not MCP-facing (collapsed 2026-05-26)
+@mcp.tool()
 def well_get_packet(
     target: str = "arifos",
     detail: str = "standard",
@@ -5270,6 +5288,7 @@ def well_get_packet(
 
 # ── WELL-13 well_request_anchor ───────────────────────────────────────────────
 # internal — not MCP-facing (collapsed 2026-05-26)
+@mcp.tool()
 async def well_request_anchor(
     target: str = "vault999",
     dry_run: bool = False,
@@ -6607,6 +6626,7 @@ def _to_federation_output(
         recommended_next_organ = "A-FORGE"
 
     out = {
+        "ok": ok,
         "observation": observation,
         "uncertainty": uncertainty,
         "signal": signal,
@@ -6615,6 +6635,8 @@ def _to_federation_output(
         # P0-4: Non-medical boundary — required on all human-facing outputs
         "boundary_notice": WELL_BOUNDARY_NOTICE,
     }
+    if "error" in data:
+        out["error"] = data["error"]
     # Propagate false-calm guard fields if present
     if "telemetry_status" in data:
         out["telemetry_status"] = data["telemetry_status"]
@@ -9500,7 +9522,7 @@ async def well_classify_substrate(
 ) -> dict[str, Any]:
     """Ω-WELL-01: Substrate classification and boundary sensing."""
     mode = mode.lower()
-    VALID_MODES = ["substrate", "boundary", "classification"]
+    VALID_MODES = ["substrate", "boundary", "classification", "init", "assert", "bootstrap", "classify"]
     if mode not in VALID_MODES:
         return {
             "error": "UNKNOWN_MODE",
@@ -9508,6 +9530,8 @@ async def well_classify_substrate(
             "tool": "well_classify_substrate",
             "received": mode,
         }
+    if mode in ("classification", "substrate"):
+        mode = "classify"
     if mode in ("init", "assert", "bootstrap"):
         return _to_federation_output(
             await well_000_init(
@@ -9539,7 +9563,7 @@ def well_trace_lineage(
 ) -> dict[str, Any]:
     """Ω-WELL-02: Memory, trend, ledger, and vault chain tracing."""
     mode = mode.lower()
-    VALID_MODES = ["decision", "evidence", "memory"]
+    VALID_MODES = ["decision", "evidence", "memory", "recall", "trend", "context", "ledger", "chain"]
     if mode not in VALID_MODES:
         return {
             "error": "UNKNOWN_MODE",
@@ -9656,7 +9680,7 @@ def well_assess_metabolism(
 ) -> dict[str, Any]:
     """Ω-WELL-05: Assess biological metabolism and system throughput across substrates."""
     mode = mode.lower() if isinstance(mode, str) else mode
-    VALID_MODES = ["gradient", "flux", "coupled"]
+    VALID_MODES = ["gradient", "flux", "coupled", "human", "machine", "bio", "material", "institution", "info", "symbolic"]
     if mode not in VALID_MODES:
         return {
             "error": "UNKNOWN_MODE",
@@ -9728,7 +9752,7 @@ def well_assess_homeostasis(
       C5     — proceed only if OPTIMAL + no chronic fatigue; block otherwise
     """
     mode = mode.lower() if isinstance(mode, str) else mode
-    VALID_MODES = ["sleep", "cognitive", "stress", "vitality", "circadian", "fatigue"]
+    VALID_MODES = ["sleep", "cognitive", "stress", "vitality", "circadian", "fatigue", "empathize", "critique", "dignity", "redteam", "maruah"]
     VALID_HRV = ["low", "normal", "high"]
     VALID_EMOTIONAL = ["irritable", "anxious", "neutral", "calm", "elevated"]
     VALID_DECISION_CLASSES = ["C1", "C2", "C3", "C4", "C5"]
@@ -10225,13 +10249,18 @@ def well_assess_livelihood(
         }
     # 888 HOLD: delegation targets (role/meaning/dignity logic) need semantic audit.
     # well_333_mind only supports human|machine|coupled — not role/meaning/dignity.
-    return {
-        "error": "MODE_NOT_IMPLEMENTED",
-        "tool": "well_assess_livelihood",
-        "mode": mode,
-        "status": "HOLD_pending_delegation_audit",
-        "valid": VALID_MODES,
-    }
+    return _to_federation_output(
+        {
+            "ok": False,
+            "error": "MODE_NOT_IMPLEMENTED",
+            "tool": "well_assess_livelihood",
+            "mode": mode,
+            "status": "HOLD_pending_delegation_audit",
+            "verdict": "HOLD",
+            "valid": VALID_MODES,
+        },
+        tool_name="well_assess_livelihood",
+    )
 
 
 @mcp.tool(name="well_daily_checkin")
@@ -10859,6 +10888,7 @@ def well_validate_consensus(
 
 
 # internal — not MCP-facing (collapsed 2026-05-26)
+@mcp.tool()
 def well_system_registry_status() -> dict[str, Any]:
     """WELL registry truth probe — somatic surface vs autonomic internals.
 
@@ -10909,6 +10939,7 @@ def well_system_registry_status() -> dict[str, Any]:
 
 
 # internal — not MCP-facing (collapsed 2026-05-26)
+@mcp.tool()
 def well_registry_status() -> dict[str, Any]:
     """WELL registry truth diagnostic — blueprint canonical format.
 
@@ -11268,6 +11299,8 @@ SOMATIC_TOOLS = {
     "well_assess_reliability",
     "well_compute_metabolic_flux",
     "well_guard_dignity",
+    "well_system_registry_status",
+    "well_registry_status",
 }
 # NOTE: well_system_registry_status and well_registry_status are internal
 # diagnostic tools (no @mcp.tool decorator). Not part of public MCP surface.
