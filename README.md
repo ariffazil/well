@@ -1,4 +1,8 @@
-# WELL — Human Substrate & Metabolic State
+# WELL — Governed Human Readiness Intelligence
+
+> **WELL is the vitality organ of the arifOS federation.** It observes and reports human readiness — sleep, fatigue, stress, cognitive clarity, dignity — so that irreversible decisions are never made by or about a depleted human. It reflects. It warns. It never decides.
+>
+> Part of the arifOS constitutional federation. **45 MCP tools.** `https://well.arif-fazil.com/mcp`
 
 <!-- SOT-MANIFEST
 owner: Arif
