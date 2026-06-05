@@ -93,10 +93,47 @@ Internal diagnostic helpers such as `well_system_registry_status` and `well_regi
 ```bash
 cd /root/WELL
 pip install -e .
-python server.py               # Start on port 18083
+
+# HTTP mode (systemd default, port 18083)
+python server.py
+
+# Stdio mode (local agents — Claude Code, OpenCode, Continue CLI)
+python server.py --transport stdio
 # or
-systemctl start well           # systemd service
+MCP_TRANSPORT=stdio python server.py
+
+# systemd service
+systemctl start well
 curl http://localhost:18083/health | python3 -m json.tool
+```
+
+### Connect via Agent Config
+
+**HTTP:**
+
+```json
+{
+  "mcpServers": {
+    "well": {
+      "type": "http",
+      "url": "https://well.arif-fazil.com/mcp"
+    }
+  }
+}
+```
+
+**Stdio (local-only):**
+
+```json
+{
+  "mcpServers": {
+    "well": {
+      "command": "python3",
+      "args": ["server.py", "--transport", "stdio"],
+      "cwd": "/root/WELL"
+    }
+  }
+}
 ```
 
 ## Ownership boundaries
