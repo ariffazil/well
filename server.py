@@ -9101,6 +9101,21 @@ except Exception as _e:
 
 
 if __name__ == "__main__":
+    # ── Transport mode selection ─────────────────────────────────────────
+    import argparse
+    import sys
+
+    _parser = argparse.ArgumentParser(add_help=False)
+    _parser.add_argument(
+        "--transport",
+        choices=["http", "stdio"],
+        default=_os.environ.get("MCP_TRANSPORT", "http"),
+    )
+    _args, _ = _parser.parse_known_args()
+    if _args.transport == "stdio":
+        mcp.run(transport="stdio")
+        sys.exit(0)
+
     from starlette.responses import JSONResponse
     import uvicorn
 
@@ -12310,6 +12325,22 @@ else:  # pragma: no cover
     _wrapped_count = 0
 
 if __name__ == "__main__":
+    # ── Transport mode selection (fallback entry) ────────────────────────
+    import argparse
+    import sys
+
+    _parser = argparse.ArgumentParser(add_help=False)
+    _parser.add_argument(
+        "--transport",
+        choices=["http", "stdio"],
+        default=_os.environ.get("MCP_TRANSPORT", "http"),
+    )
+    _args, _ = _parser.parse_known_args()
+    if _args.transport == "stdio":
+        from server import mcp as _mcp
+        _mcp.run(transport="stdio")
+        sys.exit(0)
+
     # This is a fallback in case the first __main__ block (at ~line 5911)
     # didn't run uvicorn. We build the app and start it.
     from starlette.responses import JSONResponse
