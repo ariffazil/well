@@ -3,17 +3,17 @@
 
 .PHONY: test lint format clean forge security-audit health
 
-PYTHON := python3
-PIP := pip
+PYTHON := /root/WELL/.venv/bin/python3
+UV := uv
 
 test:
 	PYTHONPATH=. $(PYTHON) -m pytest tests/ -q --tb=short || true
 
 lint:
-	ruff check . || true
+	$(PYTHON) -m ruff check . || true
 
 format:
-	ruff format . || true
+	$(PYTHON) -m ruff format . || true
 
 clean:
 	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
@@ -21,6 +21,9 @@ clean:
 
 health:
 	@curl -s http://localhost:18083/health | python3 -m json.tool || echo "WELL not responding on 18083"
+
+install:
+	$(UV) sync --frozen
 
 # ── arifOS Federation Security Audit ─────────────────────────────────────────
 # Fires 888_HOLD on NATS if CRITICAL/HIGH scanner findings detected.

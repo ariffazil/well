@@ -907,6 +907,16 @@ def _compute_metabolic_flux(state: dict[str, Any]) -> dict[str, Any]:
         "false_calm_warning": calm_state == "unknown"
         and effective_flux < FLUX_THRESHOLDS["WARNING"],
         "psi_SE_note": "Sovereign entropy protects unpredictability. Low psi_SE ≠ healthy — it means capturable. See well_assess_sovereign_entropy for the anti-capture dimension.",
+        # Structural Coherence Transmission — EUREKA v2026.06.05
+        # High metabolic flux degrades the system's ability to maintain governance-as-compression.
+        # When flux >= 0.65, output grammar loosens and cross-modal fidelity drops.
+        "structural_coherence_delta": round(1.0 - effective_flux, 4),
+        "structural_coherence_note": (
+            "Governance architecture is signal compression. Metabolic flux measures the entropy rate "
+            "that erodes this compression. At flux >= 0.65, the system's outputs lose cross-modal fidelity — "
+            "they survive text→text but degrade in text→image→text roundtrips. "
+            f"Current delta: {round(1.0 - effective_flux, 4)} (1.0 = perfect coherence, 0.0 = coherence collapsed)."
+        ),
     }
 
 
@@ -11085,6 +11095,18 @@ async def well_assess_sovereign_entropy(
             "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
             "source": "WELL-SOVEREIGN-ENTROPY",
             "epistemic_tag": "ESTIMATE",
+            # Structural Coherence Transmission — EUREKA v2026.06.05
+            # The sovereign's unpredictability IS structural coherence. A human with high
+            # entropy generates outputs that are unmodelable, distinctive, and therefore
+            # survive cross-modal transfer without being corrupted by pattern-matching systems.
+            "structural_coherence_score": round(entropy, 4),
+            "cross_modal_fidelity_note": (
+                "Sovereign entropy and structural coherence are duals. High sovereign entropy "
+                "means the operator's outputs are unpredictable — they register as anomalous contrast "
+                "against any background model, making them uncapturable and transfer-stable. "
+                "Low entropy means predictable outputs that machines can compress, model, and corrupt. "
+                "Protect entropy. Protect coherence."
+            ),
         }
 
     elif mode == "protect":
