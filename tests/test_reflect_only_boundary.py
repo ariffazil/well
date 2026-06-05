@@ -165,12 +165,15 @@ def test_context_classification():
 # ─── 6. F7 readiness guard strips scores on insufficient context ─────────
 
 
-def test_f7_readiness_guard():
+def test_f7_readiness_guard(monkeypatch):
     """A readiness score on insufficient context is replaced with HOLD.
 
     F7 STEWARDSHIP: a readiness score on insufficient context is a
     fabrication. The honest path is HOLD.
     """
+    # Force empty state so telemetry falls back to "unavailable".
+    monkeypatch.setattr("server._load_state", lambda: None)
+
     # Simulate a tool that returns a readiness score on empty state.
     @reflect_only_boundary
     def fake_tool_with_score() -> dict:
