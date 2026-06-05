@@ -2749,7 +2749,7 @@ def well_list_log(limit: int = 10, ctx: Context | None = None) -> dict[str, Any]
 
 
 # internal — not MCP-facing (collapsed 2026-05-26)
-@mcp.tool()
+@mcp.tool(task=True)
 async def well_seal_vault(
     force: bool = False, ctx: Context | None = None
 ) -> dict[str, Any]:
@@ -7764,7 +7764,7 @@ def well_888_judge(
 # AAA: VAULT999 Client + Audit Chain
 
 
-@mcp.tool()  # Alias — deprecated; use well_trace_lineage / well_anchor_evidence
+@mcp.tool(task=True)  # Alias — deprecated; use well_trace_lineage / well_anchor_evidence
 async def well_999_vault(
     mode: str = "seal",
     dry_run: bool = False,
@@ -11003,7 +11003,7 @@ def well_compute_metabolic_flux(
     return _to_federation_output(flux, tool_name="well_compute_metabolic_flux")
 
 
-@mcp.tool()
+@mcp.tool(task=True)
 async def well_assess_sovereign_entropy(
     mode: str = "current",
     behavioral_signals: dict[str, float] | None = None,
@@ -12189,6 +12189,21 @@ _TOOL_ANNOTATIONS: dict[str, dict[str, Any]] = {
 }
 
 
+# MCP Spec 2025-11-25 outputSchema — standard WELL response envelope
+_WELL_OUTPUT_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "properties": {
+        "status": {"type": "string", "description": "Execution status"},
+        "verdict": {"type": "string", "description": "WELL verdict: OPTIMAL, STABLE, DEGRADED, CRITICAL, etc."},
+        "mode": {"type": "string", "description": "Assessment mode"},
+        "content": {"type": "string", "description": "Textual content / advisory"},
+        "result": {"type": "object", "description": "Tool-specific payload"},
+        "error": {"type": "string", "description": "Error message if status != OK"},
+        "reasons": {"type": "array", "items": {"type": "string"}, "description": "Human-readable justification"},
+    },
+}
+
+
 def _patch_tool_annotations(mcp_server: Any) -> None:
     """Patch MCP tool annotations post-registration (FastMCP 3.x)."""
     import asyncio
@@ -12200,6 +12215,26 @@ def _patch_tool_annotations(mcp_server: Any) -> None:
                 t = await mcp_server.get_tool(name)
                 if t is not None and hasattr(t, "annotations"):
                     t.annotations = ToolAnnotations(**anno)
+            except Exception:
+                pass
+
+    try:
+        loop = asyncio.get_running_loop()
+        loop.create_task(_do())
+    except RuntimeError:
+        asyncio.run(_do())
+
+
+def _patch_output_schemas(mcp_server: Any) -> None:
+    """Patch MCP tool outputSchema post-registration (FastMCP 3.x)."""
+    import asyncio
+
+    async def _do() -> None:
+        for name in _TOOL_ANNOTATIONS.keys():
+            try:
+                t = await mcp_server.get_tool(name)
+                if t is not None and hasattr(t, "output_schema"):
+                    t.output_schema = _WELL_OUTPUT_SCHEMA
             except Exception:
                 pass
 
@@ -12486,6 +12521,7 @@ if __name__ == "__main__":
     _args, _ = _parser.parse_known_args()
     from server import mcp as _mcp
     _patch_tool_annotations(_mcp)
+    _patch_output_schemas(_mcp)
     if _args.transport == "stdio":
         _mcp.run(transport="stdio")
         sys.exit(0)
@@ -12499,6 +12535,7 @@ if __name__ == "__main__":
     host = _os.environ.get("HOST", "0.0.0.0")
     port = int(_os.environ.get("PORT", 8083))
     _patch_tool_annotations(_mcp)
+    _patch_output_schemas(_mcp)
     app = _mcp.http_app(
         path="/mcp",
         transport="streamable-http",

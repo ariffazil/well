@@ -4,5 +4,5 @@ version = "1.0.0"
 description = "WELL — Human Substrate Governance Layer MCP Server"
 requires-python = ">=3.12"
 dependencies = [
-    "fastmcp>=3.3.1,<4.0",
+    "fastmcp[tasks]>=3.3.1,<4.0",
 ]
