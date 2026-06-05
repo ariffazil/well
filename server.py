@@ -10287,17 +10287,52 @@ def well_assess_livelihood(
             "tool": "well_assess_livelihood",
             "received": mode,
         }
-    # 888 HOLD: delegation targets (role/meaning/dignity logic) need semantic audit.
-    # well_333_mind only supports human|machine|coupled — not role/meaning/dignity.
+    # Route through well_333_mind(mode="human") which already implements
+    # well_livelihood_role_check, well_livelihood_meaning_check,
+    # well_livelihood_dignity_check, well_livelihood_energy_check,
+    # and well_livelihood_time_check. Filter to the requested mode.
+    internal = well_333_mind(
+        mode="human",
+        subject=subject,
+        substrate_class=substrate_class,
+        energy_level=energy_level,
+        duty_load=duty_load,
+        role_clarity=role_clarity,
+        role_burden=role_burden,
+        dignity_preservation=dignity_preservation,
+        purpose_alignment=purpose_alignment,
+        has_metabolism=has_metabolism,
+        structural_condition=structural_condition,
+        material_type=material_type,
+        mission_clarity=mission_clarity,
+        cashflow_status=cashflow_status,
+        internal_consistency=internal_consistency,
+        ctx=ctx,
+    )
+    # Extract the mode-specific sub-result from the human assessment
+    mode_key = {"role": "role", "meaning": "meaning", "dignity": "dignity"}.get(
+        mode, "role"
+    )
+    sub_data = internal.get("data", {}).get(mode_key, {})
+    assessment_ok = sub_data.get("ok", False) if sub_data else internal.get("ok", False)
+
     return _to_federation_output(
         {
-            "ok": False,
-            "error": "MODE_NOT_IMPLEMENTED",
+            "ok": assessment_ok,
             "tool": "well_assess_livelihood",
             "mode": mode,
-            "status": "HOLD_pending_delegation_audit",
-            "verdict": "HOLD",
-            "valid": VALID_MODES,
+            "observation": {
+                "ok": assessment_ok,
+                "subject": subject or "Arif",
+                "substrate_class": substrate_class or "HUMAN_PERSON",
+                "mode": mode,
+                "assessment": sub_data,
+                "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
+                "human_judge_required": not assessment_ok,
+                "boundary_notice": "Not diagnosis. Not therapy. Reflective readiness only. Arif remains final judge.",
+            },
+            "uncertainty": 0.5,
+            "signal": "advisory" if assessment_ok else "attention_needed",
         },
         tool_name="well_assess_livelihood",
     )
@@ -10805,14 +10840,105 @@ def well_guard_dignity(
             "tool": "well_guard_dignity",
             "received": mode,
         }
-    # 888 HOLD: delegation targets (well_consent_status, well_detect_boundary, shadow_logic)
-    # need semantic audit before wiring. Fail-closed until HOLD is resolved.
+    # ── mode: consent ──
+    if mode == "consent":
+        # Assess dignity preservation, coercion risk, and reductionism
+        dignity_ok = dignity_preservation is None or dignity_preservation >= 0.5
+        coercion_risk = bool(coercion_signals and len(coercion_signals) > 0)
+        reductionism_high = reductionism_risk is not None and reductionism_risk > 0.7
+
+        consent_ok = dignity_ok and not coercion_risk and not reductionism_high
+        flags = []
+        if not dignity_ok:
+            flags.append("dignity_preservation_low")
+        if coercion_risk:
+            flags.append(f"coercion_signals_detected:{len(coercion_signals or [])}")
+        if reductionism_high:
+            flags.append("reductionism_risk_high")
+
+        return _to_federation_output(
+            {
+                "ok": consent_ok,
+                "tool": "well_guard_dignity",
+                "mode": "consent",
+                "observation": {
+                    "ok": consent_ok,
+                    "subject": subject or "Arif",
+                    "dignity_preserved": dignity_ok,
+                    "coercion_detected": coercion_risk,
+                    "reductionism_safe": not reductionism_high,
+                    "flags": flags,
+                    "recommendation": (
+                        "Proceed — dignity intact, no coercion, safe reductionism."
+                        if consent_ok
+                        else "HOLD — dignity boundary at risk. Review flags above."
+                    ),
+                    "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
+                },
+                "uncertainty": 0.3,
+                "signal": "consent_clear" if consent_ok else "consent_at_risk",
+            },
+            tool_name="well_guard_dignity",
+        )
+
+    # ── mode: boundary ──
+    if mode == "boundary":
+        # Delegate to well_111_sense (same path as well_detect_boundary tool)
+        b = well_111_sense(
+            mode="boundary",
+            subject=subject or "Arif",
+            description="Dignity boundary guard — checking personhood membrane integrity.",
+            ctx=ctx,
+        )
+        return _to_federation_output(
+            {
+                "ok": b.get("ok", False),
+                "tool": "well_guard_dignity",
+                "mode": "boundary",
+                "observation": b,
+                "uncertainty": 0.4,
+                "signal": "boundary_intact" if b.get("ok") else "boundary_at_risk",
+            },
+            tool_name="well_guard_dignity",
+        )
+
+    # ── mode: shadow ──
+    if mode == "shadow":
+        from gate.dignity_shadow import assess_dignity_risk
+
+        shadow_text = (
+            f"Subject: {subject or 'Arif'}. "
+            f"Dignity preservation: {dignity_preservation or 'unknown'}. "
+            f"Coercion signals: {coercion_signals or 'none'}. "
+            f"Reductionism risk: {reductionism_risk or 'unknown'}."
+        )
+        shadow = assess_dignity_risk(shadow_text, confidence=0.7)
+        return _to_federation_output(
+            {
+                "ok": shadow.get("tier") == "SAFE",
+                "tool": "well_guard_dignity",
+                "mode": "shadow",
+                "observation": {
+                    "tier": shadow.get("tier"),
+                    "violations": shadow.get("violations", []),
+                    "notes": shadow.get("notes", []),
+                    "safe_rephrase_hint": shadow.get("safe_rephrase_hint"),
+                    "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
+                    "boundary_notice": "Shadow assessment is advisory only. Not diagnosis. Arif remains final judge.",
+                },
+                "uncertainty": 0.5,
+                "signal": "shadow_clear"
+                if shadow.get("tier") == "SAFE"
+                else "shadow_flagged",
+            },
+            tool_name="well_guard_dignity",
+        )
+
+    # fallback (shouldn't reach here since VALID_MODES gate is above)
     return {
-        "error": "MODE_NOT_IMPLEMENTED",
+        "error": "UNKNOWN_MODE",
         "tool": "well_guard_dignity",
         "mode": mode,
-        "status": "HOLD_pending_semantic_audit",
-        "note": "consent→well_consent_status, boundary→well_detect_boundary, shadow→shadow_logic — all require 888_HOLD",
         "valid": VALID_MODES,
     }
 
