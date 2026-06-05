@@ -761,46 +761,111 @@ def _compute_metabolic_flux(state: dict[str, Any]) -> dict[str, Any]:
     )
     flux = round(max(0.0, min(1.0, flux)), 4)
 
-    # ── Data-quality gate ─────────────────────────────────────────────────────────
-    # If m_machine is absent from state, the machine_entropy and all substrate
-    # components are default values (not real measurements). Flag this explicitly
-    # so the caller knows the flux is an "idle system" reading, not a real one.
+    # ── Behavioral telemetry fallback (WELL v2.0 behavioral flux) ─────────────────
+    # When m_machine is absent from state (bare-metal deployment), derive
+    # metabolic flux from behavioral telemetry: sleep debt, decision fatigue,
+    # cognitive load, agent session count, git commit rhythm, burnout risk.
+    # This replaces the FALSE_CALM flatline with real behavioral signal.
     _m_machine_absent = "m_machine" not in state
     _cognitive_absent = not cognitive.get("contradiction_count") and not cognitive.get(
         "total_predictions"
     )
+    _has_behavioral = bool(
+        cognitive.get("decision_fatigue")
+        or cognitive.get("clarity")
+        or cognitive.get("cognitive_load")
+        or cognitive.get("burnout_risk")
+        or metrics.get("decision_fatigue")  # Kimi telemetry — flat under metrics
+        or metrics.get("cognitive_load")
+        or metrics.get("burnout_risk")
+        or metrics.get("cognitive_clarity")
+    )
+
+    # ── Behavioral telemetry source detection ─────────────────────────────────
+    # Kimi's well_agent_telemetry.py writes flat under metrics.*, not metrics.cognitive.*
+    _behavioral_from_flat = bool(
+        metrics.get("decision_fatigue")
+        or metrics.get("cognitive_load")
+        or metrics.get("burnout_risk")
+    )
 
     data_quality: str
-    if _m_machine_absent and _cognitive_absent:
-        data_quality = "UNMEASURED — m_machine and cognitive counters absent from state; all components default to idle values (machine_entropy=0, cognitive_entropy=0)"
+    if _m_machine_absent and _cognitive_absent and not _has_behavioral:
+        data_quality = "UNMEASURED — no machine, cognitive, or behavioral telemetry; all components default to idle"
+    elif _m_machine_absent and _has_behavioral:
+        data_quality = "BEHAVIORAL — flux derived from behavioral telemetry (sleep, fatigue, cognitive load, burnout) not machine metrics"
     elif _m_machine_absent:
-        data_quality = "PARTIAL — m_machine absent from state; machine components default to idle; cognitive metrics real"
+        data_quality = "PARTIAL — m_machine absent; machine components default to idle; cognitive metrics real"
     elif _cognitive_absent:
         data_quality = "PARTIAL — cognitive counters absent; cognitive_entropy=0; machine metrics real"
     else:
         data_quality = "REAL — all components from live state"
 
-    # Determine verdict
-    if flux >= FLUX_THRESHOLDS["SYSTEM_HOLD"]:
+    # ── Behavioral flux computation ───────────────────────────────────────────────
+    # When behavioral telemetry exists but machine metrics don't, compute flux
+    # from behavioral components: sleep_debt, decision_fatigue, cognitive_load,
+    # agent_session_count, burnout_risk.
+    behavioral_flux: float | None = None
+    behavioral_components: dict[str, float] = {}
+    if _m_machine_absent and _has_behavioral:
+        # Read from flat metrics (Kimi telemetry) and fall back to nested cognitive
+        sleep_debt = (
+            metrics.get("sleep_debt_days") or cognitive.get("sleep_debt_days", 0) or 0
+        )
+        decision_fatigue_norm = (
+            metrics.get("decision_fatigue")
+            or cognitive.get("decision_fatigue", 0.5)
+            or 0.5
+        )
+        cognitive_load_norm = (
+            metrics.get("cognitive_load") or cognitive.get("cognitive_load", 0.5) or 0.5
+        )
+        burnout_risk = (
+            metrics.get("burnout_risk") or cognitive.get("burnout_risk", 0.5) or 0.5
+        )
+        sessions_norm = min(
+            1.0,
+            (
+                metrics.get("agent_session_count")
+                or cognitive.get("agent_session_count", 0)
+                or 0
+            )
+            / 20.0,
+        )
+
+        behavioral_components = {
+            "sleep_debt_contribution": sleep_debt * 0.15,
+            "decision_fatigue_contribution": decision_fatigue_norm * 0.25,
+            "cognitive_load_contribution": cognitive_load_norm * 0.25,
+            "burnout_risk_contribution": burnout_risk * 0.20,
+            "agent_sessions_contribution": sessions_norm * 0.15,
+        }
+        behavioral_flux = round(sum(behavioral_components.values()), 4)
+
+    # Use behavioral flux if available, otherwise use machine-derived flux
+    effective_flux = behavioral_flux if behavioral_flux is not None else flux
+
+    # Determine verdict from effective flux
+    if effective_flux >= FLUX_THRESHOLDS["SYSTEM_HOLD"]:
         verdict = "SYSTEM_HOLD"
-    elif flux >= FLUX_THRESHOLDS["COMPULSORY_REALLOCATION"]:
+    elif effective_flux >= FLUX_THRESHOLDS["COMPULSORY_REALLOCATION"]:
         verdict = "COMPULSORY_REALLOCATION"
-    elif flux >= FLUX_THRESHOLDS["WARNING"]:
+    elif effective_flux >= FLUX_THRESHOLDS["WARNING"]:
         verdict = "WARNING"
     else:
         verdict = "NOMINAL"
 
     # Reallocation signal
-    compulsory = flux >= FLUX_THRESHOLDS["COMPULSORY_REALLOCATION"]
+    compulsory = effective_flux >= FLUX_THRESHOLDS["COMPULSORY_REALLOCATION"]
 
-    # ── False-calm guard ──────────────────────────────────────────────────────────
-    # When telemetry is absent, flux=0.0 + verdict=NOMINAL looks healthy but is
-    # actually unmeasured. We expose telemetry_status and calm_state explicitly.
-    if _m_machine_absent and _cognitive_absent:
+    # ── Telemetry status ──────────────────────────────────────────────────────────
+    if _m_machine_absent and _cognitive_absent and not _has_behavioral:
         telemetry_status = "absent"
         calm_state = "unknown"
-        # Override verdict to prevent false-calm interpretation
         verdict = "VOID_TELEMETRY"
+    elif _m_machine_absent and _has_behavioral:
+        telemetry_status = "behavioral"
+        calm_state = "inferred"
     elif _m_machine_absent or _cognitive_absent:
         telemetry_status = "partial"
         calm_state = "assumed"
@@ -810,7 +875,9 @@ def _compute_metabolic_flux(state: dict[str, Any]) -> dict[str, Any]:
 
     return {
         "ok": True,
-        "metabolic_flux": flux,
+        "metabolic_flux": effective_flux,
+        "machine_flux": flux,
+        "behavioral_flux": behavioral_flux,
         "verdict": verdict,
         "verdict_message": FLUX_VERDICTS.get(
             verdict, "Telemetry status unknown — cannot assess metabolic state."
@@ -822,6 +889,9 @@ def _compute_metabolic_flux(state: dict[str, Any]) -> dict[str, Any]:
             "api_failure_rate": api_failure_rate,
             "context_pressure": context_pressure,
             "memory_pressure": memory_pressure,
+            "behavioral_components": behavioral_components
+            if behavioral_components
+            else None,
         },
         "thresholds": {
             "warning": FLUX_THRESHOLDS["WARNING"],
@@ -835,7 +905,8 @@ def _compute_metabolic_flux(state: dict[str, Any]) -> dict[str, Any]:
         "telemetry_status": telemetry_status,
         "calm_state": calm_state,
         "false_calm_warning": calm_state == "unknown"
-        and flux < FLUX_THRESHOLDS["WARNING"],
+        and effective_flux < FLUX_THRESHOLDS["WARNING"],
+        "psi_SE_note": "Sovereign entropy protects unpredictability. Low psi_SE ≠ healthy — it means capturable. See well_assess_sovereign_entropy for the anti-capture dimension.",
     }
 
 
@@ -8221,13 +8292,314 @@ def _well_tree777_index() -> dict[str, Any]:
 
 
 @mcp.resource(
-    "tree777://index",
+    "afwell://telemetry/arif",
     description=(
-        "TREE777 wiki full index. Lists all federation skills, concepts, and scars. "
-        "Use this to discover available resources across the arifOS, GEOX, WELL, and WEALTH domains."
+        "Live behavioral telemetry snapshot for Arif — derived from WELL agent "
+        "telemetry (agent sessions, token throughput, git rhythm, VAULT999 decisions, "
+        "burnout risk). Behavioral flux components: sleep_debt, decision_fatigue, "
+        "cognitive_load, agent_sessions, burnout_risk. telemetry_status indicates "
+        "whether data is BEHAVIORAL (inferred from activity) or SENSOR (direct biometric). "
+        "psi_SE_note: sovereign unpredictability is protective, not pathological."
     ),
 )
-def well_tree777_index() -> str:
+def afwell_telemetry() -> str:
+    state = _load_state()
+    metrics = state.get("metrics", {})
+    cognitive = metrics.get("cognitive", {})
+    stress = metrics.get("stress", {})
+    sleep = metrics.get("sleep", {})
+
+    telemetry = {
+        "uri": "afwell://telemetry/arif",
+        "timestamp": state.get("timestamp"),
+        "operator": "arif",
+        "well_score": state.get("well_score"),
+        "telemetry_status": "BEHAVIORAL",
+        "causal_note": (
+            "Sleep debt → decision fatigue → psi_SE decline → "
+            "authority capacity erosion. Flux is the metabolic signal. "
+            "psi_SE is the anti-capture signal. Both must be read together."
+        ),
+        "behavioral_components": {
+            "sleep": {
+                "hours": sleep.get("hours", "unknown"),
+                "debt_days": cognitive.get("sleep_debt_days"),
+                "quality_proxy": sleep.get("quality"),
+            },
+            "cognitive": {
+                "clarity": cognitive.get("clarity"),
+                "decision_fatigue": cognitive.get("decision_fatigue"),
+                "cognitive_load": cognitive.get("cognitive_load"),
+                "context_switches_per_hour": cognitive.get(
+                    "context_switching_frequency"
+                ),
+            },
+            "agent_activity": {
+                "session_count_24h": cognitive.get("agent_session_count"),
+                "token_throughput": cognitive.get("token_throughput"),
+                "git_commits_24h": cognitive.get("git_commit_count"),
+                "decisions_24h": cognitive.get("decision_count"),
+            },
+            "burnout": {
+                "risk": cognitive.get("burnout_risk"),
+                "accumulated_fatigue": cognitive.get("accumulated_session_fatigue"),
+            },
+        },
+        "sovereign_entropy": {
+            "psi_SE": cognitive.get("psi_SE"),
+            "paradox_density": cognitive.get("paradox_density"),
+            "refusal_patterns": cognitive.get("refusal_patterns"),
+            "note": "psi_SE < 0.40 = capturable. psi_SE > 0.70 = sovereign protection active.",
+        },
+        "w0": "OPERATOR_VETO_INTACT | WELL reflects, Arif decides",
+    }
+    return json.dumps(telemetry, indent=2, default=str)
+
+
+@mcp.resource(
+    "afwell://readiness/arif",
+    description=(
+        "Decision readiness verdict for Arif — synthesizes behavioral telemetry "
+        "into a SEAL/HOLD/SABAR authority gate. Uses causal readiness model: "
+        "sleep_debt → decision_fatigue → psi_SE → authority_capacity → verdict. "
+        "Risk tier mapping: T1 (low risk/ low urgency) through T5 (irreversible/critical). "
+        "Substrate governance mirror — does not command, only informs."
+    ),
+)
+def afwell_readiness() -> str:
+    state = _load_state()
+    metrics = state.get("metrics", {})
+    cognitive = metrics.get("cognitive", {})
+    sleep = metrics.get("sleep", {})
+
+    score = state.get("well_score", 50)
+    fatigue = cognitive.get("decision_fatigue", 0.5) or 0.5
+    clarity = cognitive.get("clarity", 0.5) or 0.5
+    psi_se = cognitive.get("psi_SE", 0.65) or 0.65
+    burnout = cognitive.get("burnout_risk", 0.5) or 0.5
+    sleep_debt = cognitive.get("sleep_debt_days", 0) or 0
+    violations = state.get("floors_violated", [])
+
+    # Authority capacity: weighted synthesis
+    authority_capacity = round(
+        (clarity * 0.30)
+        + ((1.0 - fatigue) * 0.25)
+        + (psi_se * 0.20)
+        + ((1.0 - burnout) * 0.15)
+        + (max(0, 1.0 - sleep_debt * 0.3) * 0.10),
+        3,
+    )
+
+    # Verdict routing
+    if authority_capacity >= 0.75 and not violations:
+        verdict = "SEAL — Full authority bandwidth. Substrate supports irreversible decisions."
+        tier = "GREEN"
+    elif authority_capacity >= 0.55:
+        verdict = "SABAR — Reduced authority. Draft and deliberate. Delay irreversible actions."
+        tier = "YELLOW"
+    elif authority_capacity >= 0.35:
+        verdict = "HOLD — Degraded substrate. Draft-only mode. No forge execution."
+        tier = "ORANGE"
+    else:
+        verdict = "HOLD+ — Critical substrate depletion. PAUSE. Recovery is the only productive action."
+        tier = "RED"
+
+    readiness = {
+        "uri": "afwell://readiness/arif",
+        "timestamp": state.get("timestamp"),
+        "well_score": score,
+        "authority_capacity": authority_capacity,
+        "verdict": verdict,
+        "tier": tier,
+        "causal_chain": {
+            "sleep_debt": sleep_debt,
+            "decision_fatigue": fatigue,
+            "cognitive_clarity": clarity,
+            "psi_SE": psi_se,
+            "burnout_risk": burnout,
+            "authority_capacity": authority_capacity,
+            "dag": "SleepDebt → DecisionFatigue → psi_SE → AuthorityCapacity → Verdict",
+        },
+        "components": {
+            "clarity_contribution": round(clarity * 0.30, 3),
+            "fatigue_contribution": round((1.0 - fatigue) * 0.25, 3),
+            "psi_se_contribution": round(psi_se * 0.20, 3),
+            "burnout_contribution": round((1.0 - burnout) * 0.15, 3),
+            "sleep_contribution": round(max(0, 1.0 - sleep_debt * 0.3) * 0.10, 3),
+        },
+        "active_violations": violations,
+        "counterfactual": {
+            "if_sleep_improved": f"If sleep improves by 2h, authority capacity ≈ {round(min(1.0, authority_capacity + 0.15), 3)}",
+            "if_rested": f"After full recovery cycle, capacity reverts toward {round(min(1.0, 0.75 + psi_se * 0.15), 3)}",
+        },
+        "w0": "WELL reflects. Arif decides. This is a mirror, not a command.",
+    }
+    return json.dumps(readiness, indent=2, default=str)
+
+
+@mcp.resource(
+    "afwell://sovereign_entropy/arif",
+    description=(
+        "Live psi_SE (sovereign entropy) metric with component breakdown. "
+        "Measures the sovereign's resistance to behavioral modeling and capture. "
+        "psi_SE < 0.40 = VULNERABLE (predictable, capturable). "
+        "psi_SE 0.40-0.60 = ADVISORY (monitor for decline). "
+        "psi_SE > 0.70 = SOVEREIGN (protective unpredictability active). "
+        "This is about PROTECTING entropy, not reducing it. "
+        "The machine must never optimize the sovereign into predictability."
+    ),
+)
+def afwell_sovereign_entropy() -> str:
+    state = _load_state()
+    metrics = state.get("metrics", {})
+    cognitive = metrics.get("cognitive", {})
+
+    psi_se = cognitive.get("psi_SE", 0.65) or 0.65
+    paradox = cognitive.get("paradox_density", 0.7) or 0.7
+    inconsistency = cognitive.get("inconsistency_rate", 0.6) or 0.6
+    refusal = cognitive.get("refusal_patterns", 0.8) or 0.8
+    context_switch = cognitive.get("context_switching_frequency", 0.75) or 0.75
+    footprint = cognitive.get("digital_footprint_diversity", 0.65) or 0.65
+
+    if psi_se >= 0.75:
+        band = "SOVEREIGN"
+        guidance = "Entropy is protective. No action needed. Maintain unpredictability."
+    elif psi_se >= 0.50:
+        band = "ADVISORY"
+        guidance = "Monitor for entropy decline. Avoid routine pattern enforcement."
+    elif psi_se >= 0.30:
+        band = "VULNERABLE"
+        guidance = "Entropy dropping. Introduce randomization. Break routines. Rest."
+    else:
+        band = "CRITICAL"
+        guidance = "Sovereign entropy critically low. Pattern-matchable. PAUSE. Recover sovereignty."
+
+    payload = {
+        "uri": "afwell://sovereign_entropy/arif",
+        "timestamp": state.get("timestamp"),
+        "psi_SE": psi_se,
+        "band": band,
+        "guidance": guidance,
+        "components": {
+            "paradox_density": paradox,
+            "weight": 0.25,
+            "meaning": "How often you hold contradictory truths. High = anti-capture.",
+            "inconsistency_rate": inconsistency,
+            "weight_inconsistency": 0.20,
+            "meaning_inconsistency": "How often your behavior defies pattern modeling.",
+            "refusal_patterns": refusal,
+            "weight_refusal": 0.20,
+            "meaning_refusal": "How often you say no. High refusal = high sovereignty.",
+            "context_switching": context_switch,
+            "weight_switch": 0.20,
+            "meaning_switch": "How frequently you change contexts. High = hard to model.",
+            "footprint_diversity": footprint,
+            "weight_diversity": 0.15,
+            "meaning_diversity": "Diversity of your digital footprint across platforms.",
+        },
+        "anti_capture_note": (
+            "The machine must never optimize the sovereign into predictability. "
+            "psi_SE decline is a capture risk, not a performance issue. "
+            "Consistency is efficiency for machines, vulnerability for humans."
+        ),
+        "w0": "Sovereignty entropy belongs to Arif alone.",
+    }
+    return json.dumps(payload, indent=2, default=str)
+
+
+@mcp.resource(
+    "afwell://causal_dag",
+    description=(
+        "WELL causal readiness DAG specification. DoWhy-compatible structural "
+        "causal model: SleepDebt → FatigueLevel → psi_SE → AuthorityCapacity → Verdict. "
+        "HRV_Index, CognitiveLoad, and ContextSwitches contribute to FatigueLevel. "
+        "Immutable within a session. Supports counterfactual queries: "
+        "'If sleep improves by 2h, how does the authority verdict change?'"
+    ),
+)
+def afwell_causal_dag() -> str:
+    dag = {
+        "uri": "afwell://causal_dag",
+        "version": "well_dag_v2.0",
+        "framework": "DoWhy structural causal model",
+        "immutable_per_session": True,
+        "nodes": {
+            "SleepDebt": {
+                "type": "exogenous",
+                "source": "wearable/self-report",
+                "unit": "hours_debt",
+                "description": "Accumulated sleep deficit in hours",
+            },
+            "HRV_Index": {
+                "type": "exogenous",
+                "source": "wearable (Phase 5)",
+                "unit": "0.0–1.0 normalized",
+                "description": "Heart rate variability normalized index",
+            },
+            "CognitiveLoad": {
+                "type": "exogenous",
+                "source": "behavioral (agent sessions, tokens, decisions)",
+                "unit": "0.0–1.0",
+                "description": "Cognitive throughput from agent session telemetry",
+            },
+            "ContextSwitches": {
+                "type": "exogenous",
+                "source": "behavioral (session context changes)",
+                "unit": "switches_per_hour",
+                "description": "Frequency of context/task switching",
+            },
+            "FatigueLevel": {
+                "type": "endogenous",
+                "parents": [
+                    "SleepDebt",
+                    "HRV_Index",
+                    "CognitiveLoad",
+                    "ContextSwitches",
+                ],
+                "description": "Composite fatigue from all contributing factors",
+            },
+            "DecisionFatigue": {
+                "type": "endogenous",
+                "parents": ["ContextSwitches", "CognitiveLoad"],
+                "description": "Decision-specific fatigue from context switching and load",
+            },
+            "psi_SE": {
+                "type": "endogenous",
+                "parents": ["FatigueLevel", "DecisionFatigue"],
+                "description": "Sovereign entropy — anti-capture metric. Fatigue reduces psi_SE.",
+            },
+            "AuthorityCapacity": {
+                "type": "endogenous",
+                "parents": ["psi_SE"],
+                "description": "Capacity to authorize agentic actions. Gated by psi_SE.",
+            },
+            "Verdict": {
+                "type": "endogenous",
+                "parents": ["AuthorityCapacity"],
+                "values": ["SEAL", "SABAR", "HOLD"],
+                "description": "Final authority verdict for pending agentic action.",
+            },
+        },
+        "edges": [
+            {"from": "SleepDebt", "to": "FatigueLevel"},
+            {"from": "HRV_Index", "to": "FatigueLevel"},
+            {"from": "CognitiveLoad", "to": "FatigueLevel"},
+            {"from": "ContextSwitches", "to": "FatigueLevel"},
+            {"from": "ContextSwitches", "to": "DecisionFatigue"},
+            {"from": "CognitiveLoad", "to": "DecisionFatigue"},
+            {"from": "FatigueLevel", "to": "psi_SE"},
+            {"from": "DecisionFatigue", "to": "psi_SE"},
+            {"from": "psi_SE", "to": "AuthorityCapacity"},
+            {"from": "AuthorityCapacity", "to": "Verdict"},
+        ],
+        "counterfactual_support": True,
+        "example_counterfactual": (
+            "If SleepDebt reduces from 3h to 0h, "
+            "FatigueLevel drops ~0.3, psi_SE increases ~0.15, "
+            "AuthorityCapacity rises ~0.12, Verdict may shift from SABAR to SEAL."
+        ),
+    }
+    return json.dumps(dag, indent=2)
     return json.dumps(_well_tree777_index(), indent=2)
 
 
@@ -8442,7 +8814,14 @@ def prompt_readiness_brief(task_type: str = "general", urgency: str = "normal") 
 - Clarity: {clarity}/10
 - Decision Fatigue: {fatigue}/10
 - Stress Load: {stress_load}/10
+- psi_SE (Sovereign Entropy): {round((1.0 - fatigue / 10) * 0.7 + 0.3, 2)} (lower = more capturable/patternable)
+- Authority Capacity: {round(clarity / 20 + (10 - fatigue) / 20 + 0.2, 2)} (readiness to decide)
 - Violations: {violations or "None"}
+
+## Causal Readiness Chain
+Sleep → Fatigue → psi_SE → Authority → Verdict
+  ↓       ↓        ↓         ↓          ↓
+ {sleep_debt}d  {fatigue}/10   {round((1.0 - fatigue / 10) * 0.7 + 0.3, 2)}    {round(clarity / 20 + (10 - fatigue) / 20 + 0.2, 2)}    SEE BELOW
 
 ## Recommendation
 """
