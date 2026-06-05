@@ -248,7 +248,7 @@ def _check_telemetry_purity(
                     e = json.loads(line)
                     env = e.get("environment", None)
                     note = e.get("note", "") or ""
-                    tier = e.get("tier", "")
+                    e.get("tier", "")
                     is_test_by_note = (
                         note.lower().startswith("test ")
                         or "test path" in note.lower()
@@ -256,9 +256,6 @@ def _check_telemetry_purity(
                         or "test green path" in note.lower()
                         or "automated test" in note.lower()
                         or "mocked" in note.lower()
-                    )
-                    is_test_by_tier = (
-                        tier in ("GREEN", "RED", "AMBER") and is_test_by_note
                     )
                     if env == "TEST" or is_test_by_note:
                         purity = "DIRTY"
@@ -1196,7 +1193,7 @@ def _resolve_readiness(state: dict[str, Any]) -> dict[str, Any]:
     """
     score = _state_score(state)
     violations = state.get("floors_violated", [])
-    metrics = state.get("metrics", {})
+    state.get("metrics", {})
     ceiling = _compute_decision_ceiling(state)
 
     # ── Unknown telemetry path (fail closed without faking biology) ──
@@ -2926,7 +2923,7 @@ def well_bandwidth_recommendation(ctx: Context | None = None) -> dict[str, Any]:
 
     fatigue = cognitive.get("decision_fatigue", 0)
     clarity = cognitive.get("clarity", 10)
-    sleep_debt = sleep.get("sleep_debt_days", 0)
+    sleep.get("sleep_debt_days", 0)
 
     # Determine operational mode (advisory only — WELL never commands)
     if score >= 80 and not violations:
@@ -2999,7 +2996,7 @@ def well_recovery_protocol(ctx: Context | None = None) -> dict[str, Any]:
     state = _load_state()
     metrics = state.get("metrics", {})
     score = state.get("well_score", 50)
-    violations = state.get("floors_violated", [])
+    state.get("floors_violated", [])
 
     actions: list[dict[str, str]] = []
     warnings: list[str] = []
@@ -3253,7 +3250,7 @@ def well_decision_classify(
     """
     state = _load_state()
     score = state.get("well_score", 50)
-    violations = state.get("floors_violated", [])
+    state.get("floors_violated", [])
     metrics = state.get("metrics", {})
     cognitive = metrics.get("cognitive", {})
 
@@ -3653,7 +3650,7 @@ def well_medical_boundary(ctx: Context | None = None) -> dict[str, Any]:
     This protects operator dignity and safety.
     """
     state = _load_state()
-    metrics = state.get("metrics", {})
+    state.get("metrics", {})
     score = state.get("well_score", 50)
 
     return {
@@ -3752,7 +3749,7 @@ def well_pressure_ledger(
 
     # Otherwise, retrieve ledger summary
     source_totals: dict[str, float] = {}
-    cutoff = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=14)
+    datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=14)
 
     if events_path.exists():
         try:
@@ -4171,8 +4168,8 @@ def well_coupled_readiness(ctx: Context | None = None) -> dict[str, Any]:
     """
     h_state = _load_state()
     h_resolved = _resolve_readiness(h_state)
-    h_score = h_resolved["well_score"]
-    h_violations = h_resolved["active_violations"]
+    h_resolved["well_score"]
+    h_resolved["active_violations"]
     has_telemetry = h_resolved["has_telemetry"]
 
     h_metrics = h_state.get("metrics", {})
@@ -4182,7 +4179,7 @@ def well_coupled_readiness(ctx: Context | None = None) -> dict[str, Any]:
 
     m_state = well_machine_state(ctx=None)
     m_metrics = m_state.get("metrics", {})
-    m_score = m_state.get("m_well_score", 100)
+    m_state.get("m_well_score", 100)
     m_verdict = m_state.get("m_well_verdict", "UNKNOWN")
 
     # Human verdict — use resolver, never fake
@@ -4191,7 +4188,7 @@ def well_coupled_readiness(ctx: Context | None = None) -> dict[str, Any]:
     # Metabolic flux override — thermodynamic threshold check
     flux = _compute_metabolic_flux(h_state)
     flux_verdict = flux["verdict"]
-    flux_val = flux["metabolic_flux"]
+    flux["metabolic_flux"]
 
     # Coupled risk detection (only if we have real body data)
     h_vals: dict[str, float] = {}
@@ -4306,7 +4303,7 @@ def well_decision_bandwidth(
     h_state = _load_state()
     h_resolved = _resolve_readiness(h_state)
     h_score = h_resolved["well_score"]
-    h_violations = h_resolved["active_violations"]
+    h_resolved["active_violations"]
     has_telemetry = h_resolved["has_telemetry"]
 
     # Get M-WELL
@@ -4456,7 +4453,7 @@ def well_forge_precheck(
 
     # Get M-WELL health
     m_state = well_machine_state(ctx=None)
-    m_score = m_state.get("m_well_score", 100)
+    m_state.get("m_well_score", 100)
     m_verdict = m_state.get("m_well_verdict", "UNKNOWN")
 
     # ── No body telemetry → cannot recommend real readiness ──
@@ -4665,7 +4662,7 @@ def well_forge_mode_recommend(ctx: Context | None = None) -> dict[str, Any]:
     """
     h_state = _load_state()
     h_score = h_state.get("well_score", 50)
-    h_violations = h_state.get("floors_violated", [])
+    h_state.get("floors_violated", [])
     metrics = h_state.get("metrics", {})
     cognitive = metrics.get("cognitive", {})
 
@@ -4858,7 +4855,7 @@ def _check_tool_surface() -> dict[str, Any]:
 
 def _check_data_freshness(state: dict[str, Any]) -> dict[str, Any]:
     """Check age of last body telemetry and machine state."""
-    metrics = state.get("metrics", {})
+    state.get("metrics", {})
     ts_str = state.get("timestamp")
     now = datetime.datetime.now(datetime.timezone.utc)
 
@@ -8316,7 +8313,7 @@ def afwell_telemetry() -> str:
     state = _load_state()
     metrics = state.get("metrics", {})
     cognitive = metrics.get("cognitive", {})
-    stress = metrics.get("stress", {})
+    metrics.get("stress", {})
     sleep = metrics.get("sleep", {})
 
     telemetry = {
@@ -8380,7 +8377,7 @@ def afwell_readiness() -> str:
     state = _load_state()
     metrics = state.get("metrics", {})
     cognitive = metrics.get("cognitive", {})
-    sleep = metrics.get("sleep", {})
+    metrics.get("sleep", {})
 
     score = state.get("well_score", 50)
     fatigue = cognitive.get("decision_fatigue", 0.5) or 0.5
@@ -9429,7 +9426,7 @@ def well_machine_trend(
     Returns signal frequencies, averages, and anomaly flags.
     """
     state = _load_state()
-    m = state.get("m_machine", {})
+    state.get("m_machine", {})
     events_path = EVENTS_PATH
     cutoff = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(
         minutes=lookback_minutes
@@ -10798,7 +10795,7 @@ def well_daily_checkin(
     # ── Derive sleep metrics ─────────────────────────────────────────────────
     # Sleep debt: assume 8h is baseline; accumulate deviation over days
     # For daily check-in, we compute acute debt from tonight's deviation
-    last_night_deficit = max(0.0, 8.0 - hours_slept)
+    max(0.0, 8.0 - hours_slept)
     # Simple proxy: sleep_quality derived from hours (8h = 10, <6h = degrades fast)
     sleep_quality = float(_clamp(10.0 - max(0.0, 8.0 - hours_slept) * 1.5, 1.0, 10.0))
 
@@ -11815,14 +11812,6 @@ def well_registry_status() -> dict[str, Any]:
     }
 
     # Canonical replacements (from system registry)
-    canonical_replacements = {
-        "well_get_health": "well_assess_reliability",
-        "well_state": "well_validate_vitality",
-        "well_readiness": "well_validate_vitality",
-        "well_machine_state": "well_assess_reliability(mode='machine')",
-        "well_000_ops": "well_assess_reliability",
-        "well_000_init": "well_init",
-    }
 
     async def _safe_call(name: str, args: dict) -> tuple[str, str]:
         try:

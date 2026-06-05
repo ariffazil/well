@@ -1336,7 +1336,7 @@ def test_well_registry_declared_surface_matches_callable():
     import asyncio
 
     async def _check_registry():
-        tools = await mcp.call_tool("mcp_health_check")  # verify server is loaded
+        await mcp.call_tool("mcp_health_check")  # verify server is loaded
         all_tools = await mcp.list_tools()
         callable_names = {t.name for t in all_tools}
 
@@ -1452,7 +1452,7 @@ def test_well_output_federation_format():
         "recommended_next_organ",
     }
 
-    state = _write_canonical_state()
+    _write_canonical_state()
     import asyncio
 
     async def _check_outputs():
@@ -1527,7 +1527,7 @@ def test_well_no_telemetry_invariant():
     readiness_inner = data.get("observation", {}).get("readiness", {})
     domain_verdict = data.get("observation", {}).get("domain_verdict")
     human_val = readiness_inner.get("human")
-    has_telemetry = data.get("observation", {}).get("assumptions", [""]).count(
+    data.get("observation", {}).get("assumptions", [""]).count(
         "has_telemetry=True"
     ) > 0 or "has_telemetry=True" in str(data.get("observation", {}))
 
