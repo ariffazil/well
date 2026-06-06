@@ -25,3 +25,4 @@ quarantine/
 data/
 telemetry/
 state.json.test_backup
+coverage.xml
