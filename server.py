@@ -27,7 +27,7 @@ from fastmcp import FastMCP, Context
 # ── Paths (defined before use in fallback import) ───────────────────────────────
 WELL_DIR = Path(__file__).parent
 
-# ── Organ Governance (arifOS F1-F13) ─────────────────────────────────────────
+# ── Organ Governance (arifOS L1-L13) ─────────────────────────────────────────
 try:
     from organ_governance import check_governance
 except ImportError:
@@ -123,7 +123,7 @@ UNIVERSAL_VITALITY_MODES = {
 G_WELL_PILLARS = {
     "autonomic_coherence": "Are governance organs operating within their constitutional boundaries?",
     "check_and_balance": "Is no single organ exceeding its authority? Is the separation of powers intact?",
-    "floor_compliance": "Are constitutional floors (F1-F13) being respected across the chain?",
+    "law_compliance": "Are constitutional laws (L1-L13) being respected across the chain?",
     "evidence_integrity": "Is decision evidence anchored and auditable before action?",
     "sovereignty_preserved": "Is human veto path intact and unbypassed?",
 }
@@ -131,7 +131,7 @@ G_WELL_PILLARS = {
 G_WELL_VERDICTS = ["COHERENT", "STRESSED", "FRAGMENTED", "UNKNOWN"]
 
 # ── W-Floor Definitions (Canonical — WELL_INVARIANTS.md §I6) ───────────────────
-W_FLOOR_DEFINITIONS = {
+W_LAW_DEFINITIONS = {
     "W0": {
         "name": "Sovereignty Invariant",
         "threshold": "always_active",
@@ -148,7 +148,7 @@ W_FLOOR_DEFINITIONS = {
         "name": "Metabolic Stability",
         "threshold": "dehydration or stability < 5",
         "max_severity": "CAUTION",
-        "arifos_map": "F1, F10",
+        "arifos_map": "L1, L10",
     },
     "W3": {
         "name": "Stress Load",
@@ -1556,7 +1556,7 @@ def _g_well_assess(state: dict[str, Any]) -> dict[str, Any]:
     """
     G-WELL: Assess governance coherence of the machine substrate.
     Maps m_machine + MCP health into governance terms: autonomic_coherence,
-    check_and_balance, floor_compliance, evidence_integrity, sovereignty_preserved.
+    check_and_balance, law_compliance, evidence_integrity, sovereignty_preserved.
     Returns structured governance verdict.
     """
     m = state.get("m_machine", {})
@@ -6940,8 +6940,8 @@ def well_222_fetch(
             verdict=verdict,
             data=res,
             constitutional_compliance={
-                "F02_TRUTH": eq,
-                "F03_WITNESS": corroboration_count,
+                "L02_TRUTH": eq,
+                "L03_WITNESS": corroboration_count,
             },
         )
     if mode == "quality":
@@ -7050,7 +7050,7 @@ def well_333_mind(
             data=results,
             constitutional_compliance={
                 "F05_PEACE": d.get("status"),
-                "F06_EMPATHY": m.get("status"),
+                "L06_EMPATHY": m.get("status"),
             },
         )
 
@@ -7185,7 +7185,7 @@ def well_333_mind(
             else "PROVISIONAL",
             data=res,
             constitutional_compliance={
-                "F09_ANTIHANTU": "protected" if res.get("is_symbolic_domain") else "N/A"
+                "L09_ANTIHANTU": "protected" if res.get("is_symbolic_domain") else "N/A"
             },
         )
 
@@ -7449,7 +7449,7 @@ def well_666_heart(
             data={"symbolic": sym, "dignity": dig},
             constitutional_compliance={
                 "F05_PEACE": dig.get("status"),
-                "F06_EMPATHY": "scanned",
+                "L06_EMPATHY": "scanned",
             },
         )
     if mode == "empathize":
@@ -7477,7 +7477,7 @@ def well_666_heart(
                 "stress_load": load,
                 "decision_fatigue": fatigue,
             },
-            constitutional_compliance={"F06_EMPATHY": impact},
+            constitutional_compliance={"L06_EMPATHY": impact},
         )
     if mode == "dignity":
         res = well_livelihood_dignity_check(
@@ -7680,7 +7680,7 @@ def well_888_judge(
     modes: readiness | classify | niat | coupled
     Compresses: well_readiness, well_decision_classify, well_niat_check, well_coupled_readiness
     NOTE: floor compliance removed per orthogonal alignment (2026-05-14).
-          arifOS alone adjudicates constitutional floors.
+          arifOS alone adjudicates constitutional laws.
     """
     mode = mode.lower()
     if mode == "readiness":
@@ -8987,7 +8987,7 @@ def _patched_check(self, request):
 StreamableHTTPServerTransport._check_accept_headers = _patched_check
 
 # ============================================================
-# ORGAN_GOVERNANCE: arifOS F1-F13 Wrapper
+# ORGAN_GOVERNANCE: arifOS L1-L13 Wrapper
 # Patch mcp.call_tool to intercept all tool execution.
 # ============================================================
 # ── Supabase L4 Domain Receipts ─────────────────────────────────────────────
@@ -9092,7 +9092,7 @@ try:
         return result
 
     mcp.call_tool = _governance_call_tool
-    print("[GOVERNANCE] WELL governance wrapper active — arifOS F1-F13")
+    print("[GOVERNANCE] WELL governance wrapper active — arifOS L1-L13")
 except Exception as _e:
     print(f"[GOVERNANCE] WELL governance wrapper failed: {_e}")
 
@@ -10492,7 +10492,7 @@ def well_assess_homeostasis(
             ).to_csv(_bcsv, index=False)
 
             # Strain profile: stat_descriptives of the 5 metric values.
-            # Federated saf_stats returns F1-F13 envelope at the top level
+            # Federated saf_stats returns L1-L13 envelope at the top level
             # (no "ok" key). Treat a populated "results" list as success.
             _desc = _saf_descriptives_fn(file_path=str(_bcsv), columns=["value"])
             _desc_ok = (
@@ -11478,7 +11478,7 @@ def well_assess_governance(
         }
     elif mode == "floors":
         data = {
-            "floor_compliance": g["pillars"].get("floor_compliance", ("", "unknown"))[
+            "law_compliance": g["pillars"].get("law_compliance", ("", "unknown"))[
                 1
             ],
             "governance_flags": [
@@ -11680,9 +11680,9 @@ def well_validate_consensus(
             "human_confirmation_required": well_human_confirmation,
         },
         constitutional_compliance={
-            "F01_AMANAH": "check" if action else "N/A",
-            "F03_WITNESS": f"{sum(1 for v in witness_results.values() if v['verdict'] == 'READY')}/{len(witnesses)}",
-            "F13_SOVEREIGN": "human_veto_path_intact",
+            "L01_AMANAH": "check" if action else "N/A",
+            "L03_WITNESS": f"{sum(1 for v in witness_results.values() if v['verdict'] == 'READY')}/{len(witnesses)}",
+            "L13_SOVEREIGN": "human_veto_path_intact",
         },
         federation_state={
             "consensus": consensus,

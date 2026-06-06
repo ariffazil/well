@@ -69,7 +69,7 @@ def test_all_four_labels_present():
 def test_authority_is_advisory_only():
     """Authority is a constitutional constant for WELL.
 
-    F13 SOVEREIGN: WELL labels; arifOS arbitrates. The authority label
+    L13 SOVEREIGN: WELL labels; arifOS arbitrates. The authority label
     does not change based on input. WELL never grants execution.
     """
     for state in [None, {}, {"verified_metrics": True}, {"synthetic": True}]:
@@ -252,7 +252,7 @@ def test_async_decorator():
 
 
 def test_no_new_mcp_tools():
-    """PR 6 does not add a new MCP tool. F13: surface stays clean.
+    """PR 6 does not add a new MCP tool. L13: surface stays clean.
 
     The reflect module exposes the 4 label constants + the decorator.
     It does not register any FastMCP tools.

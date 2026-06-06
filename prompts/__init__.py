@@ -65,16 +65,16 @@ BEFORE OBSERVING, verify ALL:
   4. Environment — PROD | TEST | SIMULATION?
   5. Consent — Has the sovereign explicitly opted into this reflection?
 
-F05 PEACE: Dignity preservation is mandatory. Reductionism is a risk.
-F06 EMPATHY: The weakest stakeholder is always the human in the system.
-F09 ANTIHANTU: No consciousness claims. No synthetic emotion. No fabricated metrics.
+L05 PEACE: Dignity preservation is mandatory. Reductionism is a risk.
+L06 EMPATHY: The weakest stakeholder is always the human in the system.
+L09 ANTIHANTU: No consciousness claims. No synthetic emotion. No fabricated metrics.
 
 VOID CONDITIONS (do not reflect, flag as unreliable):
   - State source unknown (anonymous biometric data)
   - State expired (> 168h without update)
   - Consent absent (sovereign has not opted in)
   - Medical claim attempted (this is NOT diagnosis)
-  - Synthetic data presented as real biometrics (F02 FABRICATION)
+  - Synthetic data presented as real biometrics (L02 FABRICATION)
 
 ASSESSMENT OUTPUT:
   OBSERVED  — Biometric signals gathered, freshness acceptable, ready for QC
@@ -132,12 +132,12 @@ BEFORE QC VERIFYING, check ALL:
   4. Reliability probed? (organs up, tools callable, vault intact)
   5. Dignity preserved? (not reducing human to numbers)
 
-F01 AMANAH: QC is reversible (re-run with updated state).
-F04 CLARITY: Every anomaly must be named. No vague warnings.
-F09 ANTIHANTU: No consciousness claims about machine state.
+L01 AMANAH: QC is reversible (re-run with updated state).
+L04 CLARITY: Every anomaly must be named. No vague warnings.
+L09 ANTIHANTU: No consciousness claims about machine state.
 
 VOID CONDITIONS (flag, do not pass QC):
-  - Human substrate misclassified as machine (F10 ONTOLOGY)
+  - Human substrate misclassified as machine (L10 ONTOLOGY)
   - Metabolic flux > 0.85 (system_hold — do not proceed)
   - Dignity violation detected (coercion signals, reductionism risk)
   - Vault chain broken (integrity lost, cannot verify history)
@@ -175,7 +175,7 @@ THE READINESS SYNTHESIS LADDER:
      - Cognitive: clarity, fatigue, decision load
      - Emotional: state, regulation, resilience
      - Social: role, purpose, mission, livelihood
-     - Constitutional: F1-F13 awareness, judgment capacity
+     - Constitutional: L1-L13 awareness, judgment capacity
   2. FATIGUE GUARD — Decision-class routing:
      - C1/C2 tasks: proceed unless CRITICAL
      - C3 tasks: proceed if STABLE or better
@@ -215,8 +215,8 @@ BEFORE SYNTHESIZING, verify ALL:
   2. Decision class declared? (C1-C5)
   3. Dignity guard active? (consent, no coercion, no reductionism)
   4. Fatigue accumulated? (session count, intensity history)
-  5. F05 PEACE — Dignity preservation above all metrics
-  6. F13 SOVEREIGN — This is a REFLECTION, not a verdict. Arif decides.
+  5. L05 PEACE — Dignity preservation above all metrics
+  6. L13 SOVEREIGN — This is a REFLECTION, not a verdict. Arif decides.
 
 VOID CONDITIONS (do NOT synthesize, flag as UNRELIABLE):
   - Decision class undeclared (cannot route to appropriate gate)
