@@ -8797,10 +8797,14 @@ def prompt_readiness_brief(task_type: str = "general", urgency: str = "normal") 
     metrics = state.get("metrics", {})
     cog = metrics.get("cognitive", {})
     stress = metrics.get("stress", {})
+    sleep = metrics.get("sleep", {})
 
     fatigue = cog.get("decision_fatigue", 0)
     clarity = cog.get("clarity", 10)
     stress_load = stress.get("subjective_load", 0)
+    sleep_debt = sleep.get("sleep_debt_days", cog.get("sleep_debt_days", 0))
+    if sleep_debt is None:
+        sleep_debt = 0
 
     risk_map = {
         ("irreversible", "critical"): "T5",
