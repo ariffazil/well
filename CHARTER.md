@@ -20,7 +20,7 @@ WELL governs the biological state of the human operator (arif) to ensure the int
 ## IV. Phased Implementation
 - **Phase 1 (Complete):** Immutable Ledger & Observability.
 - **Phase 2 (Active):** Readiness Scores (Soft Constraints) — well_score, cognitive entropy, bandwidth recommendation.
-- **Phase 3 (Active):** Constitutional Floors (W1–W6) — sleep integrity, cognitive entropy, incentive decoupling, metabolic pause.
+- **Phase 3 (Active):** Constitutional Laws (W1–W6) — sleep integrity, cognitive entropy, incentive decoupling, metabolic pause.
 - **Phase 4 (In Progress):** Universal Substrate Classification — human + machine + MCP coupled verdict.
 - **Phase 5 (Future):** Wearable/Biomarker Integration.
 
