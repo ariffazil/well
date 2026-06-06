@@ -107,9 +107,16 @@ UNIVERSAL_SUBSTRATE_CLASSES = {
 UNIVERSAL_VITALITY_MODES = {
     "HUMAN_PERSON": "biological + cognitive + livelihood + role integrity",
     "HUMAN_BODY_PART": "integration with living body",
+    "HUMAN_RELATIONAL_DYNAMIC": (
+        "embodied relational integrity (consent, dignity, personhood, "
+        "power, vulnerability)"
+    ),
     "NONHUMAN_ORGANISM": "biological vitality (metabolism, homeostasis, reproduction)",
     "LIMINAL_BIOLOGICAL": "replicative potency, host dependence",
     "MACHINE_SYSTEM": "operational reliability",
+    "COUPLED_HUMAN_MACHINE_SYSTEM": (
+        "joint reliability + dignity preservation across the human–machine boundary"
+    ),
     "INSTITUTION": "organizational viability (mission, cashflow, trust, coordination)",
     "MATERIAL_OBJECT": "structural integrity, not life",
     "ECOSYSTEM": "ecological vitality (biodiversity, resilience, energy flow)",
@@ -5581,6 +5588,137 @@ async def well_request_anchor(
 
 
 # INTERNAL — absorbed into well_111_sense(mode="classify")
+# ── G-WELL: Cultural Archetype + Relational Dynamic Helpers ──────────────────
+# These helpers support the G-WELL governance layer's abstraction discipline:
+#   1. Cultural / symbolic names (e.g. "abang sado shadow") are EXTRACTED as
+#      metadata, NEVER allowed to determine substrate_class.
+#   2. When the input describes a human-to-human relational pattern involving
+#      body, touch, power, dignity, or consent, route to
+#      HUMAN_RELATIONAL_DYNAMIC and emit a canonical object with subtype,
+#      shadow, risks, and protection surface.
+# Rationale (Arif, 2026-06-06): "Don't feed WELL the archetype first. Feed it
+# the human substrate first, then attach the archetype as cultural metadata."
+
+CULTURAL_ARCHETYPE_PATTERNS: dict[str, list[str]] = {
+    "abang_sado": ["abang sado"],
+    "muscle_worship": ["muscle worship", "physique worship", "body worship"],
+    "daddy_dom": ["daddy dom", "daddy dynamic"],
+    "shadow_figure": ["shadow", "dark figure", "shadow dom"],
+    "alpha_archetype": ["alpha male", "sigma male", "alpha archetype"],
+    "sadomasochistic_dyad": [
+        "sadomasochism",
+        "sadism",
+        "masochism",
+        "s&M",
+        "bdsm",
+        "kink",
+        "fetish",
+    ],
+    "relational_dominant": ["dominant", "dom", "domme", "master"],
+    "relational_submissive": ["submissive", "sub", "slave"],
+}
+
+
+def _extract_cultural_archetype(combined: str) -> dict[str, Any]:
+    """Extract cultural/symbolic names as metadata, NEVER let them determine
+    substrate_class. The substrate is the human substrate; the archetype is
+    cultural overlay.
+
+    Args:
+        combined: lowercased subject + description.
+
+    Returns:
+        {
+            "archetypes_present": list[str],  # e.g. ["abang_sado"]
+            "is_culturally_loaded": bool,
+            "archetype_count": int,
+        }
+    """
+    found: list[str] = []
+    for archetype, patterns in CULTURAL_ARCHETYPE_PATTERNS.items():
+        if any(p in combined for p in patterns):
+            found.append(archetype)
+    return {
+        "archetypes_present": found,
+        "is_culturally_loaded": len(found) > 0,
+        "archetype_count": len(found),
+    }
+
+
+def _subtype_relational_dynamic(combined: str) -> str:
+    """Best-fit subtype for HUMAN_RELATIONAL_DYNAMIC. Pure heuristic; advisory
+    only. F2 TRUTH: this is a guess, not a diagnosis.
+    """
+    if (
+        "worship" in combined
+        or "admiration" in combined
+        or "objectification" in combined
+    ):
+        return "embodied_worship_validation_loop"
+    if any(
+        p in combined
+        for p in [
+            "sadomasochism",
+            "sado",
+            "S&M",
+            "bdsm",
+            "kink",
+            "dom",
+            "sub",
+            "switch",
+            "power exchange",
+            "dominance",
+            "submission",
+        ]
+    ):
+        return "consensual_power_exchange"
+    if (
+        "touch" in combined
+        or "tactile" in combined
+        or "physical intimacy" in combined
+        or "sensual" in combined
+    ):
+        return "embodied_intimacy"
+    if "shame" in combined or "vulnerability" in combined or "exposure" in combined:
+        return "shame_vulnerability_loop"
+    if "validation" in combined:
+        return "validation_dynamics"
+    if "care" in combined or "caregiver" in combined:
+        return "care_dyadic"
+    return "human_relational_dynamic_unspecified"
+
+
+def _risks_relational_dynamic(subtype: str) -> list[str]:
+    """Standard risk surface for any human-relational pattern involving body
+    and dignity. F2 TRUTH: presence of risk factors does NOT mean the dynamic
+    is harmful — only that the surface exists.
+    """
+    base = ["consent_blur", "personhood_reduction"]
+    if "worship" in subtype or "validation" in subtype:
+        base = ["objectification", "validation_addiction"] + base
+    if "shame" in subtype or "vulnerability" in subtype:
+        base = ["shame_loop", "exploitation_surface"] + base
+    if "power" in subtype or "exchange" in subtype:
+        base = base + ["power_imbalance", "exit_barrier_risk"]
+    if "intimacy" in subtype or "embodied" in subtype:
+        base = base + ["touch_boundary_drift"]
+    return list(dict.fromkeys(base))  # dedupe, preserve order
+
+
+def _protection_relational_dynamic(subtype: str) -> list[str]:
+    """Standard protection surface. F2 TRUTH: protections are PRESERVED, not
+    guaranteed; F13 SOVEREIGN decides what is binding.
+    """
+    base = ["dignity_boundary", "explicit_consent", "personhood_preservation"]
+    if "worship" in subtype or "validation" in subtype:
+        base = base + ["body_agency_reaffirmation"]
+    if "shame" in subtype or "vulnerability" in subtype:
+        base = base + ["shame_safety", "aftercare_protocol"]
+    if "power" in subtype or "exchange" in subtype:
+        base = base + ["safeword_protocol", "negotiated_scope"]
+    return list(dict.fromkeys(base))
+
+
 def _well_classify_substrate_impl(
     subject: str,
     description: str | None = None,
@@ -5620,6 +5758,78 @@ def _well_classify_substrate_impl(
             "tooth",
             "cell",
             "limb",
+        ],
+        "HUMAN_RELATIONAL_DYNAMIC": [
+            # Two+ peer markers (must involve 2 or more people)
+            "dyad",
+            "dyadic",
+            "couple",
+            "coupleship",
+            "partner",
+            "partnership",
+            "lover",
+            "spouse",
+            "intimate partner",
+            "worshipper",
+            "worshipped",
+            "worshiper",
+            "adorer",
+            "admirer",
+            "dominant",
+            "submissive",
+            "dom",
+            "sub",
+            "switch",
+            "top",
+            "bottom",
+            "domme",
+            "master",
+            "slave",
+            # Body + power dynamics
+            "worship",
+            "muscle worship",
+            "body worship",
+            "physique worship",
+            "embodied worship",
+            "tactile worship",
+            "physical worship",
+            "admiration",
+            "validation",
+            "body validation",
+            "objectification",
+            "objectified",
+            "personhood reduction",
+            # Power / intimacy / consent dynamics
+            "dominance",
+            "submission",
+            "domination",
+            "power exchange",
+            "sadomasochism",
+            "sadism",
+            "masochism",
+            "sado",
+            "s&M",
+            "bdsm",
+            "kink",
+            "fetish",
+            "touch dynamic",
+            "consent dynamic",
+            "embodied power",
+            "physical intimacy",
+            "sensual",
+            "intimate dynamic",
+            "vulnerability",
+            "exposure",
+            "shame",
+            "shame loop",
+            # Cultural / symbolic archetypes (also treated as class signals
+            # but extracted separately as cultural_metadata)
+            "abang sado",
+            "muscle worship",
+            "shadow dom",
+            "daddy dom",
+            "alpha male",
+            "sigma male",
         ],
         "NONHUMAN_ORGANISM": [
             "plant",
@@ -5837,7 +6047,70 @@ def _well_classify_substrate_impl(
         else "none"
     )
 
-    return {
+    # G-WELL: extract cultural archetypes as METADATA, never as class signal
+    cultural_metadata = _extract_cultural_archetype(combined)
+
+    # G-WELL: Relational-Dynamic Override
+    # If 2+ relational-pattern keywords match (e.g. "worshipper", "worship",
+    # "dyad") or if a strong cultural archetype is detected AND at least one
+    # body/dignity/consent relational marker is present, force classification
+    # to HUMAN_RELATIONAL_DYNAMIC — this is the abstraction fix for cultural
+    # archetypes like "abang sado shadow / muscle worship dynamic".
+    relational_body_markers = (
+        "worship",
+        "admiration",
+        "objectification",
+        "dominance",
+        "submission",
+        "consent",
+        "touch",
+        "intimacy",
+        "vulnerability",
+        "shame",
+        "validation",
+        "power exchange",
+        "embodied",
+        "sensual",
+        "tactile",
+    )
+    relational_markers_present = sum(
+        1 for kw in relational_body_markers if kw in combined
+    )
+    archetype_signals = sum(
+        1
+        for archetype, patterns in CULTURAL_ARCHETYPE_PATTERNS.items()
+        if any(p in combined for p in patterns)
+    )
+
+    if (
+        detected_class not in ("HUMAN_PERSON", "HUMAN_BODY_PART")
+        and machine_core_count == 0
+        and not machine_phrase_blocked
+    ):
+        # Cultural archetype + at least 1 relational body marker → relational
+        if (
+            cultural_metadata["is_culturally_loaded"]
+            and relational_markers_present >= 1
+        ):
+            detected_class = "HUMAN_RELATIONAL_DYNAMIC"
+            max_matches = max(max_matches, 2)
+        # 2+ relational body markers without machine indicators → relational
+        elif relational_markers_present >= 2:
+            detected_class = "HUMAN_RELATIONAL_DYNAMIC"
+            max_matches = max(max_matches, 2)
+        # Strong cultural archetype alone (e.g. "abang sado shadow") with no
+        # machine indicators AND 1+ body marker → relational (advisory, low
+        # confidence)
+        elif cultural_metadata["is_culturally_loaded"] and any(
+            b in combined for b in ("body", "muscle", "physique", "sado")
+        ):
+            detected_class = "HUMAN_RELATIONAL_DYNAMIC"
+            max_matches = max(max_matches, 1)
+
+    # Re-derive vitality mode after possible class override
+    vitality_mode = UNIVERSAL_VITALITY_MODES.get(detected_class, "unknown")
+
+    result: dict[str, Any] = {
         "ok": True,
         "subject": subject,
         "substrate_class": detected_class,
@@ -5849,9 +6122,36 @@ def _well_classify_substrate_impl(
         else "medium"
         if max_matches == 1
         else "low",
+        "cultural_metadata": cultural_metadata,
         "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
         "human_judge_required": True,
     }
+
+    # G-WELL: Canonical Object for HUMAN_RELATIONAL_DYNAMIC
+    # F2 TRUTH: subtype/shadow/risks/protection are advisory signals, not
+    # verdicts. F13 SOVEREIGN is the only binding authority on relational
+    # matters.
+    if detected_class == "HUMAN_RELATIONAL_DYNAMIC":
+        subtype = _subtype_relational_dynamic(combined)
+        result["canonical_object"] = {
+            "kind": "WELL:HUMAN_RELATIONAL_DYNAMIC",
+            "subtype": subtype,
+            "shadow": (
+                cultural_metadata["archetypes_present"][0]
+                if cultural_metadata["archetypes_present"]
+                else None
+            ),
+            "primary_risks": _risks_relational_dynamic(subtype),
+            "primary_protection": _protection_relational_dynamic(subtype),
+            "abstraction_discipline": (
+                "substrate (human-relational) is independent of cultural "
+                "archetype; archetype is metadata overlay only"
+            ),
+            "authority_scope": "reflect_only",
+            "human_judge_required": True,
+        }
+
+    return result
 
 
 # INTERNAL — absorbed into well_111_sense(mode="boundary")
@@ -5884,6 +6184,24 @@ def well_boundary_check(
             "dignity",
         ],
         "HUMAN_BODY_PART": ["integration", "origin", "condition", "integrity"],
+        "HUMAN_RELATIONAL_DYNAMIC": [
+            "dignity",
+            "consent",
+            "role",
+            "power",
+            "embodiment",
+            "vulnerability",
+            "validation",
+            "boundary",
+            "shame",
+            "objectification",
+            "personhood",
+            "intimacy",
+            "touch",
+            "admiration",
+            "worship",
+            "dominance",
+        ],
         "NONHUMAN_ORGANISM": ["vitality", "health", "ecological_role", "viability"],
         "LIMINAL_BIOLOGICAL": ["viability", "potency", "host_dependence"],
         "MACHINE_SYSTEM": [

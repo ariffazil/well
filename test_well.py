@@ -739,6 +739,105 @@ async def _test_universal_classify_substrate():
     print("✅ well_classify_substrate tests passed")
 
 
+async def _test_classify_human_relational_dynamic():
+    """G-WELL: HUMAN_RELATIONAL_DYNAMIC with cultural archetype metadata.
+
+    Forged 2026-06-06 — fixes the abstraction leak where cultural
+    archetypes like "abang sado shadow / muscle worship dynamic" were
+    collapsing to NONHUMAN_ORGANISM (or default MATERIAL_OBJECT). The
+    canonical object format makes subtype/shadow/risks/protection explicit.
+    """
+    print("\n🧪 Testing HUMAN_RELATIONAL_DYNAMIC abstraction...")
+
+    # Case 1: Cultural archetype "abang sado shadow" alone (the bug case)
+    res = await mcp.call_tool(
+        "well_classify_substrate", arguments={"subject": "abang sado shadow"}
+    )
+    data = get_data(res)
+    assert data["observation"]["substrate_class"] == "HUMAN_RELATIONAL_DYNAMIC", (
+        f"expected HUMAN_RELATIONAL_DYNAMIC, got "
+        f"{data['observation']['substrate_class']}"
+    )
+    assert "canonical_object" in data["observation"]
+    canon = data["observation"]["canonical_object"]
+    assert canon["kind"] == "WELL:HUMAN_RELATIONAL_DYNAMIC"
+    assert (
+        "abang_sado" in data["observation"]["cultural_metadata"]["archetypes_present"]
+    )
+    assert "dignity_boundary" in canon["primary_protection"]
+    assert "explicit_consent" in canon["primary_protection"]
+    assert "personhood_preservation" in canon["primary_protection"]
+
+    # Case 2: "muscle worship dynamic" — explicit body + worship keywords
+    res = await mcp.call_tool(
+        "well_classify_substrate",
+        arguments={"subject": "muscle worship dynamic"},
+    )
+    data = get_data(res)
+    assert data["observation"]["substrate_class"] == "HUMAN_RELATIONAL_DYNAMIC"
+    assert (
+        data["observation"]["canonical_object"]["subtype"]
+        == "embodied_worship_validation_loop"
+    )
+    assert "objectification" in data["observation"]["canonical_object"]["primary_risks"]
+
+    # Case 3: Correct input shape with description (peer-aware)
+    res = await mcp.call_tool(
+        "well_classify_substrate",
+        arguments={
+            "subject": "human-human embodied worship dynamic",
+            "description": (
+                "A relational pattern where muscular body, admiration, "
+                "touch, dominance, validation, and possible erotic "
+                "ambiguity interact."
+            ),
+        },
+    )
+    data = get_data(res)
+    assert data["observation"]["substrate_class"] == "HUMAN_RELATIONAL_DYNAMIC"
+    assert data["observation"]["classification_confidence"] in ("medium", "high")
+
+    # Case 4: Consensual power exchange (kink dyad)
+    res = await mcp.call_tool(
+        "well_classify_substrate",
+        arguments={
+            "subject": "sadomasochistic dyad",
+            "description": "A consensual power exchange between two adults.",
+        },
+    )
+    data = get_data(res)
+    assert data["observation"]["substrate_class"] == "HUMAN_RELATIONAL_DYNAMIC"
+    assert (
+        data["observation"]["canonical_object"]["subtype"]
+        == "consensual_power_exchange"
+    )
+    assert (
+        "safeword_protocol"
+        in data["observation"]["canonical_object"]["primary_protection"]
+    )
+
+    # Case 5: MACHINE firewall — AI+human cannot be HUMAN_RELATIONAL_DYNAMIC
+    res = await mcp.call_tool(
+        "well_classify_substrate",
+        arguments={"subject": "AI assistant worshipping a human"},
+    )
+    data = get_data(res)
+    assert data["observation"]["substrate_class"] != "HUMAN_RELATIONAL_DYNAMIC", (
+        "machine indicators must NEVER route to HUMAN_RELATIONAL_DYNAMIC"
+    )
+    assert "canonical_object" not in data["observation"]
+
+    # Case 6: Authority scope stays reflect_only (F7 HUMILITY)
+    res = await mcp.call_tool(
+        "well_classify_substrate", arguments={"subject": "abang sado shadow"}
+    )
+    data = get_data(res)
+    assert data["observation"]["canonical_object"]["authority_scope"] == "reflect_only"
+    assert data["observation"]["human_judge_required"] is True
+
+    print("✅ HUMAN_RELATIONAL_DYNAMIC abstraction tests passed")
+
+
 async def _test_universal_boundary_check():
     print("\n🧪 Testing U-WELL boundary_check...")
 
@@ -1101,6 +1200,7 @@ async def _test_universal_symbolic_domain():
 
 async def _test_universal_tools_core():
     await _test_universal_classify_substrate()
+    await _test_classify_human_relational_dynamic()
     await _test_universal_boundary_check()
     await _test_universal_evidence_quality()
     await _test_universal_verdict_packet()
