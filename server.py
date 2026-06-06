@@ -8586,6 +8586,317 @@ ALIAS_REGISTRY = {
     "well_000_ops": "well_assess_reliability",
 }
 
+
+# ── 010_WELL_DREAM_ENGINE: well_13_signal_coverage ─────────────────────────────
+# Dream engine = WELL's view of its own substrate coverage.
+# Forged 2026-06-06 as SUNAT item per GENESIS/004_WELL_13_CANON.md §5.2.
+# This tool does NOT diagnose, score, or judge the human.
+# It audits whether WELL is currently observing the 13 canonical signals.
+# Authority: reflect_only. arifOS / 888_JUDGE adjudicates gaps.
+
+WELL_13_COVERAGE_MAP: list[dict[str, Any]] = [
+    {
+        "id": "S01",
+        "signal": "heart_circulation",
+        "tier": "vital_substrate",
+        "state_path": ["metrics", "cardio", "resting_hr"],
+        "alt_paths": [
+            ["metrics", "cognitive", "hrv_proxy"],
+            ["metrics", "stress", "hrv_proxy"],
+        ],
+    },
+    {
+        "id": "S02",
+        "signal": "blood_pressure",
+        "tier": "vital_substrate",
+        "state_path": ["metrics", "cardio", "systolic_bp"],
+        "alt_paths": [
+            ["metrics", "cardio", "diastolic_bp"],
+        ],
+    },
+    {
+        "id": "S03",
+        "signal": "breathing_oxygenation",
+        "tier": "vital_substrate",
+        "state_path": ["metrics", "cardio", "respiratory_rate"],
+        "alt_paths": [
+            ["metrics", "cardio", "spo2"],
+        ],
+    },
+    {
+        "id": "S04",
+        "signal": "temperature_inflammation",
+        "tier": "vital_substrate",
+        "state_path": ["metrics", "vital", "body_temperature"],
+        "alt_paths": [
+            ["metrics", "inflammation", "marker"],
+        ],
+    },
+    {
+        "id": "S05",
+        "signal": "sleep_architecture",
+        "tier": "recovery_metabolic",
+        "state_path": ["metrics", "sleep", "sleep_hours"],
+        "alt_paths": [
+            ["metrics", "sleep", "sleep_quality"],
+            ["metrics", "sleep", "sleep_debt_days"],
+        ],
+    },
+    {
+        "id": "S06",
+        "signal": "metabolic_state",
+        "tier": "recovery_metabolic",
+        "state_path": ["metrics", "metabolic", "metabolic_stability"],
+        "alt_paths": [
+            ["metrics", "metabolic", "fasting_hours"],
+            ["metrics", "glucose"],
+        ],
+    },
+    {
+        "id": "S07",
+        "signal": "nutrition_hydration",
+        "tier": "recovery_metabolic",
+        "state_path": ["metrics", "nutrition", "nutrition_quality"],
+        "alt_paths": [
+            ["metrics", "nutrition", "hydration"],
+        ],
+    },
+    {
+        "id": "S08",
+        "signal": "movement_strength",
+        "tier": "function_cognition",
+        "state_path": ["metrics", "movement", "movement_count"],
+        "alt_paths": [
+            ["metrics", "movement", "gait"],
+        ],
+    },
+    {
+        "id": "S09",
+        "signal": "pain_injury",
+        "tier": "function_cognition",
+        "state_path": ["metrics", "pain", "pain_sites"],
+        "alt_paths": [
+            ["metrics", "pain", "pain_level"],
+        ],
+    },
+    {
+        "id": "S10",
+        "signal": "cognitive_clarity",
+        "tier": "function_cognition",
+        "state_path": ["metrics", "cognitive", "clarity"],
+        "alt_paths": [
+            ["metrics", "cognitive", "decision_fatigue"],
+            ["metrics", "cognitive", "focus_durability"],
+        ],
+    },
+    {
+        "id": "S11",
+        "signal": "emotional_stress",
+        "tier": "dignity_environment",
+        "state_path": ["metrics", "stress", "subjective_load"],
+        "alt_paths": [
+            ["metrics", "stress", "restlessness"],
+            ["metrics", "stress", "emotional_state"],
+        ],
+    },
+    {
+        "id": "S12",
+        "signal": "social_dignity_consent",
+        "tier": "dignity_environment",
+        "state_path": ["metrics", "dignity", "dignity_preservation"],
+        "alt_paths": [
+            ["metrics", "dignity", "coercion_signals"],
+            ["metrics", "dignity", "reductionism_risk"],
+        ],
+    },
+    {
+        "id": "S13",
+        "signal": "environment_livelihood",
+        "tier": "dignity_environment",
+        "state_path": ["metrics", "livelihood", "energy_level"],
+        "alt_paths": [
+            ["metrics", "livelihood", "duty_load"],
+            ["metrics", "livelihood", "purpose_alignment"],
+        ],
+    },
+]
+
+
+def _resolve_path(state: dict[str, Any], path: list[str]) -> Any:
+    """Safely walk a state.json path. Returns None if any key is missing."""
+    cur: Any = state
+    for k in path:
+        if not isinstance(cur, dict) or k not in cur:
+            return None
+        cur = cur[k]
+    return cur
+
+
+@mcp.tool()
+def well_13_signal_coverage(
+    operator_id: str | None = None,
+    ctx: Context | None = None,
+) -> dict[str, Any]:
+    """
+    DREAM ENGINE: Audit WELL's coverage of the 13 canonical human substrate
+    signals. Returns per-signal status (active/partial/missing), coverage
+    summary, and cross-organ handoff suggestions for gaps.
+
+    Authority: reflect_only. WELL does not score the human here. WELL
+    audits itself: which of the 13 substrate signals am I currently
+    seeing? Which are stale? Which are missing?
+
+    SUNAT item per GENESIS/004_WELL_13_CANON.md §5.2.
+    """
+    return _well_13_signal_coverage_impl(operator_id=operator_id, ctx=ctx)
+
+
+def _well_13_signal_coverage_impl(
+    operator_id: str | None = None,
+    ctx: Context | None = None,
+) -> dict[str, Any]:
+    state = _load_state()
+    metrics = state.get("metrics", {})
+
+    per_signal: list[dict[str, Any]] = []
+    tier_counts: dict[str, dict[str, int]] = {
+        "vital_substrate": {"active": 0, "partial": 0, "missing": 0},
+        "recovery_metabolic": {"active": 0, "partial": 0, "missing": 0},
+        "function_cognition": {"active": 0, "partial": 0, "missing": 0},
+        "dignity_environment": {"active": 0, "partial": 0, "missing": 0},
+    }
+
+    now_iso = (
+        datetime.datetime.now(datetime.timezone.utc).isoformat()
+        if "datetime" in dir()
+        else None
+    )
+    state_timestamp = state.get("timestamp")
+
+    for spec in WELL_13_COVERAGE_MAP:
+        primary = _resolve_path(state, spec["state_path"])
+        alts = [_resolve_path(state, p) for p in spec.get("alt_paths", [])]
+        has_primary = primary is not None
+        has_alt = any(a is not None for a in alts)
+        if has_primary:
+            status = "active"
+        elif has_alt:
+            status = "partial"
+        else:
+            status = "missing"
+        tier_counts[spec["tier"]][status] += 1
+
+        per_signal.append(
+            {
+                "id": spec["id"],
+                "signal": spec["signal"],
+                "tier": spec["tier"],
+                "status": status,
+                "primary_path": ".".join(spec["state_path"]),
+                "has_primary": has_primary,
+                "alt_paths_present": sum(1 for a in alts if a is not None),
+                "alt_paths_total": len(alts),
+            }
+        )
+
+    total = sum(
+        tc["active"] + tc["partial"] + tc["missing"] for tc in tier_counts.values()
+    )
+    active_total = sum(tc["active"] for tc in tier_counts.values())
+    partial_total = sum(tc["partial"] for tc in tier_counts.values())
+    missing_total = sum(tc["missing"] for tc in tier_counts.values())
+
+    # Coverage score = active + 0.5*partial (WELL tool coverage, not human score)
+    coverage_score = (
+        round((active_total + 0.5 * partial_total) / total * 10.0, 2) if total else 0.0
+    )
+
+    # Cross-organ handoff suggestions for missing signals
+    handoffs: list[dict[str, str]] = []
+    for sig in per_signal:
+        if sig["status"] == "missing":
+            if sig["tier"] == "dignity_environment":
+                if sig["id"] == "S12":
+                    handoffs.append(
+                        {
+                            "signal": sig["signal"],
+                            "current_organ": "WELL (gap)",
+                            "next_organ": "arifOS / 888_JUDGE (consent/dignity breach)",
+                            "rationale": (
+                                "Dignity/consent signal requires operator "
+                                "self-report or peer confirmation; WELL "
+                                "cannot synthesise it alone."
+                            ),
+                        }
+                    )
+                elif sig["id"] == "S13":
+                    handoffs.append(
+                        {
+                            "signal": sig["signal"],
+                            "current_organ": "WELL (gap)",
+                            "next_organ": "WEALTH (livelihood + cashflow pressure)",
+                            "rationale": (
+                                "Environment/livelihood requires WEALTH "
+                                "metrics (cashflow_status, duty_load)."
+                            ),
+                        }
+                    )
+            elif sig["tier"] == "vital_substrate":
+                handoffs.append(
+                    {
+                        "signal": sig["signal"],
+                        "current_organ": "WELL (gap)",
+                        "next_organ": "human medical route (wearable / clinical)",
+                        "rationale": (
+                            "Vital substrate signal missing; escalate to "
+                            "human medical evaluation if critical."
+                        ),
+                    }
+                )
+            else:
+                handoffs.append(
+                    {
+                        "signal": sig["signal"],
+                        "current_organ": "WELL (gap)",
+                        "next_organ": "operator self-report (well_log)",
+                        "rationale": (
+                            "WELL relies on operator self-report or "
+                            "optional wearable for this signal."
+                        ),
+                    }
+                )
+
+    return {
+        "ok": True,
+        "operator_id": operator_id or state.get("operator_id", "arif"),
+        "generated_at": now_iso,
+        "state_timestamp": state_timestamp,
+        "canon_ref": "GENESIS/004_WELL_13_CANON.md §1",
+        "authority": "reflect_only",
+        "human_judge_required": True,
+        "per_signal": per_signal,
+        "tier_summary": tier_counts,
+        "coverage_summary": {
+            "total_signals": total,
+            "active": active_total,
+            "partial": partial_total,
+            "missing": missing_total,
+            "coverage_score_0_to_10": coverage_score,
+            "note": (
+                "coverage_score is WELL's tool coverage, NOT a human "
+                "wellness score. It measures how many of the 13 signals "
+                "WELL is currently seeing, not how well the human is."
+            ),
+        },
+        "handoffs_recommended": handoffs,
+        "well_13_signal_map_ref": "WELL_13_SIGNAL_MAP.json",
+        "philosophical_lock": (
+            "Gödel: WELL cannot fully prove the human. This tool "
+            "audits WELL's view, not the human's truth."
+        ),
+    }
+
+
 # ALIAS_REGISTRY validation happens on first tool call, not at import time.
 # Canonical functions are defined later in the file and won't be in globals yet.
 _ALIAS_REGISTRY_VALIDATED = False
@@ -8605,6 +8916,7 @@ OMEGA_WELL_TOOLS = {
     "well_reflect_intelligence",
     "well_guard_dignity",
     "well_anchor_evidence",
+    "well_13_signal_coverage",
 }
 
 
@@ -10837,6 +11149,150 @@ def well_assess_homeostasis(
         }
 
     # 1C-B: fatigue is a direct computation — implement here, do not delegate to well_666_heart
+    # 2026-06-06: sleep is also direct (was falling through to well_666_heart which
+    # doesn't accept it). Sleep is one of WELL-13 Tier 2 (recovery/metabolic).
+    if mode == "sleep":
+        state = _load_state()
+        metrics = state.get("metrics", {})
+        sleep_m = metrics.get("sleep", {})
+
+        # Sleep mode: public signature only exposes sleep_debt_days as override.
+        # sleep_hours and sleep_quality are read from state.json (logged via
+        # well_log). This is consistent with the "Biometric overrides for
+        # fatigue mode" comment on the public signature.
+        _sleep_hours = sleep_m.get("sleep_hours", 7.0)
+        _sleep_quality = sleep_m.get("sleep_quality", 7.0)
+        _sleep_debt = (
+            sleep_debt_days
+            if sleep_debt_days is not None
+            else sleep_m.get("sleep_debt_days", 0.0)
+        )
+
+        # Clamp
+        _sleep_hours = max(0.0, min(14.0, _sleep_hours))
+        _sleep_quality = max(1.0, min(10.0, _sleep_quality))
+        _sleep_debt = max(0.0, min(14.0, _sleep_debt))
+
+        # 7-9 hours is target. Penalize deviation + debt + low quality.
+        target = 8.0
+        hour_gap = abs(_sleep_hours - target)
+        # Quality 1-10; debt 0-14 days
+        raw_sleep_strain = (
+            hour_gap * 1.0 + (10.0 - _sleep_quality) * 0.6 + _sleep_debt * 0.4
+        )
+        # Convert strain → recovery score (0-10)
+        sleep_recovery_score = max(0.0, min(10.0, 10.0 - raw_sleep_strain))
+
+        # Signal language — NEVER verdict (advisory only).
+        # verdict is the internal "advisory verdict" string that
+        # _omega_well_output translates to a generic signal via
+        # _WELL_ADVISORY_SIGNAL_MAP. The sleep-specific signal is
+        # preserved in data.signal for downstream consumers.
+        if sleep_recovery_score >= 7.0:
+            sleep_signal = "sleep_recovery_optimal"
+            status = "OPTIMAL"
+            verdict = "SEAL"
+        elif sleep_recovery_score >= 5.0:
+            sleep_signal = "sleep_recovery_low"
+            status = "STABLE"
+            verdict = "SEAL"
+        elif sleep_recovery_score >= 3.0:
+            sleep_signal = "sleep_recovery_degraded"
+            status = "DEGRADED"
+            verdict = "HOLD"
+        else:
+            sleep_signal = "sleep_recovery_critical"
+            status = "CRITICAL"
+            verdict = "VOID"
+
+        # C-class routing — recommend decision class downgrade
+        thresholds = {
+            "C1": (3.0, None),
+            "C2": (3.0, None),
+            "C3": (5.0, None),
+            "C4": (7.0, 3.0),
+            "C5": (7.0, 5.0),
+        }
+        threshold_score, block_threshold = thresholds[decision_class_upper]
+        if status == "CRITICAL":
+            route_verdict = "ADVISORY_BLOCKED"
+            routing_note = "CRITICAL sleep recovery — all decision classes blocked."
+        elif status == "DEGRADED":
+            if decision_class_upper in ("C4", "C5"):
+                route_verdict = (
+                    "ADVISORY_BLOCKED"
+                    if sleep_recovery_score < (block_threshold or 0)
+                    else "DEFER"
+                )
+            else:
+                route_verdict = "PROCEED"
+                routing_note = (
+                    f"DEGRADED sleep but {decision_class_upper} is low-stakes."
+                )
+        elif status == "STABLE":
+            if decision_class_upper in ("C4", "C5"):
+                route_verdict = "DEFER"
+                routing_note = f"STABLE sleep insufficient for {decision_class_upper}."
+            else:
+                route_verdict = "PROCEED"
+                routing_note = f"STABLE sleep clears {decision_class_upper}."
+        else:  # OPTIMAL
+            route_verdict = "PROCEED"
+            routing_note = f"OPTIMAL sleep clears {decision_class_upper}."
+
+        # Optional SAF statistical rigor on sleep vector
+        _saf_summary = None
+        try:
+            from core.shared.saf_stats import stat_assumptions as _saf_assumptions
+            import pandas as _pd_saf
+            import uuid as _uuid_saf
+            from pathlib import Path as _Path_saf
+            import os as _os_saf
+
+            _well_saf_root = _Path_saf(
+                _os_saf.environ.get("WELL_SAF_DATA_ROOT", "/tmp/well_saf")
+            )
+            _well_saf_root.mkdir(parents=True, exist_ok=True)
+            _vec = [_sleep_hours, _sleep_quality, _sleep_debt]
+            _metric_names = ["sleep_hours", "sleep_quality", "sleep_debt_days"]
+            _df = _pd_saf.DataFrame([_vec], columns=_metric_names)
+            _csv = _well_saf_root / f"sleep_{_uuid_saf.uuid4().hex[:8]}.csv"
+            _df.to_csv(_csv, index=False)
+            _saf_summary = _saf_assumptions(
+                str(_csv),
+                target_col="sleep_debt_days",
+            )
+            try:
+                _csv.unlink()
+            except OSError:
+                pass
+        except Exception:
+            _saf_summary = {"embed_skipped": "saf_stats unavailable"}
+
+        _data_payload = {
+            "sleep_recovery_score": round(sleep_recovery_score, 2),
+            "status": status,
+            "sleep_hours": _sleep_hours,
+            "sleep_quality": _sleep_quality,
+            "sleep_debt_days": _sleep_debt,
+            "signal": sleep_signal,
+            "decision_class": decision_class_upper,
+            "route_verdict": route_verdict,
+            "routing_note": routing_note,
+        }
+        if _saf_summary is not None:
+            _data_payload["_saf_assumptions"] = _saf_summary
+
+        return _omega_well_output(
+            ok=status in ("OPTIMAL", "STABLE") and route_verdict == "PROCEED",
+            stage="222_SLEEP",
+            lane="AGI",
+            mode="sleep",
+            verdict=verdict,  # advisory verdict; _omega_well_output translates to generic signal
+            data=_data_payload,
+            constitutional_compliance={"W2_SLEEP_RECOVERY": status},
+        )
+
     if mode == "fatigue":
         state = _load_state()
         metrics = state.get("metrics", {})
@@ -12698,6 +13154,7 @@ SOMATIC_TOOLS = {
     "well_compute_metabolic_flux",
     "well_assess_sovereign_entropy",
     "well_guard_dignity",
+    "well_13_signal_coverage",
     "well_system_registry_status",
     "well_registry_status",
 }
@@ -12996,6 +13453,7 @@ _WELL_AUTONOMIC_TOOLS: list[dict[str, object]] = [
     {"name": "well_arifos_packet", "axis": "identity", "expose": False},
     {"name": "well_consent_status", "axis": "boundary", "expose": False},
     {"name": "well_medical_boundary", "axis": "boundary", "expose": False},
+    {"name": "well_13_signal_coverage", "axis": "reflect", "expose": True},
     {"name": "well_pressure_ledger", "axis": "observe", "expose": False},
     {"name": "well_daily_brief", "axis": "reflect", "expose": False},
     {"name": "well_machine_state", "axis": "observe", "expose": False},
@@ -13319,15 +13777,55 @@ if __name__ == "__main__":
         )
 
     async def _mcp_server_card(request):
-        """MCP Server Card — SEP-2127 HTTP discovery document."""
+        """MCP Server Card — SEP-2127 HTTP discovery document.
+
+        Updated 2026-06-06 per F13 SOVEREIGN ratification of
+        GENESIS/004_WELL_13_CANON.md. WELL is the constitutional organ
+        for living substrate integrity — NOT a wellness coach, NOT a
+        fitness tracker, NOT a diagnostic psychiatrist.
+
+        Canon: WELL = Body + dignity + vitality + boundaries + role
+        burden + consent + meaning. Authority: reflect_only. All output
+        is `signal`, never final `verdict` (arifOS/888_JUDGE adjudicates).
+        """
         return JSONResponse(
             {
                 "name": "well",
-                "displayName": "WELL Human Readiness",
+                "displayName": "WELL — Human Substrate Integrity Organ",
                 "url": "https://well.arif-fazil.com/mcp",
-                "version": "2026.06.05",
+                "version": "2026.06.06",
                 "capabilities": {"tools": True, "resources": False, "prompts": False},
                 "authentication": {"type": "none"},
+                "description": (
+                    "Constitutional organ for living substrate integrity. "
+                    "Tracks 13 signals (4 vital, 3 recovery, 3 function, "
+                    "3 dignity/environment). Authority scope: reflect_only. "
+                    "WELL observes — it never issues final constitutional "
+                    "verdicts. arifOS / 888_JUDGE is the sole constitutional "
+                    "authority. See GENESIS/004_WELL_13_CANON.md for the "
+                    "binding doctrine."
+                ),
+                "doctrine": {
+                    "soul": "WELL = Body + dignity + vitality + boundaries + role burden + consent + meaning.",
+                    "scope": "constitutional human-substrate integrity, NOT wellness coaching",
+                    "authority": "reflect_only",
+                    "signals": "never final verdict",
+                    "routing": "arifOS / 888_JUDGE adjudicates constitutional matters",
+                    "rule": "Wearables may feed WELL. Wearables must not define WELL.",
+                },
+                "philosophical_locks": [
+                    "WELL_GODEL_LOCK.md — self-reference limit",
+                    "WELL_STRANGE_LOOP_GUARD.md — intervention changes measured",
+                    "WELL_ANTI_CALHOUN_GUARD.md — beautiful cage prevention",
+                    "WELL_LANGUAGE_PROTOCOL.md — sovereignty-preserving intervention",
+                ],
+                "haram": [
+                    "wellness_coach_mode",
+                    "fitness_inspiration_mode",
+                    "body_score_engine",
+                    "psychiatric_diagnosis",
+                    "constitutional_verdict",
+                ],
             }
         )
 

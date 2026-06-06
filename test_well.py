@@ -78,11 +78,46 @@ def _write_canonical_state(**overrides):
 
 
 def get_data(result):
-    """Helper to extract dict from ToolResult."""
+    """Helper to extract dict from ToolResult.
+
+    Unwraps three response shapes for backward compat (F2 TRUTH: handle the
+    real protocol, not the test's preferred one):
+
+    1. Live via HTTP/MCP wrapper: {result: {observation: {...}}}
+    2. In-process FastMCP: {observation: {...}}  (older contract)
+    3. Fallback: raw text content
+
+    The KeyError 'observation' was WAJIB-fixed 2026-06-06 because the
+    governance envelope changed the response shape but tests were
+    written for the old shape.
+    """
+    # Shape 1: governance envelope wraps everything under "result"
     if hasattr(result, "structured_content") and result.structured_content:
-        return result.structured_content
+        sc = result.structured_content
+        if isinstance(sc, dict):
+            if "result" in sc and isinstance(sc["result"], dict):
+                # {"result": {"observation": {...}}} — unwrap one level
+                return sc["result"]
+            if "observation" in sc:
+                return sc
+            # Fall back to the structured_content as-is
+            return sc
     if hasattr(result, "content") and result.content:
-        return json.loads(result.content[0].text)
+        try:
+            text = result.content[0].text
+            parsed = json.loads(text)
+            if isinstance(parsed, dict):
+                if "result" in parsed and isinstance(parsed["result"], dict):
+                    return parsed["result"]
+                if "observation" in parsed:
+                    return parsed
+                return parsed
+        except (json.JSONDecodeError, IndexError, AttributeError):
+            pass
+    if isinstance(result, dict):
+        if "result" in result and isinstance(result["result"], dict):
+            return result["result"]
+        return result
     return {}
 
 

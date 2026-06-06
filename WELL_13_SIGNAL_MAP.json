@@ -1,0 +1,363 @@
+{
+  "schema_version": "well_13_signal_map.v1",
+  "forged_at": "2026-06-06T17:38:00+00:00",
+  "ratified_by": "888 (Muhammad Arif bin Fazil, F13 SOVEREIGN)",
+  "doctrine_ref": "GENESIS/004_WELL_13_CANON.md",
+  "purpose": "Map each of the 13 canonical human-substrate signals to the WELL tool(s) that capture it. Authority is always reflect_only. Status: active | partial | missing.",
+
+  "authority_scope": "reflect_only",
+  "human_judge_required": true,
+  "federation_rule": "Wearables may feed WELL. Wearables must not define WELL.",
+
+  "tiers": {
+    "vital_substrate": {
+      "label": "Tier 1 — Vital Substrate",
+      "principle": "Without these, no higher layer is meaningful.",
+      "authority": "reflect_only"
+    },
+    "recovery_metabolic": {
+      "label": "Tier 2 — Recovery / Metabolic",
+      "principle": "Recovery precedes function.",
+      "authority": "reflect_only"
+    },
+    "function_cognition": {
+      "label": "Tier 3 — Function / Cognition",
+      "principle": "What the body can do under current load.",
+      "authority": "reflect_only"
+    },
+    "dignity_environment": {
+      "label": "Tier 4 — Dignity / Environment",
+      "principle": "The layer fitness apps never see. The differentiator.",
+      "authority": "reflect_only"
+    }
+  },
+
+  "signals": [
+    {
+      "id": "S01",
+      "signal": "heart_circulation",
+      "tier": "vital_substrate",
+      "description": "Resting heart rate, HRV, rhythm irregularity, recovery trend.",
+      "primary_tool": "well_assess_metabolism",
+      "supporting_tools": ["well_assess_homeostasis"],
+      "data_sources": ["self_report", "wearable_optional"],
+      "metrics": ["hrv_status", "hrv_proxy", "resting_heart_rate"],
+      "status": "partial",
+      "gap": "wearable integration not yet wired (HARUS, not WAJIB)",
+      "authority": "reflect_only",
+      "advisory_signals": ["cardiac_strain_suspected", "recovery_insufficient"],
+      "escalation_threshold": "acute_hold_recommended when hrv_status=low + chronic_fatigue"
+    },
+    {
+      "id": "S02",
+      "signal": "blood_pressure",
+      "tier": "vital_substrate",
+      "description": "Circulatory load, chronic strain, acute danger trend.",
+      "primary_tool": "well_assess_metabolism",
+      "supporting_tools": [],
+      "data_sources": ["self_report"],
+      "metrics": ["systolic_bp", "diastolic_bp"],
+      "status": "partial",
+      "gap": "self-report only; no wearable integration",
+      "authority": "reflect_only",
+      "advisory_signals": ["hypertensive_strain_suspected", "acute_hold_recommended"],
+      "escalation_threshold": "medical_escalation_recommended when systolic>180 OR diastolic>120"
+    },
+    {
+      "id": "S03",
+      "signal": "breathing_oxygenation",
+      "tier": "vital_substrate",
+      "description": "Respiratory rate, breath pattern, SpO₂, shortness of breath.",
+      "primary_tool": "well_assess_metabolism",
+      "supporting_tools": ["well_assess_homeostasis"],
+      "data_sources": ["self_report"],
+      "metrics": ["respiratory_rate", "spo2"],
+      "status": "partial",
+      "gap": "self-report only; pulse oximeter not wired",
+      "authority": "reflect_only",
+      "advisory_signals": ["respiratory_distress_suspected", "acute_hold_recommended"],
+      "escalation_threshold": "medical_escalation_recommended when spo2<92 OR sob_severe"
+    },
+    {
+      "id": "S04",
+      "signal": "temperature_inflammation",
+      "tier": "vital_substrate",
+      "description": "Fever, hypothermia, infection/stress signal.",
+      "primary_tool": "well_assess_metabolism",
+      "supporting_tools": ["well_assess_homeostasis"],
+      "data_sources": ["self_report"],
+      "metrics": ["body_temperature", "inflammation_markers"],
+      "status": "partial",
+      "gap": "self-report only; thermometer not wired",
+      "authority": "reflect_only",
+      "advisory_signals": ["fever_signal", "hypothermic_signal", "inflammatory_strain"],
+      "escalation_threshold": "medical_escalation_recommended when temperature>=39 OR <=35"
+    },
+    {
+      "id": "S05",
+      "signal": "sleep_architecture",
+      "tier": "recovery_metabolic",
+      "description": "Duration, quality, timing regularity, awakenings, sleep debt.",
+      "primary_tool": "well_assess_homeostasis",
+      "primary_mode": "sleep",
+      "supporting_tools": ["well_log", "well_trace_lineage"],
+      "data_sources": ["self_report", "wearable_optional"],
+      "metrics": [
+        "sleep_hours",
+        "sleep_quality",
+        "sleep_debt_days",
+        "awakening_count",
+        "circadian_alignment"
+      ],
+      "status": "active",
+      "gap": "wearable integration not yet wired; mode='sleep' contract fixed 2026-06-06",
+      "authority": "reflect_only",
+      "advisory_signals": ["sleep_recovery_low", "decision_class_downgrade", "circadian_drift"],
+      "escalation_threshold": "acute_hold_recommended when sleep_debt_days>=3 + cognitive_clarity<=4"
+    },
+    {
+      "id": "S06",
+      "signal": "metabolic_state",
+      "tier": "recovery_metabolic",
+      "description": "Glucose, HbA1c if available, basal/metabolic rate estimate, energy stability.",
+      "primary_tool": "well_assess_metabolism",
+      "supporting_tools": ["well_compute_metabolic_flux"],
+      "data_sources": ["self_report", "wearable_optional"],
+      "metrics": [
+        "fasting_hours",
+        "metabolic_stability",
+        "glucose",
+        "energy_stability"
+      ],
+      "status": "active",
+      "gap": "CGM (continuous glucose monitor) not wired",
+      "authority": "reflect_only",
+      "advisory_signals": ["metabolic_instability", "energy_collapse_signal"],
+      "escalation_threshold": "medical_escalation_recommended when glucose<3 OR >25 mmol/L"
+    },
+    {
+      "id": "S07",
+      "signal": "nutrition_hydration",
+      "tier": "recovery_metabolic",
+      "description": "Food quality, appetite, water intake, urine/bowel rhythm.",
+      "primary_tool": "well_assess_metabolism",
+      "supporting_tools": [],
+      "data_sources": ["self_report"],
+      "metrics": [
+        "nutrition_quality",
+        "hydration",
+        "appetite",
+        "elimination_rhythm"
+      ],
+      "status": "partial",
+      "gap": "self-report only; no food log integration",
+      "authority": "reflect_only",
+      "advisory_signals": ["undernutrition_signal", "dehydration_signal"],
+      "escalation_threshold": "medical_escalation_recommended when dehydration_severe OR eating_disorder_signal"
+    },
+    {
+      "id": "S08",
+      "signal": "movement_strength",
+      "tier": "function_cognition",
+      "description": "Steps, activity minutes, gait, grip/strength, mobility restriction.",
+      "primary_tool": "well_assess_metabolism",
+      "supporting_tools": [],
+      "data_sources": ["self_report", "wearable_optional"],
+      "metrics": [
+        "movement_count",
+        "gait",
+        "grip_strength",
+        "mobility_score"
+      ],
+      "status": "partial",
+      "gap": "wearable integration not yet wired",
+      "authority": "reflect_only",
+      "advisory_signals": ["mobility_decline", "inactivity_strain"],
+      "escalation_threshold": "acute_hold_recommended when mobility_score<=2 + decision_class>=C4",
+      "note": "MAKRUH to use as coaching nudge. ALLOWED as substrate signal only."
+    },
+    {
+      "id": "S09",
+      "signal": "pain_injury",
+      "tier": "function_cognition",
+      "description": "Pain level, soreness, inflammation, injury, chronic tension.",
+      "primary_tool": "well_assess_metabolism",
+      "supporting_tools": ["well_assess_homeostasis"],
+      "data_sources": ["self_report"],
+      "metrics": [
+        "pain_sites",
+        "pain_level",
+        "chronic_tension"
+      ],
+      "status": "partial",
+      "gap": "self-report only; pain is qualitative",
+      "authority": "reflect_only",
+      "advisory_signals": ["pain_strain_suspected", "chronic_tension_loop"],
+      "escalation_threshold": "medical_escalation_recommended when pain_severe OR new_injury"
+    },
+    {
+      "id": "S10",
+      "signal": "cognitive_clarity",
+      "tier": "function_cognition",
+      "description": "Focus, memory, reaction time, confusion, decision fatigue.",
+      "primary_tool": "well_assess_homeostasis",
+      "primary_mode": "cognitive",
+      "supporting_tools": ["well_assess_homeostasis:fatigue"],
+      "data_sources": ["self_report"],
+      "metrics": [
+        "clarity",
+        "decision_fatigue",
+        "focus_durability",
+        "reaction_time"
+      ],
+      "status": "active",
+      "gap": "no objective reaction-time capture (would need cognitive test)",
+      "authority": "reflect_only",
+      "advisory_signals": [
+        "cognitive_strain",
+        "decision_fatigue_elevated",
+        "reality_boundary_compromised"
+      ],
+      "escalation_threshold": "decision_class downgrade when clarity<=4 + decision_fatigue>=7"
+    },
+    {
+      "id": "S11",
+      "signal": "emotional_stress",
+      "tier": "dignity_environment",
+      "description": "Mood, anxiety, irritability, calmness, perceived control.",
+      "primary_tool": "well_assess_homeostasis",
+      "primary_mode": "stress",
+      "supporting_tools": ["well_assess_homeostasis:empathize"],
+      "data_sources": ["self_report"],
+      "metrics": [
+        "stress_load",
+        "restlessness",
+        "emotional_state",
+        "perceived_control"
+      ],
+      "status": "active",
+      "gap": "no HRV-based objective stress overlay",
+      "authority": "reflect_only",
+      "advisory_signals": [
+        "acute_stress_signal",
+        "emotional_regulation_strain",
+        "shame_loop_detected"
+      ],
+      "escalation_threshold": "acute_hold_recommended when emotional_state=irritable + stress_load>=8"
+    },
+    {
+      "id": "S12",
+      "signal": "social_dignity_consent",
+      "tier": "dignity_environment",
+      "description": "Support, isolation, coercion, objectification, relationship safety.",
+      "primary_tool": "well_guard_dignity",
+      "supporting_tools": [
+        "well_detect_boundary",
+        "well_classify_substrate"
+      ],
+      "data_sources": ["subject", "peers", "context_description"],
+      "metrics": [
+        "dignity_preservation",
+        "coercion_signals",
+        "reductionism_risk",
+        "boundary_violated"
+      ],
+      "status": "active",
+      "gap": "peer-confirmation is by self-report of subject (F1 AMANAH chain needed)",
+      "authority": "reflect_only",
+      "advisory_signals": [
+        "dignity_leakage",
+        "consent_at_risk",
+        "objectification_surface_present",
+        "shame_loop_detected",
+        "compulsion_risk"
+      ],
+      "escalation_threshold": "arifOS/JUDGE escalation when boundary_violated=true",
+      "note": "PRIMARY surface for body/person boundary model and reductionism detection. NEVER diagnose — only signal."
+    },
+    {
+      "id": "S13",
+      "signal": "environment_livelihood",
+      "tier": "dignity_environment",
+      "description": "Housing, work pressure, money stress, heat, air quality, noise, safety, caregiving burden.",
+      "primary_tool": "well_assess_livelihood",
+      "supporting_tools": [],
+      "data_sources": ["self_report"],
+      "metrics": [
+        "energy_level",
+        "duty_load",
+        "role_burden",
+        "purpose_alignment",
+        "cashflow_status",
+        "internal_consistency"
+      ],
+      "status": "active",
+      "gap": "no objective housing/air/noise telemetry",
+      "authority": "reflect_only",
+      "advisory_signals": [
+        "caregiving_burden_signal",
+        "role_collapse_risk",
+        "livelihood_pressure"
+      ],
+      "escalation_threshold": "WEALTH handoff when cashflow_status=stress + role_burden>=8",
+      "note": "Cross-organ handoff: WELL→WEALTH for cashflow pressure; WELL→HEART for shame/vulnerability."
+    }
+  ],
+
+  "coverage_summary": {
+    "tier_1_vital_substrate": {
+      "active": 0,
+      "partial": 4,
+      "missing": 0,
+      "status": "self-report only — wearable integration is HARUS, not yet wired"
+    },
+    "tier_2_recovery_metabolic": {
+      "active": 2,
+      "partial": 1,
+      "missing": 0,
+      "status": "sleep + metabolic active via well_assess_homeostasis; nutrition partial"
+    },
+    "tier_3_function_cognition": {
+      "active": 1,
+      "partial": 2,
+      "missing": 0,
+      "status": "cognitive/stress via homeostasis; pain/movement self-report only"
+    },
+    "tier_4_dignity_environment": {
+      "active": 3,
+      "partial": 0,
+      "missing": 0,
+      "status": "dignity/boundary/substrate classifier active; livelihood active; cross-organ handoff defined"
+    }
+  },
+
+  "forbidden_outcomes": [
+    "wellness_coaching_flows",
+    "body_score",
+    "attractiveness_score",
+    "masculinity_score",
+    "dominance_score",
+    "sexual_performance_score",
+    "psychosis_diagnosis",
+    "substance_use_diagnosis",
+    "kink_sexuality_diagnosis",
+    "constitutional_verdict",
+    "irreversible_action_from_biometric"
+  ],
+
+  "cross_organ_handoffs": {
+    "validation_economy_body_as_capital": "WEALTH",
+    "shame_vulnerability_longing": "HEART",
+    "consent_dignity_breach": "arifOS / 888_JUDGE",
+    "acute_medical_danger": "human_medical_route",
+    "environment_livelihood_pressure": "WELL + WEALTH",
+    "terrain_fault_pressure_metaphor": "GEOX (lens only)"
+  },
+
+  "next_forge_queue_sunat": [
+    "well_13_signal_coverage tool — audit active/stale/missing per-signal",
+    "addiction/compulsion/reality-boundary triage labels module",
+    "cultural_archetype metadata map (abang_sado_shadow canonical pattern)",
+    "cross-organ handoff integration tests"
+  ]
+}
