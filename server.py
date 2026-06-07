@@ -10238,6 +10238,7 @@ if __name__ == "__main__":
         )
 
     app.add_route("/.well-known/mcp.json", mcp_server_card, methods=["GET"])
+    app.add_route("/.well-known/mcp/server.json", mcp_server_card, methods=["GET"])
     app.add_route("/health", health_handler, methods=["GET"])
     app.add_route("/api/build-info", build_info_handler, methods=["GET"])
     app.add_route("/tools", tools_handler, methods=["GET"])
@@ -13830,6 +13831,7 @@ if __name__ == "__main__":
         )
 
     app.add_route("/.well-known/mcp.json", _mcp_server_card, methods=["GET"])
+    app.add_route("/.well-known/mcp/server.json", _mcp_server_card, methods=["GET"])
     app.add_route("/health", _well_health_handler, methods=["GET"])
     app.add_middleware(OriginValidationMiddleware)
     uvicorn.run(
