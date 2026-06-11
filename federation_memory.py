@@ -1,8 +1,9 @@
 """
-WELL Federation Memory Client — 2026-06-03
-═══════════════════════════════════════════════════════════════════════════
+WELL Federation Memory Client - 2026-06-03
+========================================================================
 Adoption of FEDERATION_MEMORY_CONTRACT.md (R1: single write surface).
 All WELL memory writes route through arifOS MCP `arif_memory_recall(mode="store")`.
+No direct Qdrant / Supabase / Graphiti writes from WELL tools.
 
 SOVEREIGN PATTERN (F2 honest, F11 gate compliant):
   - ACTOR_ID is the AI agent driving the organ (kimi, claude, or gemini)
@@ -12,7 +13,7 @@ SOVEREIGN PATTERN (F2 honest, F11 gate compliant):
 
 L5 Graphiti: advisory only (worker neutralized; 888 injects via raw Cypher).
 
-DITEMPA BUKAN DIBERI — Forged, Not Given
+DITEMPA BUKAN DIBERI - Forged, Not Given
 """
 
 from __future__ import annotations
@@ -22,14 +23,14 @@ import os
 import time
 from typing import Any
 from urllib import request as urlrequest
-from urllib.error import URLError, HTTPError
+from urllib.error import HTTPError, URLError
 
 ARIFOS_MCP_URL = os.getenv("ARIFOS_MCP_URL", "http://localhost:8088")
-# Sovereign actor: which AI agent is driving WELL right now
-# (F11 gate enforces that actor_id is in {kimi, claude, gemini})
+# Sovereign actor: which AI agent is driving WELL right now.
+# F11 gate enforces that actor_id is in {kimi, claude, gemini}.
 ACTOR_ID = os.getenv("WELL_SOVEREIGN_ACTOR", "kimi")
 DEFAULT_TIMEOUT_S = 30.0
-DOMAIN_TAG = "well"  # tag prefix for cross-organ searchability
+DOMAIN_TAG = "well"
 
 _session_id: str | None = None
 _session_ts: float = 0.0
@@ -44,15 +45,18 @@ def _ensure_session() -> str | None:
     try:
         req = urlrequest.Request(
             f"{ARIFOS_MCP_URL}/mcp",
-            data=json.dumps({
-                "jsonrpc": "2.0", "id": 1,
-                "method": "initialize",
-                "params": {
-                    "protocolVersion": "2025-03-26",
-                    "capabilities": {},
-                    "clientInfo": {"name": "WELL", "version": "0.1"},
-                },
-            }).encode(),
+            data=json.dumps(
+                {
+                    "jsonrpc": "2.0",
+                    "id": 1,
+                    "method": "initialize",
+                    "params": {
+                        "protocolVersion": "2025-03-26",
+                        "capabilities": {},
+                        "clientInfo": {"name": "WELL", "version": "0.1"},
+                    },
+                }
+            ).encode(),
             headers={
                 "Content-Type": "application/json",
                 "Accept": "application/json, text/event-stream",
@@ -86,13 +90,20 @@ def remember(
     context: str = "normal",
     metadata: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
+    """Federation memory write via arifOS MCP. Never raises."""
     if not content:
         return {"stored": False, "error": "empty_content"}
     sid = _ensure_session()
     if not sid:
-        return {"stored": False, "error": "session_unavailable", "_degraded": "arifOS MCP unreachable"}
+        return {
+            "stored": False,
+            "error": "session_unavailable",
+            "_degraded": "arifOS MCP unreachable",
+        }
+
     payload = {
-        "jsonrpc": "2.0", "id": int(time.time() * 1000) % 1_000_000,
+        "jsonrpc": "2.0",
+        "id": int(time.time() * 1000) % 1_000_000,
         "method": "tools/call",
         "params": {
             "name": "arif_memory_recall",
@@ -128,31 +139,45 @@ def remember(
             body = resp.read().decode()
             return _parse_response(body, content)
     except (URLError, HTTPError, TimeoutError, OSError) as e:
-        return {"stored": False, "error": f"{type(e).__name__}: {e}", "_degraded": "arifOS MCP call failed"}
+        return {
+            "stored": False,
+            "error": f"{type(e).__name__}: {e}",
+            "_degraded": "arifOS MCP call failed",
+        }
 
 
-def recall(query, *, session_id=None, limit=5, context="normal"):
+def recall(
+    query: str,
+    *,
+    session_id: str | None = None,
+    limit: int = 5,
+    context: str = "normal",
+) -> dict[str, Any]:
+    """Federation memory read via arifOS MCP."""
     sid = _ensure_session()
     if not sid:
         return {"status": "session_unavailable", "results": []}
     try:
         req = urlrequest.Request(
             f"{ARIFOS_MCP_URL}/mcp",
-            data=json.dumps({
-                "jsonrpc": "2.0", "id": int(time.time() * 1000) % 1_000_000,
-                "method": "tools/call",
-                "params": {
-                    "name": "arif_memory_recall",
-                    "arguments": {
-                        "mode": "search",
-                        "query": query,
-                        "session_id": session_id or "well-default-session",
-                        "actor_id": ACTOR_ID,
-                        "limit": limit,
-                        "context": context,
+            data=json.dumps(
+                {
+                    "jsonrpc": "2.0",
+                    "id": int(time.time() * 1000) % 1_000_000,
+                    "method": "tools/call",
+                    "params": {
+                        "name": "arif_memory_recall",
+                        "arguments": {
+                            "mode": "search",
+                            "query": query,
+                            "session_id": session_id or "well-default-session",
+                            "actor_id": ACTOR_ID,
+                            "limit": limit,
+                            "context": context,
+                        },
                     },
-                },
-            }).encode(),
+                }
+            ).encode(),
             headers={
                 "Content-Type": "application/json",
                 "Accept": "application/json, text/event-stream",
@@ -168,7 +193,6 @@ def recall(query, *, session_id=None, limit=5, context="normal"):
 
 def _parse_response(body: str, content: str, *, is_recall: bool = False) -> dict[str, Any]:
     """Parse MCP response (JSON or SSE)."""
-    # Try SSE first
     for line in body.split("\n"):
         if line.startswith("data: "):
             try:
@@ -176,21 +200,20 @@ def _parse_response(body: str, content: str, *, is_recall: bool = False) -> dict
                 sc = rpc.get("result", {}).get("structuredContent", {})
                 if is_recall:
                     return {"status": "ok", "results": sc.get("results", [])}
-                return _format_store_result(sc, content)
+                return _format_store_result(sc)
             except Exception:
                 continue
-    # Try raw JSON
     try:
         rpc = json.loads(body)
         sc = rpc.get("result", {}).get("structuredContent", {})
         if is_recall:
             return {"status": "ok", "results": sc.get("results", [])}
-        return _format_store_result(sc, content)
+        return _format_store_result(sc)
     except Exception:
         return {"stored": False, "error": "no_data_in_response"}
 
 
-def _format_store_result(sc, content):
+def _format_store_result(sc: dict[str, Any]) -> dict[str, Any]:
     if sc.get("verdict") and sc["verdict"] != "SEAL":
         return {
             "stored": False,
@@ -210,7 +233,7 @@ def _format_store_result(sc, content):
     }
 
 
-def get_contract_surface():
+def get_contract_surface() -> dict[str, str]:
     return {
         "mcpUrl": ARIFOS_MCP_URL,
         "actor": ACTOR_ID,
