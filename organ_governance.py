@@ -10,7 +10,7 @@ import httpx
 from typing import Optional, Tuple
 
 ARIFOS_KERNEL_URL = os.environ.get(
-    "ARIFOS_KERNEL_URL", "http://arifosmcp:8080"
+    "ARIFOS_KERNEL_URL", "http://arifosmcp:8088"
 )
 
 # Risk classification for WELL tools

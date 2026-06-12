@@ -2383,7 +2383,7 @@ async def well_init(
     import sys
     import uuid as _uuid
 
-    ARIFOS_PATH = "/root/arifOS"
+    ARIFOS_PATH = os.environ.get("ARIFOS_HOME", "/root") + "/arifOS"
     if ARIFOS_PATH not in sys.path:
         sys.path.append(ARIFOS_PATH)
 
@@ -2455,7 +2455,7 @@ async def well_anchor(
     import sys
 
     # Ensure arifOS is in path for bridge
-    ARIFOS_PATH = "/root/arifOS"
+    ARIFOS_PATH = os.environ.get("ARIFOS_HOME", "/root") + "/arifOS"
     if ARIFOS_PATH not in sys.path:
         sys.path.append(ARIFOS_PATH)
 
@@ -11703,7 +11703,7 @@ def well_assess_homeostasis(
         try:
             import sys as _sys_bc
 
-            _arifos_kernel_bc = "/root/arifOS"
+            _arifos_kernel_bc = os.environ.get("ARIFOS_HOME", "/root") + "/arifOS"
             if _arifos_kernel_bc not in _sys_bc.path:
                 _sys_bc.path.insert(0, _arifos_kernel_bc)
             import pandas as _pd_bc

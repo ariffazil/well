@@ -1,10 +1,11 @@
 """Test SOVEREIGN_ENTROPY — unmodelability as sovereignty protection."""
 
+import os
 import pytest
 import sys
 from pathlib import Path
 
-WELL_DIR = Path("/root/WELL")
+WELL_DIR = Path(os.environ.get("ARIFOS_HOME", "/root") + "/WELL")
 sys.path.insert(0, str(WELL_DIR))
 
 
