@@ -1,0 +1,69 @@
+# WELL — Human Readiness Sovereign Layer
+> Human substrate governance. 17+ somatic MCP tools. Reflect-only.
+> Port: 18083. License: AGPL-3.0. Status: OPERATIONAL. Version: 2026.06.06.
+
+## Quick Context
+- **What:** Human readiness sensor — sleep, fatigue, dignity, vitality
+- **Role:** REFLECT_ONLY — reflects substrate state, never adjudicates
+- **Federation:** WELL witnesses human state. arifOS adjudicates. Arif acts.
+- **Ingress:** Cloudflare Tunnel → well.arif-fazil.com/mcp
+
+## Key Files
+- README.md — Full human-readable narrative (735 lines)
+- AGENTS.md — Agent rules, build/test commands
+- GENESIS/004_WELL_13_CANON.md — 13 canonical substrate signals
+- GENESIS/005_WELL_GODEL_LOCK.md — Gödel self-certification lock
+- GENESIS/006_WELL_STRANGE_LOOP_GUARD.md — Strange loop prevention
+- GENESIS/007_WELL_ANTI_CALHOUN_GUARD.md — Anti-behavioral-sink guard
+- GENESIS/008_WELL_LANGUAGE_PROTOCOL.md — Language protocol
+- GENESIS/009_WELL_PHILOSOPHICAL_ANCHORS.md — Philosophical anchors
+- GENESIS/010_WELL_PERSONA_NOT_SELF.md — Persona boundary
+- gate/well_gate.py — Pre-JUDGE biological readiness gate
+- gate/dignity_shadow.py — Dignity preservation shadow
+
+## Entry Points
+- server.py — Single-file FastMCP server (~12K lines, 45 MCP tools)
+- state.json — Sovereign biometric state (auto-detected via well_autosleeper.py cron)
+- SNOOZE_BIOMETRIC.md — Biometric injection guide (F13 sovereign territory)
+
+## Build & Test
+- Install:  pip install -e .
+- Test:    pytest tests/ -q --tb=short
+- Start:   python server.py  (or --transport stdio)
+- Health:  curl http://127.0.0.1:18083/health
+- Deploy:  make forge && systemctl restart well
+
+## Somatic Tools (17 public + autonomic internals)
+### Substrate Classification
+well_classify_substrate      — Ω-01: Is this human, machine, or unknown?
+well_detect_boundary         — Ω-03: Membrane, body, machine boundaries
+well_trace_lineage           — Ω-02: Memory, trend, vault chain
+
+### Metabolic Assessment
+well_assess_metabolism       — Ω-05: Biological metabolism, throughput
+well_assess_homeostasis      — Ω-06: Sleep, fatigue, regulation, stability
+well_measure_gradient        — Ω-04: Chemical, energy, attention gradients
+
+### Vitality & Readiness
+well_validate_vitality       — Ω-08: Readiness, NIAT, intent validation
+well_assess_livelihood       — Ω-09: Role, dignity, purpose, meaning
+well_assess_reliability      — Ω-10: Machine, tool, institutional reliability
+well_compute_metabolic_flux  — Ω-10b: Entropy rate, reallocation signals
+
+### Governance
+well_check_repair            — Ω-07: Repair, recovery, forge cycle integrity
+well_guard_dignity           — Ω-12: Soul, personhood, consent boundaries
+well_assess_sovereign_entropy — Ω-SE: Protect sovereign unpredictability
+well_13_signal_coverage      — DREAM ENGINE: Audit 13 canonical signals
+
+### Registry
+well_system_registry_status  — Somatic surface vs autonomic internals
+well_registry_status         — Blueprint-format drift report
+mcp_health_check             — DEPRECATED alias → well_assess_reliability
+
+## Boundaries (NEVER)
+- NEVER diagnose medical conditions (WELL is not a doctor)
+- NEVER fabricate human biometric data (F13 sovereign territory)
+- NEVER claim to know the human better than the human knows themselves
+- NEVER adjudicate — WELL reflects, arifOS judges
+- NEVER optimize the sovereign into predictability (sovereign entropy protection)
