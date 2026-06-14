@@ -1,12 +1,12 @@
 """
-WELL Federation Memory Client - 2026-06-03
+WELL Federation Memory Client - 2026-06-14
 ========================================================================
 Adoption of FEDERATION_MEMORY_CONTRACT.md (R1: single write surface).
 All WELL memory writes route through arifOS MCP `arif_memory_recall(mode="store")`.
 No direct Qdrant / Supabase / Graphiti writes from WELL tools.
 
 SOVEREIGN PATTERN (F2 honest, F11 gate compliant):
-  - ACTOR_ID is the AI agent driving the organ (kimi, claude, or gemini)
+  - ACTOR_ID is the AI agent driving the organ (FORGE, OPENCLAW, HERMES, etc.)
   - Organ is the domain tag (well)
   - 888 sovereign decides which agents can write; organs inherit agent context
   - Direct `actor_id="well"` is F11-blocked by design
@@ -27,8 +27,8 @@ from urllib.error import HTTPError, URLError
 
 ARIFOS_MCP_URL = os.getenv("ARIFOS_MCP_URL", "http://localhost:8088")
 # Sovereign actor: which AI agent is driving WELL right now.
-# F11 gate enforces that actor_id is in {kimi, claude, gemini}.
-ACTOR_ID = os.getenv("WELL_SOVEREIGN_ACTOR", "kimi")
+# F11 gate enforces actor_id is tracked by system.
+ACTOR_ID = os.getenv("WELL_SOVEREIGN_ACTOR", "FORGE")
 DEFAULT_TIMEOUT_S = 30.0
 DOMAIN_TAG = "well"
 

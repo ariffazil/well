@@ -28,7 +28,8 @@ install:
 # ── arifOS Federation Security Audit ─────────────────────────────────────────
 # Fires 888_HOLD on NATS if CRITICAL/HIGH scanner findings detected.
 # NEVER blocks — always exits 0 so agentic autonomy is preserved.
+include /root/arifOS/scripts/forge.mk
 include /root/arifOS/scripts/security_audit.mk
 
-forge: security-audit
-	@echo "WELL Surgical Burn complete. Awaiting SOVEREIGN SEAL."
+forge: clean-temp sot-bump security-audit
+	@echo "⛓️  WELL forge gate passed."

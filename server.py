@@ -29,6 +29,13 @@ from fastmcp import FastMCP, Context
 # ── Paths (defined before use in fallback import) ───────────────────────────────
 WELL_DIR = Path(__file__).parent
 
+# ── Reality Ledger Bridge ────────────────────────────────────────────────────────
+_WELL_LEDGER_AVAILABLE = True
+try:
+    from core.organ_ledger_bridge import record_well_assessment
+except ImportError:
+    _WELL_LEDGER_AVAILABLE = False
+
 # ── Organ Governance (arifOS L1-L13) ─────────────────────────────────────────
 try:
     from organ_governance import check_governance
@@ -11439,6 +11446,16 @@ def well_assess_homeostasis(
         if _saf_summary is not None:
             _data_payload["_saf_assumptions"] = _saf_summary
 
+        # ── Reality Ledger ──────────────────────────────────────────────────────
+        if _WELL_LEDGER_AVAILABLE:
+            try:
+                record_well_assessment(
+                    assessment_type="homeostasis_sleep",
+                    result={"verdict": verdict, "status": status, "score": round(sleep_recovery_score, 2)},
+                )
+            except Exception:
+                pass
+
         return _omega_well_output(
             ok=status in ("OPTIMAL", "STABLE") and route_verdict == "PROCEED",
             stage="222_SLEEP",
@@ -11864,6 +11881,20 @@ def well_assess_homeostasis(
             _data_payload["_saf_biometric_strain"] = _saf_descriptives
         if _saf_cross_metric is not None:
             _data_payload["_saf_cross_metric"] = _saf_cross_metric
+
+        # ── Reality Ledger ──────────────────────────────────────────────────────
+        if _WELL_LEDGER_AVAILABLE:
+            try:
+                record_well_assessment(
+                    assessment_type="homeostasis_fatigue",
+                    result={
+                        "verdict": verdict,
+                        "status": status,
+                        "score": round(homeostasis_score, 2),
+                    },
+                )
+            except Exception:
+                pass
 
         return _omega_well_output(
             ok=status in ("OPTIMAL", "STABLE") and route_verdict == "PROCEED",
