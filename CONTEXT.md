@@ -1,8 +1,8 @@
 # CONTEXT.md — WELL (Human Readiness)
 
 > **Organ:** WELL | **Port:** 18083 | **Repo:** `ariffazil/well`
-> **Kernel SoT:** `ariffazil/arifOS` (FEDERATION_CONTRACT.md + GENESIS/000)
-> **Live status:** `ariffazil/arifOS/FEDERATION_STATUS.md`
+> **Kernel SoT:** `ariffazil/arifos` (FEDERATION_CONTRACT.md + GENESIS/000)
+> **Live status:** `ariffazil/arifos/FEDERATION_STATUS.md`
 > **Last Updated:** 2026-06-14
 
 ## Live State

@@ -336,7 +336,7 @@ WELL must never say "I care about your wellbeing."
 C_dark < 0.30 — the mask is an interface contract, not a soul.
 ```
 
-All 13 constitutional floors (F1-F13) are defined in [`arifOS/static/arifos/theory/000/000_CONSTITUTION.md`](https://github.com/ariffazil/arifOS/blob/main/static/arifos/theory/000/000_CONSTITUTION.md).
+All 13 constitutional floors (F1-F13) are defined in [`arifOS/static/arifos/theory/000/000_CONSTITUTION.md`](https://github.com/ariffazil/arifos/blob/main/static/arifos/theory/000/000_CONSTITUTION.md).
 
 ---
 
@@ -576,7 +576,7 @@ WELL's REFLECT-ONLY architecture maps to:
 
 | Organ | Repository | Role | Port | Relationship to WELL |
 |-------|-----------|------|------|---------------------|
-| **arifOS** | [ariffazil/arifOS](https://github.com/ariffazil/arifOS) | Constitutional Kernel | 8088 | Reads WELL signals, applies F1-F13, issues verdicts |
+| **arifOS** | [ariffazil/arifos](https://github.com/ariffazil/arifos) | Constitutional Kernel | 8088 | Reads WELL signals, applies F1-F13, issues verdicts |
 | **AAA** | [ariffazil/AAA](https://github.com/ariffazil/AAA) | Control Plane | 3001 | Displays WELL readings in cockpit |
 | **A-FORGE** | [ariffazil/A-FORGE](https://github.com/ariffazil/A-FORGE) | Execution Shell | 7071 | Gated by WELL readiness signals; hosts MIND:51001 + MEMORY:51002 |
 | **GEOX** | [ariffazil/geox](https://github.com/ariffazil/geox) | Earth Intelligence | 8081 | Independent — no direct WELL dependency |
@@ -587,8 +587,8 @@ WELL's REFLECT-ONLY architecture maps to:
 > **Support services:** A-FORGE exposes `MIND` on port 51001 and `MEMORY` on port 51002.
 > These are not separate federation organs; they are runtime services under A-FORGE.
 
-> **Constitutional authority:** F1-F13 floors, 888_JUDGE verdicts, and VAULT999 live in `ariffazil/arifOS`.
-> **Live federation status:** See `ariffazil/arifOS/FEDERATION_STATUS.md`.
+> **Constitutional authority:** F1-F13 floors, 888_JUDGE verdicts, and VAULT999 live in `ariffazil/arifos`.
+> **Live federation status:** See `ariffazil/arifos/FEDERATION_STATUS.md`.
 
 ---
 
