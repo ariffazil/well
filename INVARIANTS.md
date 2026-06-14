@@ -42,14 +42,14 @@ These files must change together:
 
 ```
 ~11,243 lines (server.py)
-~10,972 was a stale estimate from pre-PHOENIX-73F refactor
+~14,072 is the current server.py line count
 ```
 
 ## Forbidden Stale Assumptions
 
 - ❌ WELL is NOT "not deployed" — it is live on bare-metal systemd (port 18083)
-- ❌ Do not assume port 8083 is in use — port is 18083
-- ❌ `test_well.py` uses plain Python, NOT pytest
+- ❌ Port 8083 is a legacy/stale port — canonical WELL port is 18083
+- ✅ `pytest tests/` is the primary test runner; `test_well.py` is a legacy plain-Python audit suite
 
 ## Verification
 

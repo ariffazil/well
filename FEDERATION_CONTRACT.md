@@ -13,6 +13,7 @@
 | **Port** | 18083 |
 | **Role** | Reflect-only human vitality mirror |
 | **Floors enforced** | F5 PEACE², F6 EMPATHY, F7 HUMILITY, F9 ANTIHANTU |
+| **APEX** | Legacy 888 JUDGE health probe (port 3002); deliberation moved to AAA a2a |
 | **License** | AGPL-3.0 |
 
 ## Boundaries
@@ -23,7 +24,7 @@
 ## Contract Compliance
 
 - [x] Points to kernel SoT from README
-- [x] Has GENESIS/ (004-010)
+- [x] Has GENESIS/ (004-012)
 - [x] Surfaces organ identity in /health
 - [x] Routes irreversible actions through arifOS 888 JUDGE
 - [x] Maintains AGENTS.md with federation boot sequence

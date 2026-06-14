@@ -26,3 +26,5 @@ data/
 telemetry/
 state.json.test_backup
 coverage.xml
+entropy-report.json
+well_autosleeper.py

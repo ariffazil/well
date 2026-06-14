@@ -38,31 +38,28 @@ scope: /root/WELL
 ## 0. Federation Position
 
 ```
-                        ┌──────────────────────────────────┐
-                        │         ARIF (F13 SOVEREIGN)      │
-                        │     Human veto. Final authority.   │
-                        └──────────────┬───────────────────┘
-                                       │ ratifies
-                                       ▼
-                        ┌──────────────────────────────────┐
-                        │     arifOS — Constitutional Kernel │
-                        │   F1-F13 floors · 888 JUDGE · VAULT│
-                        │            Port 8088               │
-                        └──┬──────────┬──────────┬──────────┘
-                           │          │          │
-              ┌────────────▼──┐  ┌───▼────┐  ┌──▼──────────┐
-              │  WEALTH       │  │ WELL   │  │ GEOX         │
-              │  Capital      │  │ Human  │  │ Earth        │
-              │  Port 18082   │  │  18083 │  │ Port 8081    │
-              └───────────────┘  └───┬────┘  └──────────────┘
-                                     │
-                                     │ signals readiness
-                                     ▼
-                        ┌──────────────────────────────────┐
-                        │   arifOS 888 JUDGE (Port 3002)    │
-                        │   Reads WELL envelope.             │
-                        │   Issues: SEAL / SABAR / HOLD     │
-                        └──────────────────────────────────┘
+                         ┌─────────────────────────────────────┐
+                         │          ARIF (F13 SOVEREIGN)       │
+                         │      Human veto. Final authority.   │
+                         └───────────────┬─────────────────────┘
+                                         │ ratifies
+                                         ▼
+                         ┌─────────────────────────────────────┐
+                         │    arifOS — Constitutional Kernel   │
+                         │   F1-F13 floors · 888 JUDGE · VAULT │
+                         │            Port 8088                │
+                         └───┬─────┬─────┬─────┬─────┬─────┬───┘
+                             │     │     │     │     │     │
+         ┌───────────────────▼──┐ ┌▼────┐ ┌▼────┐ ┌▼──────┐ ┌▼──────────┐
+         │  A-FORGE             │ │ AAA │ │GEO X│ │ WEALTH│ │   WELL    │
+         │  Execution Shell     │ │Ctrl │ │Earth│ │Capital│ │  Human    │
+         │  Port 7071           │ │3001 │ │8081 │ │ 18082 │ │ Readiness │
+         │  + MIND :51001       │ └─────┘ └─────┘ └───────┘ │  18083    │
+         │  + MEMORY :51002     │                              └───────────┘
+         └──────────────────────┘
+
+         APEX (port 3002) is a legacy health probe only.
+         888 JUDGE deliberation now lives in the AAA a2a-server.
 
         WELL is a biological witness. arifOS is the judge.
         WELL signals. 888 adjudicates. A-FORGE executes.
@@ -376,7 +373,6 @@ WELL/
 ├── specs/                     # W-floor and contract specifications
 ├── tests/                     # Pytest-based tests
 ├── scripts/                   # Operational scripts
-│   ├── well_autosleeper.py    # Telegram-activity-gap sleep detection (cron)
 │   └── biometric_inject.sh    # Sovereign biometric injection script
 │
 ├── test_well.py               # Legacy plain-Python audit suite
@@ -443,7 +439,10 @@ The script asks for 5 simple fields: `delta_s`, `peace2`, `kappa_r`, `rasa`, `am
 
 ### Auto-Sleeper
 
-A cron job (`well_autosleeper.py`) runs at 07:00 and 19:00 MYT. It detects sleep from gaps in your Telegram activity — no wearable, no manual logging. When it detects sleep, it updates `state.json` with estimated sleep duration and adjusts `well_score` accordingly.
+The generated `well_autosleeper.py` helper has been removed from the repo.
+`state.json` is F13 sovereign territory and must only be updated by the operator
+(via `biometric_inject.sh` or an explicit sovereign log). No agent or cron job
+may fabricate biometric state.
 
 ---
 
@@ -579,11 +578,14 @@ WELL's REFLECT-ONLY architecture maps to:
 |-------|-----------|------|------|---------------------|
 | **arifOS** | [ariffazil/arifOS](https://github.com/ariffazil/arifOS) | Constitutional Kernel | 8088 | Reads WELL signals, applies F1-F13, issues verdicts |
 | **AAA** | [ariffazil/AAA](https://github.com/ariffazil/AAA) | Control Plane | 3001 | Displays WELL readings in cockpit |
-| **A-FORGE** | [ariffazil/A-FORGE](https://github.com/ariffazil/A-FORGE) | Execution Shell | 7071 | Gated by WELL readiness signals in pre-execution |
+| **A-FORGE** | [ariffazil/A-FORGE](https://github.com/ariffazil/A-FORGE) | Execution Shell | 7071 | Gated by WELL readiness signals; hosts MIND:51001 + MEMORY:51002 |
 | **GEOX** | [ariffazil/geox](https://github.com/ariffazil/geox) | Earth Intelligence | 8081 | Independent — no direct WELL dependency |
 | **WEALTH** | [ariffazil/wealth](https://github.com/ariffazil/wealth) | Capital Intelligence | 18082 | Independent — no direct WELL dependency |
 | **WELL** | [ariffazil/well](https://github.com/ariffazil/well) | **Human Readiness** | **18083** | _this organ_ |
-| **arif-sites** | [ariffazil/arif-sites](https://github.com/ariffazil/arif-sites) | Public Surfaces | 443 | Serves WELL documentation |
+| **APEX** | [ariffazil/apex](https://github.com/ariffazil/apex) | Legacy 888 JUDGE health probe | 3002 | Deliberation moved to AAA a2a; kept for compatibility |
+
+> **Support services:** A-FORGE exposes `MIND` on port 51001 and `MEMORY` on port 51002.
+> These are not separate federation organs; they are runtime services under A-FORGE.
 
 > **Constitutional authority:** F1-F13 floors, 888_JUDGE verdicts, and VAULT999 live in `ariffazil/arifOS`.
 > **Live federation status:** See `ariffazil/arifOS/FEDERATION_STATUS.md`.

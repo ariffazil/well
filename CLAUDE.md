@@ -8,7 +8,7 @@
 
 ## What you are working in
 
-WELL is a single-file FastMCP server (`server.py`, ~12K lines, 45 tools) measuring human readiness across 13 substrate signals. It feeds evidence to arifOS. It holds no constitutional authority.
+WELL is a single-file FastMCP server (`server.py`, ~14K lines, 17 somatic tools) measuring human readiness across 13 substrate signals. It feeds evidence to arifOS. It holds no constitutional authority.
 
 ## Build / run / test
 
@@ -25,7 +25,7 @@ curl -s http://localhost:18083/health    # health check
 
 | Path | Purpose |
 |------|---------|
-| `server.py` | Entire WELL kernel — 45 MCP tools, FastMCP |
+| `server.py` | Entire WELL kernel — 17 somatic MCP tools, FastMCP |
 | `state.json` | Live biometric state (**F13 SOVEREIGN — never fake**) |
 | `gate/well_gate.py` | Biological readiness pre-gate |
 | `gate/dignity_shadow.py` | Dignity preservation shadow |

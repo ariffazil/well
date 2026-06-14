@@ -22,8 +22,8 @@
 - gate/dignity_shadow.py — Dignity preservation shadow
 
 ## Entry Points
-- server.py — Single-file FastMCP server (~12K lines, 45 MCP tools)
-- state.json — Sovereign biometric state (auto-detected via well_autosleeper.py cron)
+- server.py — Single-file FastMCP server (~14K lines, 17 somatic tools)
+- state.json — Sovereign biometric state (F13-only injection; no agent or cron may write it)
 - SNOOZE_BIOMETRIC.md — Biometric injection guide (F13 sovereign territory)
 
 ## Build & Test

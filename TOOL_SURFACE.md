@@ -2,7 +2,7 @@
 > **Canonical Source:** `ariffazil/well`
 > **Authority:** WELL organ, governed by `ariffazil/arifOS`
 > **Purpose:** Document the live public MCP surface and its invariants
-> **Status:** OPERATIONAL | PHOENIX-73F | 14-tool somatic surface
+> **Status:** OPERATIONAL | 17 somatic tools
 
 ---
 
@@ -10,44 +10,54 @@
 
 **Production endpoint:** `https://well.arif-fazil.com/mcp`
 **Transport:** `streamable-http` (MCP protocol)
-**Live tool count:** 18
+**Live tool count:** 17 somatic (15 public MCP + 2 internal diagnostics stripped at runtime)
 **Health endpoint:** `https://well.arif-fazil.com/health`
 
 ### Invariant
 
 ```
-/health tool_count (18) = SOMATIC_TOOLS (18)
+/health tool_count (17) = canonical WELL somatic set (17)
 ```
 
-This invariant is enforced at startup by `_enforce_somatic_boundary()` in `server.py`. Any `@mcp.tool` not in `SOMATIC_TOOLS` is stripped before the server begins accepting connections.
+This invariant is enforced at startup by `_enforce_somatic_boundary()` in `server.py`. Any `@mcp.tool` not in the canonical somatic set is removed before the server begins accepting connections.
 
 ---
 
-## Public MCP Tools (14)
+## Canonical SOMATIC_TOOLS Set (17)
 
-| Tool | Class | Omega Reference | Note |
-|------|-------|-----------------|------|
-| `mcp_health_check` | `DEPRECATED_ALIAS` | Ω-WELL | Delegates to `well_assess_reliability(mode="health")`. Retained for backward compatibility. |
-| `well_classify_substrate` | `CANONICAL_PUBLIC` | Ω-WELL-01 | Substrate classification and boundary sensing. |
-| `well_trace_lineage` | `CANONICAL_PUBLIC` | Ω-WELL-02 | Memory, trend, ledger, and vault chain tracing. |
-| `well_detect_boundary` | `CANONICAL_PUBLIC` | Ω-WELL-03 | Boundary detection across membrane, body, machine, and federation. |
-| `well_measure_gradient` | `CANONICAL_PUBLIC` | Ω-WELL-04 | Measure chemical, energy, pressure, attention, and compute gradients. |
-| `well_assess_metabolism` | `CANONICAL_PUBLIC` | Ω-WELL-05 | Assess biological metabolism and system throughput across substrates. |
-| `well_assess_homeostasis` | `CANONICAL_PUBLIC` | Ω-WELL-06 | Assess regulation, stability, and empathic balance under change. |
-| `well_check_repair` | `CANONICAL_PUBLIC` | Ω-WELL-07 | Check repair, recovery, resilience, and forge cycle integrity. |
-| `well_validate_vitality` | `CANONICAL_PUBLIC` | Ω-WELL-08 | Validate vitality, readiness, and NIAT. |
-| `well_assess_livelihood` | `CANONICAL_PUBLIC` | Ω-WELL-09 | Assess human wellness, role, dignity, support, and meaning. |
-| `well_assess_reliability` | `CANONICAL_PUBLIC` | Ω-WELL-10 | Assess machine, tool, institution, and operational reliability. |
-| `well_compute_metabolic_flux` | `CANONICAL_PUBLIC` | Ω-WELL-10b | Compute unified metabolic entropy rate (cognitive + machine). |
-| `well_guard_dignity` | `CANONICAL_PUBLIC` | Ω-WELL-12 | Guard soul, personhood, meaning, and symbolic boundaries. |
-| `well_medical_boundary` | `CANONICAL_PUBLIC` | Ω-WELL-13 | Explicit non-diagnosis guard with F9 Soul Contract. |
+| # | Tool | Class | Note |
+|---|------|-------|------|
+| 1 | `mcp_health_check` | `DEPRECATED_ALIAS` | Delegates to `well_assess_reliability(mode="health")`. Retained for backward compatibility. |
+| 2 | `well_classify_substrate` | `CANONICAL_PUBLIC` | Substrate classification and boundary sensing. |
+| 3 | `well_trace_lineage` | `CANONICAL_PUBLIC` | Memory, trend, ledger, and vault chain tracing. |
+| 4 | `well_detect_boundary` | `CANONICAL_PUBLIC` | Boundary detection across membrane, body, machine, and federation. |
+| 5 | `well_measure_gradient` | `CANONICAL_PUBLIC` | Measure chemical, energy, pressure, attention, and compute gradients. |
+| 6 | `well_assess_metabolism` | `CANONICAL_PUBLIC` | Assess biological metabolism and system throughput across substrates. |
+| 7 | `well_assess_homeostasis` | `CANONICAL_PUBLIC` | Assess regulation, stability, and empathic balance under change. |
+| 8 | `well_check_repair` | `CANONICAL_PUBLIC` | Check repair, recovery, resilience, and forge cycle integrity. |
+| 9 | `well_validate_vitality` | `CANONICAL_PUBLIC` | Validate vitality, readiness, and NIAT. |
+| 10 | `well_assess_livelihood` | `CANONICAL_PUBLIC` | Assess human wellness, role, dignity, support, and meaning. |
+| 11 | `well_assess_reliability` | `CANONICAL_PUBLIC` | Assess machine, tool, institution, and operational reliability. |
+| 12 | `well_compute_metabolic_flux` | `CANONICAL_PUBLIC` | Compute unified metabolic entropy rate (cognitive + machine). |
+| 13 | `well_assess_sovereign_entropy` | `CANONICAL_PUBLIC` | Measure sovereign unpredictability / extraction resistance. |
+| 14 | `well_guard_dignity` | `CANONICAL_PUBLIC` | Guard soul, personhood, meaning, and symbolic boundaries. |
+| 15 | `well_medical_boundary` | `CANONICAL_PUBLIC` | Explicit non-diagnosis guard with F9 Soul Contract. |
+| 16 | `well_system_registry_status` | `INTERNAL_DIAGNOSTIC` | Registry truth diagnostic (stripped from public surface). |
+| 17 | `well_registry_status` | `INTERNAL_DIAGNOSTIC` | Internal tool surface audit (stripped from public surface). |
+
+---
+
+## Public MCP Surface (15)
+
+The two `INTERNAL_DIAGNOSTIC` tools above are removed by the somatic boundary, leaving **15 tools** on the public MCP surface.
 
 ---
 
 ## Deprecation Notes
 
 - `mcp_health_check` — deprecated alias. Use `well_assess_reliability(mode="health")` directly.
-- No stage aliases (`well_NNN_*`) on MCP surface — stripped at startup.
+- No stage aliases (`well_NNN_*`) on the public MCP surface — stripped at startup.
+- `well_reflect_intelligence` and `well_anchor_evidence` were removed from the public surface per orthogonal MCP alignment (2026-05-14).
 
 ---
 
@@ -55,21 +65,20 @@ This invariant is enforced at startup by `_enforce_somatic_boundary()` in `serve
 
 | Metric | Count |
 |--------|-------|
-| Total `@mcp.tool` decorators in source | 52 |
-| SOMATIC_TOOLS boundary set | 18 |
-| Live MCP tools (boundary enforced) | 18 |
-| Internal helpers / autonomic tools | 39 |
+| Total `@mcp.tool` decorators in source | 61 |
+| Canonical somatic set | 17 |
+| Public MCP surface (boundary enforced) | 15 |
+| Internal / autonomic helpers and aliases | 44 |
 
 ---
 
-## What Is NOT On MCP Surface
+## What Is NOT On the Public MCP Surface
 
-The following are internal-only functions (no `@mcp.tool` decorator):
+The following remain internal-only (no public exposure):
 
-- `well_system_registry_status` — internal diagnostic
-- `well_registry_status` — internal diagnostic
-- All `well_NNN_*` stage helpers (000–999) — stripped by SOMATIC boundary
-- All `well_*` helpers not in `SOMATIC_TOOLS` — stripped by SOMATIC boundary
+- `well_system_registry_status` / `well_registry_status` — internal diagnostics
+- All `well_NNN_*` stage aliases (000–999) — stripped by somatic boundary
+- All legacy helpers not in the canonical somatic set — stripped by somatic boundary
 
 ---
 
@@ -83,4 +92,4 @@ The following are internal-only functions (no `@mcp.tool` decorator):
 
 ---
 
-*Last Updated: 2026-06-12 | PHOENIX-73F | DITEMPA BUKAN DIBERI*
+*Last Updated: 2026-06-14 | DITEMPA BUKAN DIBERI*

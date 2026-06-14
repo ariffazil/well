@@ -24,7 +24,7 @@ make forge && systemctl restart well
 
 | Path | Role |
 |------|------|
-| `server.py` | Single-file FastMCP kernel (~12K lines, 45 tools) |
+| `server.py` | Single-file FastMCP kernel (~14K lines, 17 somatic tools) |
 | `state.json` | Sovereign biometric state (F13 territory — only Arif writes) |
 | `gate/well_gate.py` | Pre-JUDGE biological readiness gate |
 | `gate/dignity_shadow.py` | Dignity preservation shadow layer |
