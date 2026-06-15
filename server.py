@@ -25,6 +25,7 @@ from pathlib import Path
 from typing import Any
 
 from fastmcp import FastMCP, Context
+from starlette.responses import JSONResponse
 
 # ── Paths (defined before use in fallback import) ───────────────────────────────
 WELL_DIR = Path(__file__).parent
@@ -95,6 +96,8 @@ WELL_TRUTH_STATUS = {
     "CONTRADICTED": "conflicts with another record",
     "VOID": "known unreliable or contaminated",
     "TEST": "synthetic test data",
+    "INSUFFICIENT_DATA": "no trustworthy sovereign state available; manual injection required",
+    "OPERATOR_REPORTED": "sovereign manually asserted presence; not biometric verification",
 }
 
 # ── Universal Substrate Classification (U-WELL) ───────────────────────────────
@@ -1189,7 +1192,7 @@ def _has_verified_telemetry(state: dict[str, Any]) -> bool:
     Return True only if state contains actual body telemetry, not defaults.
     UNVERIFIED or VOID truth_status fails immediately.
     """
-    if state.get("truth_status") in ("VOID", "TEST", "UNVERIFIED"):
+    if state.get("truth_status") in ("VOID", "TEST", "UNVERIFIED", "INSUFFICIENT_DATA"):
         return False
     metrics = state.get("metrics", {})
     if not metrics or not isinstance(metrics, dict):
@@ -1642,8 +1645,14 @@ def _load_state() -> dict[str, Any]:
             "role": "Body / Human Intelligence",
             "authority": "REFLECT_ONLY",
             "metrics": {},
-            "well_score": 50,
+            "well_score": None,
             "floors_violated": [],
+            "truth_status": "INSUFFICIENT_DATA",
+            "environment": "PROD",
+            "reason": "No state file found. Sovereign state unknown.",
+            "confidence": "NONE",
+            "freshness": "VOID",
+            "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
         }
     with open(STATE_PATH) as f:
         return json.load(f)
@@ -1785,6 +1794,191 @@ def _state_is_void(state: dict[str, Any]) -> bool:
         or state.get("test_contamination") == "YES"
         or state.get("safe_mode") == "manual_confirmation_required"
     )
+
+
+def _state_is_insufficient(state: dict[str, Any]) -> tuple[bool, list[str]]:
+    """
+    Honest classifier: return True if WELL must not pretend it knows the sovereign's state.
+
+    Triggers:
+      - explicit test/void/unverified/insufficient truth_status
+      - TEST environment
+      - mocked/synthetic fixture language in reason
+      - missing canonical identity
+      - no verified body telemetry (unless sovereign manually reported presence)
+    """
+    reasons: list[str] = []
+    raw_truth = state.get("truth_status", "UNVERIFIED")
+    environment = state.get("environment", "PROD")
+    reason = str(state.get("reason", "")).lower()
+
+    if raw_truth in ("VOID", "TEST", "UNVERIFIED", "INSUFFICIENT_DATA"):
+        reasons.append(f"truth_status:{raw_truth}")
+    if environment == "TEST":
+        reasons.append("environment:TEST")
+    if any(marker in reason for marker in ("mock", "fixture", "synthetic", "test session")):
+        reasons.append("mocked_state")
+    if not is_well(state):
+        reasons.append("identity_invalid")
+    if raw_truth != "OPERATOR_REPORTED" and not _has_verified_telemetry(state):
+        reasons.append("no_verified_telemetry")
+
+    return bool(reasons), reasons
+
+
+def _classify_well_state(state: dict[str, Any]) -> dict[str, Any]:
+    """
+    Build honest health classification for WELL HTTP health endpoints.
+    Never fabricates biological readiness from fixtures or missing data.
+    """
+    insufficient, insufficient_reasons = _state_is_insufficient(state)
+    state_age_hours = None
+    ts = state.get("timestamp", "")
+    if ts:
+        try:
+            dt = datetime.datetime.fromisoformat(str(ts).replace("Z", "+00:00"))
+            state_age_hours = (
+                datetime.datetime.now(datetime.timezone.utc) - dt
+            ).total_seconds() / 3600
+        except Exception:
+            state_age_hours = None
+
+    if insufficient:
+        freshness_band = "VOID"
+        truth_status = "INSUFFICIENT_DATA"
+        verdict = "WELL_HOLD"
+        well_score = None
+        owner_summary = {
+            "color": "RED",
+            "reasons": [
+                "sovereign_state_unknown",
+                "human_injection_required",
+            ],
+        }
+        freshness_status = "expired"
+    else:
+        raw_truth = state.get("truth_status", "UNVERIFIED")
+        truth_status = raw_truth
+        freshness_band = _get_freshness_band(state)
+        well_score = state.get("well_score")
+        if raw_truth == "OPERATOR_REPORTED":
+            verdict = "WELL_OPERATOR_PRESENT"
+            owner_summary = {
+                "color": "YELLOW",
+                "reasons": [
+                    "operator_reported_presence",
+                    "no_biometric_telemetry",
+                ],
+            }
+        else:
+            verdict = "WELL_PASS" if well_score is not None and well_score >= 60 else "WELL_HOLD"
+            owner_summary = {
+                "color": (
+                    "GREEN"
+                    if freshness_band in ("FRESH", "CURRENT")
+                    else "YELLOW"
+                    if freshness_band == "AGED"
+                    else "RED"
+                ),
+                "reasons": (
+                    ["biometric_state_fresh", "truth_status_verified"]
+                    if freshness_band in ("FRESH", "CURRENT")
+                    else ["biometric_state_aged_contact_arif"]
+                    if freshness_band == "AGED"
+                    else [
+                        "biometric_state_stale_or_expired",
+                        "human_injection_required",
+                    ]
+                ),
+            }
+        freshness_status = (
+            "fresh"
+            if freshness_band in ("FRESH", "CURRENT")
+            else "stale"
+            if freshness_band == "AGED"
+            else "expired"
+        )
+
+    freshness = {
+        "status": freshness_status,
+        "checked_at_utc": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        "source_timestamp_utc": ts or None,
+        "age_seconds": round(state_age_hours * 3600, 1) if state_age_hours is not None else None,
+        "max_fresh_age_seconds": 3600,
+        "stale_after_seconds": 14400,
+        "expired_after_seconds": 86400,
+    }
+
+    return {
+        "well_ok": is_well(state),
+        "has_telemetry": _has_verified_telemetry(state),
+        "truth_status": truth_status,
+        "verdict": verdict,
+        "well_score": well_score,
+        "freshness_band": freshness_band,
+        "freshness": freshness,
+        "owner_summary": owner_summary,
+        "state_age_hours": round(state_age_hours, 1) if state_age_hours is not None else None,
+        "insufficient": insufficient,
+        "insufficient_reasons": insufficient_reasons,
+    }
+
+
+def _assert_sovereign_presence(operator_id: str = "arif") -> dict[str, Any]:
+    """
+    Manual sovereign presence assertion.
+    Writes a real OPERATOR_REPORTED state. Does NOT invent biometric telemetry.
+    """
+    state = _load_state()
+    now = datetime.datetime.now(datetime.timezone.utc)
+    state.update(
+        {
+            "timestamp": now.isoformat(),
+            "operator_id": operator_id,
+            "identity": "WELL",
+            "role": "Body / Human Intelligence",
+            "authority": "REFLECT_ONLY",
+            "delta_s": 0.0,
+            "peace2": 1.0,
+            "kappa_r": 0.95,
+            "rasa": True,
+            "amanah": "LOCK",
+            "truth_status": "OPERATOR_REPORTED",
+            "environment": "PROD",
+            "well_score": None,
+            "reason": "Sovereign presence asserted manually via /ready",
+            "confidence": "HIGH",
+            "freshness": "FRESH",
+            "test_contamination": "NO",
+            "contamination_quarantined": False,
+            "safe_mode": "off",
+            "arif_decision_required": False,
+            "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
+        }
+    )
+    # Ensure we never carry over mocked-score pretense.
+    if "well_score" in state and state.get("environment") != "PROD":
+        del state["well_score"]
+    _save_state(state)
+    _append_event(
+        {
+            "event": "SOVEREIGN_PRESENCE_ASSERTED",
+            "operator_id": operator_id,
+            "truth_status": "OPERATOR_REPORTED",
+        }
+    )
+    return {"ok": True, "timestamp": now.isoformat(), "truth_status": "OPERATOR_REPORTED"}
+
+
+async def _well_ready_handler(request):
+    """Sovereign presence assertion endpoint. POST only."""
+    if request.method != "POST":
+        return JSONResponse(
+            {"error": "METHOD_NOT_ALLOWED", "allowed_methods": ["POST"]},
+            status_code=405,
+        )
+    result = _assert_sovereign_presence()
+    return JSONResponse(result)
 
 
 def _save_state(state: dict[str, Any]) -> None:
@@ -10331,8 +10525,7 @@ if __name__ == "__main__":
             pass
 
         state = _load_state()
-        well_ok = is_well(state)
-        has_telemetry = _has_verified_telemetry(state)
+        classification = _classify_well_state(state)
         # W-1: expose substrate advisory fields so arifOS judge HTTP fallback can consume them
         _clarity = state.get("metrics", {}).get("cognitive", {}).get("clarity")
         return JSONResponse(
@@ -10345,9 +10538,9 @@ if __name__ == "__main__":
                 "kappa_r": state.get("kappa_r", 0),
                 "rasa": state.get("rasa", False),
                 "amanah": state.get("amanah", "UNLOCKED"),
-                "verdict": "WELL_PASS" if well_ok else "NOT_WELL",
-                "identity_valid": well_ok,
-                "has_telemetry": has_telemetry,
+                "verdict": classification["verdict"],
+                "identity_valid": classification["well_ok"],
+                "has_telemetry": classification["has_telemetry"],
                 "service": "well-mcp",
                 "version": "2026.05.15-ΩWELL+GWELL",
                 "identity_hash": identity_hash,
@@ -10355,9 +10548,11 @@ if __name__ == "__main__":
                 "domain_law": domain_law,
                 "substrate_manifest_hash": substrate_manifest_hash,
                 # W-1 substrate advisory fields — consumed by judge.py HTTP fallback
-                "well_score": float(state.get("well_score", 50.0)),
+                "well_score": classification["well_score"],
                 "floors_violated": state.get("floors_violated") or [],
-                "truth_status": state.get("truth_status", "UNVERIFIED"),
+                "truth_status": classification["truth_status"],
+                "freshness_band": classification["freshness_band"],
+                "owner_summary": classification["owner_summary"],
                 "clarity": _clarity,
             }
         )
@@ -10393,6 +10588,7 @@ if __name__ == "__main__":
     app.add_route("/.well-known/mcp.json", mcp_server_card, methods=["GET"])
     app.add_route("/.well-known/mcp/server.json", mcp_server_card, methods=["GET"])
     app.add_route("/health", health_handler, methods=["GET"])
+    app.add_route("/ready", _well_ready_handler, methods=["POST"])
     app.add_route("/api/build-info", build_info_handler, methods=["GET"])
     app.add_route("/tools", tools_handler, methods=["GET"])
 
@@ -13903,139 +14099,60 @@ if __name__ == "__main__":
         except Exception:
             identity_hash = "UNAVAILABLE"
 
-        try:
-            state = __import__("json").loads(open("/app/state.json").read())
-        except Exception:
-            state = {}
+        # Use canonical STATE_PATH instead of hardcoded /app/state.json.
+        state = _load_state()
+        classification = _classify_well_state(state)
         metrics = state.get("metrics") or {}
         clarity = (
             metrics.get("cognitive", {}).get("clarity")
             if isinstance(metrics, dict)
             else None
         )
-        # Dynamically compute freshness band from timestamp (not from static field)
-        freshness_band = _get_freshness_band(state)
-        # Compute state_age_hours for transparency
-        try:
-            ts = state.get("timestamp", "")
-            if ts:
-                dt = datetime.datetime.fromisoformat(ts.replace("Z", "+00:00"))
-                state_age_hours = (
-                    datetime.datetime.now(datetime.timezone.utc) - dt
-                ).total_seconds() / 3600
-            else:
-                state_age_hours = None
-        except Exception:
-            state_age_hours = None
-        # truth_status: TEST overrides everything; else derive from freshness
-        raw_truth = state.get("truth_status", "UNVERIFIED")
-        environment = CURRENT_ENV
-        if raw_truth in ("VOID",):
-            truth_status = raw_truth
-        elif environment == "TEST":
-            truth_status = "TEST"
-        else:
-            # Derive from freshness band for PROD
-            truth_status = {
-                "FRESH": "VERIFIED",
-                "CURRENT": "VERIFIED",
-                "AGED": "UNVERIFIED",
-                "STALE": "EXPIRED",
-            }.get(freshness_band, "UNVERIFIED")
-        # Verdicts: STALE/EXPIRED state cannot be WELL_PASS
-        if freshness_band in ("STALE",) and environment == "PROD":
-            verdict = "WELL_HOLD"
-        elif not metrics or not any(
-            metrics.get(d)
-            for d in ("sleep", "stress", "cognitive", "metabolic", "structural")
-        ):
-            verdict = "WELL_NO_TELEMETRY"
-        else:
-            verdict = "WELL_PASS"
+        has_metrics = bool(
+            metrics
+            and any(
+                metrics.get(d)
+                for d in (
+                    "sleep",
+                    "stress",
+                    "cognitive",
+                    "metabolic",
+                    "structural",
+                )
+            )
+        )
+
         return JSONResponse(
             {
                 # ── Canonical 7-field health schema (federation convention) ───
-                # WELL is REFLECT_ONLY; it never judges. status + final_authority
-                # close the gap to 7/7 canonical. Additive only.
                 "status": "healthy",
                 "final_authority": "ARIF",
                 "identity": "WELL",
                 "role": "Body / Human Intelligence",
                 "authority": "REFLECT_ONLY",
                 "identity_hash": identity_hash,
-                "verdict": verdict,
+                "verdict": classification["verdict"],
                 "service": "well-mcp",
                 "version": "2026.05.15-ΩWELL+GWELL+FEDERATION",
-                "tool_count": len(
-                    SOMATIC_TOOLS
-                ),  # dynamic — counts SOMATIC_TOOLS set (was hardcoded 79)
+                "tool_count": len(SOMATIC_TOOLS),
                 # substrate advisory fields — consumed by arifOS _read_well_substrate() HTTP fallback
-                "well_score": float(state.get("well_score", 50.0)),
+                "well_score": classification["well_score"],
                 "floors_violated": state.get("floors_violated") or [],
-                "truth_status": truth_status,
-                "has_metrics": bool(
-                    metrics
-                    and any(
-                        metrics.get(d)
-                        for d in (
-                            "sleep",
-                            "stress",
-                            "cognitive",
-                            "metabolic",
-                            "structural",
-                        )
-                    )
-                ),
+                "truth_status": classification["truth_status"],
+                "has_metrics": has_metrics,
+                "has_verified_telemetry": classification["has_telemetry"],
                 "clarity": clarity,
                 "metrics": metrics,
                 # Dynamic freshness — computed from timestamp, not a static lie
-                "freshness_band": freshness_band,
-                "state_age_hours": round(state_age_hours, 1)
-                if state_age_hours is not None
-                else None,
-                "environment": environment,
+                "freshness_band": classification["freshness_band"],
+                "state_age_hours": classification["state_age_hours"],
+                "environment": CURRENT_ENV,
                 # ── P6 — WELL identity anchor (SUBSTRATE_LAW, not constitutional) ───
                 "domain_law": _compute_domain_law(),
                 "substrate_manifest_hash": _compute_substrate_manifest_hash(),
                 # Phase 2 hardening: standardized freshness + owner summary
-                "freshness": {
-                    "status": (
-                        "fresh"
-                        if freshness_band in ("FRESH", "CURRENT")
-                        else "stale"
-                        if freshness_band == "AGED"
-                        else "expired"
-                    ),
-                    "checked_at_utc": datetime.datetime.now(
-                        datetime.timezone.utc
-                    ).isoformat(),
-                    "source_timestamp_utc": state.get("timestamp", "") or None,
-                    "age_seconds": round(state_age_hours * 3600, 1)
-                    if state_age_hours is not None
-                    else None,
-                    "max_fresh_age_seconds": 3600,  # 1 hour for human biometric data
-                    "stale_after_seconds": 14400,  # 4 hours
-                    "expired_after_seconds": 86400,  # 24 hours
-                },
-                "owner_summary": {
-                    "color": (
-                        "GREEN"
-                        if freshness_band in ("FRESH", "CURRENT")
-                        else "YELLOW"
-                        if freshness_band == "AGED"
-                        else "RED"
-                    ),
-                    "reasons": (
-                        ["biometric_state_fresh", "truth_status_verified"]
-                        if freshness_band in ("FRESH", "CURRENT")
-                        else ["biometric_state_aged_contact_arif"]
-                        if freshness_band == "AGED"
-                        else [
-                            "biometric_state_stale_or_expired",
-                            "human_injection_required",
-                        ]
-                    ),
-                },
+                "freshness": classification["freshness"],
+                "owner_summary": classification["owner_summary"],
                 # Boundary disclaimer
                 "boundary_notice": "Not diagnosis. Not therapy. Reflective readiness only. Arif remains final judge.",
             }
@@ -14192,6 +14309,7 @@ if __name__ == "__main__":
     app.add_route("/.well-known/mcp.json", _mcp_server_card, methods=["GET"])
     app.add_route("/.well-known/mcp/server.json", _mcp_server_card, methods=["GET"])
     app.add_route("/health", _well_health_handler, methods=["GET"])
+    app.add_route("/ready", _well_ready_handler, methods=["POST"])
     app.add_route("/tools", _well_tools_handler, methods=["GET"])
     app.add_route("/api/build-info", _well_build_info_handler, methods=["GET"])
     app.add_middleware(OriginValidationMiddleware)
