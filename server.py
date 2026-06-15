@@ -1946,6 +1946,8 @@ def _assert_sovereign_presence(operator_id: str = "arif") -> dict[str, Any]:
             "truth_status": "OPERATOR_REPORTED",
             "environment": "PROD",
             "well_score": None,
+            "metrics": {},
+            "floors_violated": [],
             "reason": "Sovereign presence asserted manually via /ready",
             "confidence": "HIGH",
             "freshness": "FRESH",
