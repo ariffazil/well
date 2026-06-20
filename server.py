@@ -1862,7 +1862,7 @@ def _classify_well_state(state: dict[str, Any]) -> dict[str, Any]:
     if insufficient:
         freshness_band = "VOID"
         truth_status = "INSUFFICIENT_DATA"
-        verdict = "WELL_HOLD"
+        well_signal = "WELL_HOLD"  # signal, not verdict — WELL is REFLECT_ONLY
         well_score = None
         owner_summary = {
             "color": "RED",
@@ -1878,7 +1878,7 @@ def _classify_well_state(state: dict[str, Any]) -> dict[str, Any]:
         freshness_band = _get_freshness_band(state)
         well_score = state.get("well_score")
         if raw_truth == "OPERATOR_REPORTED":
-            verdict = "WELL_OPERATOR_PRESENT"
+            well_signal = "WELL_OPERATOR_PRESENT"  # signal, not verdict
             owner_summary = {
                 "color": "YELLOW",
                 "reasons": [
@@ -1887,7 +1887,7 @@ def _classify_well_state(state: dict[str, Any]) -> dict[str, Any]:
                 ],
             }
         else:
-            verdict = "WELL_PASS" if well_score is not None and well_score >= 60 else "WELL_HOLD"
+            well_signal = "WELL_PASS" if well_score is not None and well_score >= 60 else "WELL_HOLD"  # signal, not verdict
             owner_summary = {
                 "color": (
                     "GREEN"
@@ -1929,7 +1929,7 @@ def _classify_well_state(state: dict[str, Any]) -> dict[str, Any]:
         "well_ok": is_well(state),
         "has_telemetry": _has_verified_telemetry(state),
         "truth_status": truth_status,
-        "verdict": verdict,
+        "well_signal": well_signal,  # WELL is REFLECT_ONLY — signals, not verdicts
         "well_score": well_score,
         "freshness_band": freshness_band,
         "freshness": freshness,
@@ -10909,7 +10909,7 @@ if __name__ == "__main__":
                 "kappa_r": state.get("kappa_r", 0),
                 "rasa": state.get("rasa", False),
                 "amanah": state.get("amanah", "UNLOCKED"),
-                "verdict": classification["verdict"],
+                "well_signal": classification["well_signal"],  # REFLECT_ONLY — never "verdict"
                 "identity_valid": classification["well_ok"],
                 "has_telemetry": classification["has_telemetry"],
                 "service": "well-mcp",
@@ -14547,7 +14547,7 @@ if __name__ == "__main__":
                 "role": "Body / Human Intelligence",
                 "authority": "REFLECT_ONLY",
                 "identity_hash": identity_hash,
-                "verdict": classification["verdict"],
+                "well_signal": classification["well_signal"],  # REFLECT_ONLY — never "verdict"
                 "service": "well-mcp",
                 "version": "2026.05.15-ΩWELL+GWELL+FEDERATION",
                 "tool_count": len(SOMATIC_TOOLS),
