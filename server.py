@@ -14534,7 +14534,7 @@ if __name__ == "__main__":
         )
         health_status = (
             "healthy"
-            if classification["well_ok"] and classification["verdict"] == "WELL_PASS"
+            if classification["well_ok"] and classification.get("well_signal", "WELL_HOLD") == "WELL_PASS"
             else "degraded"
         )
 
