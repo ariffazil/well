@@ -1214,6 +1214,22 @@ def _resolve_readiness(state: dict[str, Any]) -> dict[str, Any]:
     violations = state.get("floors_violated", [])
     state.get("metrics", {})
     ceiling = _compute_decision_ceiling(state)
+    if not is_well(state):
+        return {
+            "readiness": "LOW_CAPACITY",
+            "risk_level": "AMBER",
+            "recommended_mode": "review_or_draft",
+            "ground_state": ceiling.get("ground_state", "DEGRADED"),
+            "decision_ceiling": "C1",
+            "human_confirmation_required": True,
+            "reason": "WELL identity invariant failed. Readiness is capped until identity is restored.",
+            "well_score": score,
+            "active_violations": violations,
+            "has_telemetry": _has_verified_telemetry(state),
+            "identity_valid": False,
+            "readiness_cap": "CAUTION",
+            "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
+        }
 
     # ── Unknown telemetry path (fail closed without faking biology) ──
     if not _has_verified_telemetry(state):
@@ -2131,7 +2147,7 @@ def _compose_verdict(
         confidence = "LOW"
         human_required = True
 
-    return {
+    result = {
         "ok": status in ("PASS", "SEAL", "WELL_PASS"),
         "mcp": mcp,
         "task": task,
@@ -2181,6 +2197,9 @@ def _compose_verdict(
             str(datetime.datetime.now()).encode()
         ).hexdigest()[:16],
     }
+    if mcp == "AFWELL" and task == "readiness_reflection":
+        result["readiness_evidence"] = _readiness_visibility_context()
+    return result
 
 
 # ── Tools ──────────────────────────────────────────────────────────────────────
@@ -7390,9 +7409,16 @@ def _omega_well_output(
         if signal == "stable_signal":
             signal = "recovery_needed"
 
+    if not ok and signal == "stable_signal":
+        signal = "insufficient_context"
+        if str(verdict).upper() == "PASS":
+            verdict = "WARN"
+
     out: dict[str, Any] = {
         "ok": ok,
+        "status": "DEGRADED" if not ok else "ADVISORY",
         "signal": signal,
+        "decision_support": "LIMITED" if not ok else "ADVISORY",
         "calm_state": calm_state,
         "telemetry_status": telemetry_status,
         "constitutional_boundary_notice": (
@@ -7469,6 +7495,10 @@ def _to_federation_output(
     # If no signal but we have a verdict, derive signal (covers raw flux data paths)
     if signal is None and verdict:
         signal = _verdict_to_signal(verdict)
+    if not ok and signal == "stable_signal":
+        signal = "insufficient_context"
+        if str(verdict).upper() == "PASS":
+            verdict = "WARN"
 
     # Use signal for uncertainty mapping if available, else fall back to verdict
     _uncertainty_key = signal if signal else verdict
@@ -7522,9 +7552,11 @@ def _to_federation_output(
 
     out = {
         "ok": ok,
+        "status": "DEGRADED" if not ok else "ADVISORY",
         "observation": observation,
         "uncertainty": uncertainty,
         "signal": signal,
+        "decision_support": "LIMITED" if not ok else "ADVISORY",
         "constraints": constraints,
         "recommended_next_organ": recommended_next_organ,
         # P0-4: Non-medical boundary — required on all human-facing outputs
@@ -9227,6 +9259,34 @@ def _well_13_signal_coverage_impl(
             "Gödel: WELL cannot fully prove the human. This tool "
             "audits WELL's view, not the human's truth."
         ),
+    }
+
+
+def _readiness_visibility_context() -> dict[str, Any]:
+    """Compact readiness evidence block for human-facing readiness outputs."""
+    state = _load_state()
+    coverage = _well_13_signal_coverage_impl(operator_id=state.get("operator_id", "arif"))
+    per_signal = coverage.get("per_signal", [])
+    summary = coverage.get("coverage_summary", {})
+    freshness = _check_data_freshness(state)
+    return {
+        "coverage_score": summary.get("coverage_score_0_to_10", 0.0),
+        "active_signals": [
+            sig.get("signal") for sig in per_signal if sig.get("status") == "active"
+        ],
+        "partial_signals": [
+            sig.get("signal") for sig in per_signal if sig.get("status") == "partial"
+        ],
+        "missing_signals": [
+            sig.get("signal") for sig in per_signal if sig.get("status") == "missing"
+        ],
+        "telemetry_age_hours": freshness.get("state_age_hours"),
+        "freshness": freshness.get("freshness_label"),
+        "truth_status": freshness.get("truth_status"),
+        "identity_valid": is_well(state),
+        "decision_support": "LIMITED"
+        if not is_well(state) or summary.get("coverage_score_0_to_10", 0.0) < 5.0
+        else "ADVISORY",
     }
 
 
@@ -11796,6 +11856,9 @@ def well_assess_homeostasis(
     VALID_HRV = ["low", "normal", "high"]
     VALID_EMOTIONAL = ["irritable", "anxious", "neutral", "calm", "elevated"]
     VALID_DECISION_CLASSES = ["C1", "C2", "C3", "C4", "C5"]
+    raw_emotional_state = emotional_state
+    normalized_emotional_class = emotional_state
+    operator_risk = "standard"
     if mode not in VALID_MODES:
         return {
             "error": "UNKNOWN_MODE",
@@ -11806,7 +11869,15 @@ def well_assess_homeostasis(
     if hrv_status not in VALID_HRV:
         hrv_status = "normal"
     if emotional_state not in VALID_EMOTIONAL:
-        emotional_state = "neutral"
+        lowered_emotion = str(emotional_state).lower()
+        if "tired" in lowered_emotion and "driven" in lowered_emotion:
+            emotional_state = "anxious"
+            normalized_emotional_class = "fatigued_drive_state"
+            operator_risk = "overextension"
+        else:
+            emotional_state = "neutral"
+            normalized_emotional_class = "unclassified_emotional_state"
+            operator_risk = "unknown_context"
     decision_class_upper = (
         decision_class.upper() if isinstance(decision_class, str) else "C3"
     )
@@ -12036,11 +12107,21 @@ def well_assess_homeostasis(
             if sleep_debt_days is not None
             else cog.get("sleep_debt_days", 0.0)
         )
-        _clarity = (
+        _raw_clarity = (
             cognitive_clarity
             if cognitive_clarity is not None
             else cog.get("clarity", 7.0)
         )
+        try:
+            _raw_clarity_float = float(_raw_clarity)
+        except (TypeError, ValueError):
+            _raw_clarity_float = 7.0
+        if cognitive_clarity is not None and 0.0 <= _raw_clarity_float <= 1.0:
+            _clarity = _raw_clarity_float * 10.0
+            _clarity_input_scale = "0_to_1"
+        else:
+            _clarity = _raw_clarity_float
+            _clarity_input_scale = "0_to_10"
         _decision_fatigue = (
             decision_fatigue
             if decision_fatigue is not None
@@ -12372,10 +12453,15 @@ def well_assess_homeostasis(
             "sleep_debt_days": _sleep_debt,
             "decision_fatigue": _decision_fatigue,
             "cognitive_clarity": _clarity,
+            "raw_cognitive_clarity": _raw_clarity,
+            "cognitive_clarity_input_scale": _clarity_input_scale,
             "stress_load": _stress_load,
             "accumulated_fatigue": round(_accumulated, 2),
             "hrv_status": hrv_status,
             "emotional_state": emotional_state,
+            "raw_emotional_state": raw_emotional_state,
+            "normalized_emotional_class": normalized_emotional_class,
+            "operator_risk": operator_risk,
             "chronic_fatigue": chronic_fatigue,
             "raw_fatigue_index": round(raw_fatigue, 2),
             "decision_class": decision_class_upper,
@@ -13509,6 +13595,8 @@ def well_system_registry_status() -> dict[str, Any]:
     somatic = list(SOMATIC_TOOLS | {"well_guard_dignity"})
     autonomic_names = [e["name"] for e in _WELL_AUTONOMIC_TOOLS]
     canonical_aliases = {k: v for k, v in ALIAS_REGISTRY.items()}
+    state = _load_state()
+    identity_valid = is_well(state)
 
     # Cross-check: any alias pointing to a non-somatic canonical is a gap
     alias_gaps = {
@@ -13517,17 +13605,24 @@ def well_system_registry_status() -> dict[str, Any]:
         if canon not in somatic
     }
 
-    registry_truth = "WARN" if alias_gaps else "PASS"
+    if not identity_valid:
+        registry_truth = "DEGRADED"
+    elif alias_gaps:
+        registry_truth = "WARN"
+    else:
+        registry_truth = "PASS"
 
     return _omega_well_output(
-        ok=True,
+        ok=registry_truth == "PASS",
         stage="WELL_SYSTEM",
         lane="MACHINE",
         mode="registry",
-        verdict="PASS" if registry_truth == "PASS" else "WARN",
+        verdict="PASS" if registry_truth == "PASS" else "HOLD",
         data={
             "service": "well-mcp",
             "version": "2026.05.15-ΩWELL+GWELL+FEDERATION",
+            "registry_status": registry_truth,
+            "identity_valid": identity_valid,
             "somatic_tools": sorted(somatic),
             "somatic_count": len(somatic),
             "autonomic_tools": sorted(autonomic_names),
@@ -14437,11 +14532,16 @@ if __name__ == "__main__":
                 )
             )
         )
+        health_status = (
+            "healthy"
+            if classification["well_ok"] and classification["verdict"] == "WELL_PASS"
+            else "degraded"
+        )
 
         return JSONResponse(
             {
                 # ── Canonical 7-field health schema (federation convention) ───
-                "status": "healthy",
+                "status": health_status,
                 "final_authority": "ARIF",
                 "identity": "WELL",
                 "role": "Body / Human Intelligence",
