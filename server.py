@@ -27,6 +27,14 @@ from typing import Any
 from fastmcp import FastMCP, Context
 from starlette.responses import JSONResponse
 
+# ── APEX Runtime Governance Envelope (APEX-MCP-001) ─────────────────────────
+_APEX_AVAILABLE = True
+try:
+    from apex_envelope_well import well_apex_envelope as _build_apex
+except ImportError:
+    _APEX_AVAILABLE = False
+    _build_apex = None  # type: ignore
+
 # ── Paths (defined before use in fallback import) ───────────────────────────────
 WELL_DIR = Path(__file__).parent
 
@@ -45,6 +53,20 @@ except ImportError:
 
     _sys.path.insert(0, str(WELL_DIR))
     from internal.organ_governance import check_governance
+
+# ── APEX Injection Helper (APEX-MCP-001) ───────────────────────────────────
+def _inject_apex(result: dict[str, Any], tool_name: str = "unknown", state: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Inject APEX governance envelope into any WELL tool result."""
+    if _APEX_AVAILABLE and isinstance(result, dict):
+        try:
+            result["apex"] = _build_apex(
+                tool_name=tool_name,
+                state=state,
+                actor_id=result.get("operator_id") or (state or {}).get("operator_id"),
+            )
+        except Exception:
+            pass
+    return result
 
 # PR 6 — reflect-only boundary import. Lazy-tolerant: if the engines
 # module is not on sys.path, the import is deferred until the wrap
@@ -2246,6 +2268,19 @@ def well_state(include: str = "full", ctx: Context | None = None) -> dict[str, A
     result.update(
         _legacy_advisory("well_state", "well_validate_vitality", {"mode": "state"})
     )
+    # APEX Runtime Governance Envelope (APEX-MCP-001)
+    try:
+        from apex_envelope_well import well_apex_envelope
+        result["apex"] = well_apex_envelope(
+            tool_name="well_state",
+            well_score=result.get("well_score"),
+            truth_status=result.get("truth_status"),
+            ok=result.get("ok", True),
+            operator_id=result.get("operator_id"),
+            boundary="LIVE",
+        )
+    except Exception:
+        pass
     return result
 
 
@@ -2922,14 +2957,14 @@ def well_get_readiness(ctx: Context | None = None) -> dict[str, Any]:
     metrics = state.get("metrics", {})
     r_score = readiness_score(metrics)
 
-    return {
+    return _inject_apex({
         "ok": True,
         "well_score": state.get("well_score", 50),
         "readiness": r_score,
         "floors_violated": state.get("floors_violated", []),
         "has_telemetry": True,
         "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
-    }
+    }, tool_name="well_get_readiness", state=state)
 
 
 # internal — not MCP-facing (collapsed 2026-05-26)
@@ -5424,8 +5459,21 @@ def well_get_state(
     if domain in (None, "machine"):
         result["m_machine"] = state.get("m_machine", {})
     result.update(
-        _legacy_advisory("well_get_state", "well_validate_vitality", {"mode": "state"})
+        _legacy_advisory("well_state", "well_validate_vitality", {"mode": "state"})
     )
+
+    # ── APEX Runtime Governance Envelope (APEX-MCP-001) ──────────────────
+    # WELL = Vitality organ. Maps biological signals to 10 APEX gates.
+    try:
+        from apex_envelope_well import well_apex_envelope
+        result["apex"] = well_apex_envelope(
+            tool_name="well_state",
+            state=state,
+            actor_id=state.get("operator_id"),
+        )
+    except Exception:
+        pass  # APEX envelope is additive; never breaks tool output
+
     return result
 
 
@@ -9103,12 +9151,40 @@ def well_13_signal_coverage(
     ctx: Context | None = None,
 ) -> dict[str, Any]:
     """
+    [DEPRECATED — use well_signal_coverage]
     DREAM ENGINE: Audit WELL's coverage of the 13 canonical human substrate
     signals. Returns per-signal status (active/partial/missing), coverage
     summary, and cross-organ handoff suggestions for gaps.
 
     Authority: reflect_only. WELL does not score the human here. WELL
     audits itself: which of the 13 substrate signals am I currently
+    seeing? Which are stale? Which are missing?
+
+    SUNAT item per GENESIS/004_WELL_13_CANON.md §5.2.
+    """
+    result = _well_13_signal_coverage_impl(operator_id=operator_id, ctx=ctx)
+    result["_advisory"] = {
+        "deprecated": True,
+        "canonical": "well_signal_coverage",
+        "deprecation_epoch": "2026-Q3",
+        "removal_allowed": False,
+        "note": "Magic number '13' removed from canonical name — signal count may change over epochs",
+    }
+    return result
+
+
+@mcp.tool()
+def well_signal_coverage(
+    operator_id: str | None = None,
+    ctx: Context | None = None,
+) -> dict[str, Any]:
+    """
+    DREAM ENGINE: Audit WELL's coverage of canonical human substrate
+    signals. Returns per-signal status (active/partial/missing), coverage
+    summary, and cross-organ handoff suggestions for gaps.
+
+    Authority: reflect_only. WELL does not score the human here. WELL
+    audits itself: which of the substrate signals am I currently
     seeing? Which are stale? Which are missing?
 
     SUNAT item per GENESIS/004_WELL_13_CANON.md §5.2.
@@ -9310,6 +9386,7 @@ OMEGA_WELL_TOOLS = {
     "well_guard_dignity",
     "well_anchor_evidence",
     "well_13_signal_coverage",
+    "well_signal_coverage",
 }
 
 
@@ -12558,10 +12635,11 @@ def well_validate_vitality(
     )
     from contracts.enrich_well import build_metabolic_output
 
-    return build_metabolic_output(
+    result = build_metabolic_output(
         tool_name="well_validate_vitality",
         internal_result=internal,
     )
+    return _inject_apex(result, "well_validate_vitality")
 
 
 @mcp.tool()
@@ -12622,25 +12700,28 @@ def well_assess_livelihood(
     sub_data = internal.get("data", {}).get(mode_key, {})
     assessment_ok = sub_data.get("ok", False) if sub_data else internal.get("ok", False)
 
-    return _to_federation_output(
-        {
-            "ok": assessment_ok,
-            "tool": "well_assess_livelihood",
-            "mode": mode,
-            "observation": {
+    return _inject_apex(
+        _to_federation_output(
+            {
                 "ok": assessment_ok,
-                "subject": subject or "Arif",
-                "substrate_class": substrate_class or "HUMAN_PERSON",
+                "tool": "well_assess_livelihood",
                 "mode": mode,
-                "assessment": sub_data,
-                "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
-                "human_judge_required": not assessment_ok,
-                "boundary_notice": "Not diagnosis. Not therapy. Reflective readiness only. Arif remains final judge.",
+                "observation": {
+                    "ok": assessment_ok,
+                    "subject": subject or "Arif",
+                    "substrate_class": substrate_class or "HUMAN_PERSON",
+                    "mode": mode,
+                    "assessment": sub_data,
+                    "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
+                    "human_judge_required": not assessment_ok,
+                    "boundary_notice": "Not diagnosis. Not therapy. Reflective readiness only. Arif remains final judge.",
+                },
+                "uncertainty": 0.5,
+                "signal": "advisory" if assessment_ok else "attention_needed",
             },
-            "uncertainty": 0.5,
-            "signal": "advisory" if assessment_ok else "attention_needed",
-        },
-        tool_name="well_assess_livelihood",
+            tool_name="well_assess_livelihood",
+        ),
+        "well_assess_livelihood",
     )
 
 

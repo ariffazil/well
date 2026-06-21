@@ -80,6 +80,10 @@ python test_well.py
 | `WELL_COLLAPSE_MANIFEST.json` | PHOENIX-73F collapse manifest |
 | `WELL_888_HOLD_REGISTER.md` | 888_HOLD items register |
 
+## Persistence Boundary
+
+WELL remains local-only for biometrics data isolation (F6 MARUAH / REFLECT_ONLY boundary). It does not use `supabase-py` and does not persist to the cloud. All metrics reside strictly on local disk within `state.json` and `events.jsonl`. For details, see [ADR_WELL_PERSISTENCE_LOCAL_20260621.md](file:///root/arifOS/adr/ADR_WELL_PERSISTENCE_LOCAL_20260621.md).
+
 ## Federation Position
 
 ```

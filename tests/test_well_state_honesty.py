@@ -86,7 +86,7 @@ def test_classify_mocked_state_returns_insufficient_data():
     }
     classification = _classify_well_state(state)
     assert classification["truth_status"] == "INSUFFICIENT_DATA"
-    assert classification["verdict"] == "WELL_HOLD"
+    assert classification["well_signal"] == "WELL_HOLD"
     assert classification["well_score"] is None
     assert classification["owner_summary"]["color"] == "RED"
     assert "sovereign_state_unknown" in classification["owner_summary"]["reasons"]
@@ -114,7 +114,7 @@ def test_classify_operator_reported_state_is_not_insufficient():
     classification = _classify_well_state(state)
     assert classification["insufficient"] is False
     assert classification["truth_status"] == "OPERATOR_REPORTED"
-    assert classification["verdict"] == "WELL_OPERATOR_PRESENT"
+    assert classification["well_signal"] == "WELL_OPERATOR_PRESENT"
     assert classification["owner_summary"]["color"] == "YELLOW"
 
 
