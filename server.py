@@ -79,6 +79,16 @@ except ImportError:
     _REFLECT_LOADED = False
     _wrap_canonical_tools = None  # type: ignore[assignment]
 
+# ── Agentic Anthropology — State Classifier (Phase 1) ─────────────────────
+_STATE_CLASSIFIER_AVAILABLE = True
+try:
+    from arifosmcp.rama.state_classifier import get_state_classifier
+    from arifosmcp.rama.state_classifier_schemas import StateClassifierResult
+except ImportError:
+    _STATE_CLASSIFIER_AVAILABLE = False
+    get_state_classifier = None  # type: ignore[assignment]
+    StateClassifierResult = None  # type: ignore[assignment]
+
 # ── Paths (re-export for external use) ────────────────────────────────────────
 import os as _os
 
@@ -5866,6 +5876,75 @@ async def well_request_anchor(
             )
         )
     return result
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# AGENTIC ANTHROPOLOGY — State Classifier (Phase 1)
+# Physics: entropy reduction. Human message → structured state vector.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+@mcp.tool()
+def well_classify_state(
+    message: str,
+    session_id: str = "",
+    recent_messages: list[str] | None = None,
+    ctx: Context | None = None,
+) -> dict[str, Any]:
+    """
+    Classify human state from linguistic signal.
+
+    Physics: entropy reduction. Ambiguous human message → structured state vector.
+    Deterministic, rule-based, fully auditable. Every classification carries evidence chain.
+
+    Pipeline:
+      1. Extract linguistic features (markers, length, caps, repetition)
+      2. Classify Polyvagal state (ventral / sympathetic / dorsal)
+      3. Detect SDT pressure (autonomy / competence / relatedness)
+      4. Resolve agent posture (explore / ground / hold_space / scaffold / acknowledge / offer_options)
+      5. Attach evidence chain + governance flags
+
+    Returns StateClassifierResult with:
+      - state_vector: polyvagal state, SDT pressure, recommended posture
+      - f6_dignity_risk: dignity risk score
+      - f9_hantu_risk: hallucination risk score
+      - requires_posture_shift: whether agent should adjust behavior
+      - rules_applied: full audit trail
+
+    Constitutional: F2 (evidence), F4 (clarity), F6 (empathy), F9 (anti-hantu), F11 (audit).
+    Authority: reflect_only. WELL classifies. arifOS judges. Arif decides.
+    """
+    if not _STATE_CLASSIFIER_AVAILABLE:
+        return {
+            "ok": False,
+            "error": "State Classifier not available — arifosmcp.rama not on path.",
+            "w0": "WELL classifies. arifOS judges. Arif decides.",
+        }
+
+    if not message or not message.strip():
+        return {
+            "ok": False,
+            "error": "Empty message — nothing to classify.",
+            "w0": "WELL classifies. arifOS judges. Arif decides.",
+        }
+
+    classifier = get_state_classifier()
+    result: StateClassifierResult = classifier.classify(
+        message=message,
+        session_id=session_id,
+        recent_messages=recent_messages,
+    )
+
+    return {
+        "ok": True,
+        "state_vector": result.state_vector.model_dump(),
+        "f6_dignity_risk": result.f6_dignity_risk,
+        "f9_hantu_risk": result.f9_hantu_risk,
+        "requires_posture_shift": result.requires_posture_shift,
+        "rules_applied": result.rules_applied,
+        "classification_note": result.classification_note,
+        "w0": "WELL classifies. arifOS judges. Arif decides.",
+    }
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -14043,6 +14122,193 @@ def _inject_well_wisdom(response: dict[str, Any], tool_name: str) -> dict[str, A
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# well_classify_state — Human State Classifier (Phase 1 + Phase 3)
+# ═══════════════════════════════════════════════════════════════════════════════
+# Constitutional home: arifosmcp/rama/ (State Classifier)
+# Federation surface: WELL MCP (this file)
+# Physics: entropy reduction + invariance violation detection
+#
+# Imports from arifosmcp.rama — dependency already exists (vault_postgres,
+# well_bridge). State Classifier stays in arifOS; WELL exposes it.
+#
+# Phase 1: Deterministic rule-based Polyvagal + SDT classification
+# Phase 3: Contradiction detector (stated intent vs behavioral pattern)
+# DITEMPA BUKAN DIBERI
+
+
+def _well_modulate_posture(
+    polyvagal: str,
+    sdt_autonomy: str,
+    sdt_competence: str,
+    sdt_relatedness: str,
+) -> dict[str, Any]:
+    """Convert state vector into concrete agent behavior adjustments.
+
+    This is the Phase 2 Response Adapter (thin version).
+    Takes classifier output, returns modulated behavior parameters.
+
+    Returns dict with:
+        - complexity: simplified | normal | expanded
+        - pacing: slow | normal | fast
+        - silence_tolerance: low | medium | high
+        - challenge_level: none | gentle | normal | high
+        - response_length: short | medium | long
+        - tone: grounding | acknowledging | exploring
+    """
+    # Base from polyvagal state
+    if polyvagal == "sympathetic":
+        mod = {
+            "complexity": "simplified",
+            "pacing": "slow",
+            "silence_tolerance": "medium",
+            "challenge_level": "none",
+            "response_length": "short",
+            "tone": "grounding",
+        }
+    elif polyvagal == "dorsal":
+        mod = {
+            "complexity": "simplified",
+            "pacing": "slow",
+            "silence_tolerance": "high",
+            "challenge_level": "none",
+            "response_length": "short",
+            "tone": "acknowledging",
+        }
+    else:  # ventral
+        mod = {
+            "complexity": "normal",
+            "pacing": "normal",
+            "silence_tolerance": "medium",
+            "challenge_level": "normal",
+            "response_length": "medium",
+            "tone": "exploring",
+        }
+
+    # SDT overlays
+    if sdt_autonomy == "high":
+        mod["challenge_level"] = "none"
+        mod["tone"] = "acknowledging"
+        # Don't prescribe — offer options
+        mod["autonomy_directive"] = "offer_options_not_prescriptions"
+
+    if sdt_competence == "high":
+        mod["complexity"] = "simplified"
+        mod["response_length"] = "short"
+        mod["competence_directive"] = "scaffold_dont_rescue"
+
+    if sdt_relatedness == "high":
+        mod["tone"] = "acknowledging"
+        mod["relatedness_directive"] = "connect_before_content"
+
+    return mod
+
+
+@mcp.tool()
+def well_classify_state(
+    message: str,
+    session_id: str = "",
+    recent_messages: list[str] | None = None,
+    stated_intent: str = "",
+    ctx: Context | None = None,
+) -> dict[str, Any]:
+    """Classify human psychological state from message.
+
+    Phase 1: Deterministic rule-based Polyvagal + SDT classification.
+    Phase 3: Contradiction detector (stated intent vs behavioral pattern).
+
+    Physics: entropy reduction. Human arrives ambiguous; state vector exits structured.
+    Constitutional: F2 (evidence chain), F4 (clarity), F6 (dignity), F9 (no consciousness claims).
+
+    This is a REFLECT_ONLY tool. It reads state and produces a governed posture.
+    It does NOT decide, judge, or act. arifOS 888_JUDGE adjudicates.
+
+    Args:
+        message: The human message to classify.
+        session_id: Session identifier for audit trail.
+        recent_messages: Recent message history for repetition detection.
+        stated_intent: What the human said they want (for contradiction detection).
+    """
+    try:
+        from arifosmcp.rama.state_classifier import get_state_classifier
+        from arifosmcp.rama.state_classifier_governance import run_governance_loop
+        from gate.dignity_shadow import detect_contradiction, assess_dignity_risk
+    except ImportError as e:
+        return {
+            "ok": False,
+            "error": f"State Classifier import failed: {e}",
+            "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
+        }
+
+    # Phase 1: Classify state
+    governed = run_governance_loop(
+        message=message,
+        session_id=session_id or "",
+        recent_messages=recent_messages or [],
+    )
+
+    sv = governed.state_vector if hasattr(governed, "state_vector") else None
+
+    # Phase 2: Modulate posture
+    posture_mod = _well_modulate_posture(
+        polyvagal=governed.governed_posture.value if hasattr(governed, "governed_posture") else "explore",
+        sdt_autonomy="low",
+        sdt_competence="low",
+        sdt_relatedness="low",
+    )
+
+    # Phase 3: Contradiction detection (if stated_intent provided)
+    contradiction_result = None
+    if stated_intent and sv:
+        behavioral_signals = sv.polyvagal_evidence or []
+        contradiction_result = detect_contradiction(
+            stated_intent=stated_intent,
+            behavioral_signals=behavioral_signals,
+        )
+
+    # Dignity shadow check on the output itself
+    dignity_check = None
+    if sv and sv.polyvagal_evidence:
+        evidence_text = " ".join(sv.polyvagal_evidence)
+        dignity_check = assess_dignity_risk(evidence_text, sv.confidence)
+
+    # Build result
+    result: dict[str, Any] = {
+        "ok": True,
+        "state_vector": {
+            "polyvagal": sv.polyvagal.value if sv else "ventral",
+            "sdt_pressure": {
+                "autonomy": sv.sdt_pressure.autonomy.value if sv else "low",
+                "competence": sv.sdt_pressure.competence.value if sv else "low",
+                "relatedness": sv.sdt_pressure.relatedness.value if sv else "low",
+            },
+            "confidence": sv.confidence if sv else 0.4,
+            "evidence": sv.polyvagal_evidence if sv else [],
+        },
+        "governed_posture": {
+            "posture": governed.governed_posture.value if hasattr(governed, "governed_posture") else "explore",
+            "overridden": governed.posture_overridden if hasattr(governed, "posture_overridden") else False,
+            "directives": governed.directives if hasattr(governed, "directives") else [],
+            "posture_modulation": posture_mod,
+        },
+        "floor_checks": {
+            "passed": governed.floors_passed if hasattr(governed, "floors_passed") else 0,
+            "advisory": governed.floors_advisory if hasattr(governed, "floors_advisory") else 0,
+            "violated": governed.floors_violated if hasattr(governed, "floors_violated") else 0,
+        },
+        "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
+        "reflect_only": "WELL reads state. arifOS judges. Arif decides.",
+    }
+
+    if contradiction_result:
+        result["contradiction"] = contradiction_result
+
+    if dignity_check:
+        result["dignity_shadow"] = dignity_check
+
+    return result
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # Universal wisdom injection — monkey-patch all registered tool functions
 # ═══════════════════════════════════════════════════════════════════════════════
 
@@ -14085,6 +14351,9 @@ SOMATIC_TOOLS = {
     "well_handoff_dignity_to_arifos",       # S12 → arifOS 888_JUDGE
     "well_handoff_livelihood_to_wealth",    # S13 → WEALTH
     "well_attest_to_kernel",                # WELL → arifOS organ_attest
+    # Human State Classifier — Phase 1 + Phase 3
+    # Forged 2026-06-25. Deterministic rule-based Polyvagal + SDT + contradiction.
+    "well_classify_state",                  # State Classifier → federation surface
 }
 # NOTE: well_system_registry_status and well_registry_status are internal
 # diagnostic tools (no @mcp.tool decorator). Not part of public MCP surface.
@@ -14191,6 +14460,13 @@ _TOOL_ANNOTATIONS: dict[str, dict[str, Any]] = {
     },
     "well_medical_boundary": {
         "title": "Medical Boundary",
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": False,
+    },
+    "well_classify_state": {
+        "title": "Classify Human State",
         "readOnlyHint": True,
         "destructiveHint": False,
         "idempotentHint": True,
