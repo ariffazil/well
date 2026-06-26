@@ -27,6 +27,14 @@ from typing import Any
 from fastmcp import FastMCP, Context
 from starlette.responses import JSONResponse
 
+# ── APEX Runtime Governance Envelope (APEX-MCP-001) ─────────────────────────
+_APEX_AVAILABLE = True
+try:
+    from apex_envelope_well import well_apex_envelope as _build_apex
+except ImportError:
+    _APEX_AVAILABLE = False
+    _build_apex = None  # type: ignore
+
 # ── Paths (defined before use in fallback import) ───────────────────────────────
 WELL_DIR = Path(__file__).parent
 
@@ -46,6 +54,20 @@ except ImportError:
     _sys.path.insert(0, str(WELL_DIR))
     from internal.organ_governance import check_governance
 
+# ── APEX Injection Helper (APEX-MCP-001) ───────────────────────────────────
+def _inject_apex(result: dict[str, Any], tool_name: str = "unknown", state: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Inject APEX governance envelope into any WELL tool result."""
+    if _APEX_AVAILABLE and isinstance(result, dict):
+        try:
+            result["apex"] = _build_apex(
+                tool_name=tool_name,
+                state=state,
+                actor_id=result.get("operator_id") or (state or {}).get("operator_id"),
+            )
+        except Exception:
+            pass
+    return result
+
 # PR 6 — reflect-only boundary import. Lazy-tolerant: if the engines
 # module is not on sys.path, the import is deferred until the wrap
 # call below (which is also tolerant).
@@ -56,6 +78,16 @@ try:
 except ImportError:
     _REFLECT_LOADED = False
     _wrap_canonical_tools = None  # type: ignore[assignment]
+
+# ── Agentic Anthropology — State Classifier (Phase 1) ─────────────────────
+_STATE_CLASSIFIER_AVAILABLE = True
+try:
+    from arifosmcp.rama.state_classifier import get_state_classifier
+    from arifosmcp.rama.state_classifier_schemas import StateClassifierResult
+except ImportError:
+    _STATE_CLASSIFIER_AVAILABLE = False
+    get_state_classifier = None  # type: ignore[assignment]
+    StateClassifierResult = None  # type: ignore[assignment]
 
 # ── Paths (re-export for external use) ────────────────────────────────────────
 import os as _os
@@ -1214,6 +1246,22 @@ def _resolve_readiness(state: dict[str, Any]) -> dict[str, Any]:
     violations = state.get("floors_violated", [])
     state.get("metrics", {})
     ceiling = _compute_decision_ceiling(state)
+    if not is_well(state):
+        return {
+            "readiness": "LOW_CAPACITY",
+            "risk_level": "AMBER",
+            "recommended_mode": "review_or_draft",
+            "ground_state": ceiling.get("ground_state", "DEGRADED"),
+            "decision_ceiling": "C1",
+            "human_confirmation_required": True,
+            "reason": "WELL identity invariant failed. Readiness is capped until identity is restored.",
+            "well_score": score,
+            "active_violations": violations,
+            "has_telemetry": _has_verified_telemetry(state),
+            "identity_valid": False,
+            "readiness_cap": "CAUTION",
+            "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
+        }
 
     # ── Unknown telemetry path (fail closed without faking biology) ──
     if not _has_verified_telemetry(state):
@@ -1846,7 +1894,7 @@ def _classify_well_state(state: dict[str, Any]) -> dict[str, Any]:
     if insufficient:
         freshness_band = "VOID"
         truth_status = "INSUFFICIENT_DATA"
-        verdict = "WELL_HOLD"
+        well_signal = "WELL_HOLD"  # signal, not verdict — WELL is REFLECT_ONLY
         well_score = None
         owner_summary = {
             "color": "RED",
@@ -1862,7 +1910,7 @@ def _classify_well_state(state: dict[str, Any]) -> dict[str, Any]:
         freshness_band = _get_freshness_band(state)
         well_score = state.get("well_score")
         if raw_truth == "OPERATOR_REPORTED":
-            verdict = "WELL_OPERATOR_PRESENT"
+            well_signal = "WELL_OPERATOR_PRESENT"  # signal, not verdict
             owner_summary = {
                 "color": "YELLOW",
                 "reasons": [
@@ -1871,7 +1919,7 @@ def _classify_well_state(state: dict[str, Any]) -> dict[str, Any]:
                 ],
             }
         else:
-            verdict = "WELL_PASS" if well_score is not None and well_score >= 60 else "WELL_HOLD"
+            well_signal = "WELL_PASS" if well_score is not None and well_score >= 60 else "WELL_HOLD"  # signal, not verdict
             owner_summary = {
                 "color": (
                     "GREEN"
@@ -1913,7 +1961,7 @@ def _classify_well_state(state: dict[str, Any]) -> dict[str, Any]:
         "well_ok": is_well(state),
         "has_telemetry": _has_verified_telemetry(state),
         "truth_status": truth_status,
-        "verdict": verdict,
+        "well_signal": well_signal,  # WELL is REFLECT_ONLY — signals, not verdicts
         "well_score": well_score,
         "freshness_band": freshness_band,
         "freshness": freshness,
@@ -2131,7 +2179,7 @@ def _compose_verdict(
         confidence = "LOW"
         human_required = True
 
-    return {
+    result = {
         "ok": status in ("PASS", "SEAL", "WELL_PASS"),
         "mcp": mcp,
         "task": task,
@@ -2181,6 +2229,9 @@ def _compose_verdict(
             str(datetime.datetime.now()).encode()
         ).hexdigest()[:16],
     }
+    if mcp == "AFWELL" and task == "readiness_reflection":
+        result["readiness_evidence"] = _readiness_visibility_context()
+    return result
 
 
 # ── Tools ──────────────────────────────────────────────────────────────────────
@@ -2227,6 +2278,19 @@ def well_state(include: str = "full", ctx: Context | None = None) -> dict[str, A
     result.update(
         _legacy_advisory("well_state", "well_validate_vitality", {"mode": "state"})
     )
+    # APEX Runtime Governance Envelope (APEX-MCP-001)
+    try:
+        from apex_envelope_well import well_apex_envelope
+        result["apex"] = well_apex_envelope(
+            tool_name="well_state",
+            well_score=result.get("well_score"),
+            truth_status=result.get("truth_status"),
+            ok=result.get("ok", True),
+            operator_id=result.get("operator_id"),
+            boundary="LIVE",
+        )
+    except Exception:
+        pass
     return result
 
 
@@ -2903,14 +2967,14 @@ def well_get_readiness(ctx: Context | None = None) -> dict[str, Any]:
     metrics = state.get("metrics", {})
     r_score = readiness_score(metrics)
 
-    return {
+    return _inject_apex({
         "ok": True,
         "well_score": state.get("well_score", 50),
         "readiness": r_score,
         "floors_violated": state.get("floors_violated", []),
         "has_telemetry": True,
         "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
-    }
+    }, tool_name="well_get_readiness", state=state)
 
 
 # internal — not MCP-facing (collapsed 2026-05-26)
@@ -5405,8 +5469,21 @@ def well_get_state(
     if domain in (None, "machine"):
         result["m_machine"] = state.get("m_machine", {})
     result.update(
-        _legacy_advisory("well_get_state", "well_validate_vitality", {"mode": "state"})
+        _legacy_advisory("well_state", "well_validate_vitality", {"mode": "state"})
     )
+
+    # ── APEX Runtime Governance Envelope (APEX-MCP-001) ──────────────────
+    # WELL = Vitality organ. Maps biological signals to 10 APEX gates.
+    try:
+        from apex_envelope_well import well_apex_envelope
+        result["apex"] = well_apex_envelope(
+            tool_name="well_state",
+            state=state,
+            actor_id=state.get("operator_id"),
+        )
+    except Exception:
+        pass  # APEX envelope is additive; never breaks tool output
+
     return result
 
 
@@ -5799,6 +5876,75 @@ async def well_request_anchor(
             )
         )
     return result
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# AGENTIC ANTHROPOLOGY — State Classifier (Phase 1)
+# Physics: entropy reduction. Human message → structured state vector.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+@mcp.tool()
+def well_classify_state(
+    message: str,
+    session_id: str = "",
+    recent_messages: list[str] | None = None,
+    ctx: Context | None = None,
+) -> dict[str, Any]:
+    """
+    Classify human state from linguistic signal.
+
+    Physics: entropy reduction. Ambiguous human message → structured state vector.
+    Deterministic, rule-based, fully auditable. Every classification carries evidence chain.
+
+    Pipeline:
+      1. Extract linguistic features (markers, length, caps, repetition)
+      2. Classify Polyvagal state (ventral / sympathetic / dorsal)
+      3. Detect SDT pressure (autonomy / competence / relatedness)
+      4. Resolve agent posture (explore / ground / hold_space / scaffold / acknowledge / offer_options)
+      5. Attach evidence chain + governance flags
+
+    Returns StateClassifierResult with:
+      - state_vector: polyvagal state, SDT pressure, recommended posture
+      - f6_dignity_risk: dignity risk score
+      - f9_hantu_risk: hallucination risk score
+      - requires_posture_shift: whether agent should adjust behavior
+      - rules_applied: full audit trail
+
+    Constitutional: F2 (evidence), F4 (clarity), F6 (empathy), F9 (anti-hantu), F11 (audit).
+    Authority: reflect_only. WELL classifies. arifOS judges. Arif decides.
+    """
+    if not _STATE_CLASSIFIER_AVAILABLE:
+        return {
+            "ok": False,
+            "error": "State Classifier not available — arifosmcp.rama not on path.",
+            "w0": "WELL classifies. arifOS judges. Arif decides.",
+        }
+
+    if not message or not message.strip():
+        return {
+            "ok": False,
+            "error": "Empty message — nothing to classify.",
+            "w0": "WELL classifies. arifOS judges. Arif decides.",
+        }
+
+    classifier = get_state_classifier()
+    result: StateClassifierResult = classifier.classify(
+        message=message,
+        session_id=session_id,
+        recent_messages=recent_messages,
+    )
+
+    return {
+        "ok": True,
+        "state_vector": result.state_vector.model_dump(),
+        "f6_dignity_risk": result.f6_dignity_risk,
+        "f9_hantu_risk": result.f9_hantu_risk,
+        "requires_posture_shift": result.requires_posture_shift,
+        "rules_applied": result.rules_applied,
+        "classification_note": result.classification_note,
+        "w0": "WELL classifies. arifOS judges. Arif decides.",
+    }
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -7390,9 +7536,16 @@ def _omega_well_output(
         if signal == "stable_signal":
             signal = "recovery_needed"
 
+    if not ok and signal == "stable_signal":
+        signal = "insufficient_context"
+        if str(verdict).upper() == "PASS":
+            verdict = "WARN"
+
     out: dict[str, Any] = {
         "ok": ok,
+        "status": "DEGRADED" if not ok else "ADVISORY",
         "signal": signal,
+        "decision_support": "LIMITED" if not ok else "ADVISORY",
         "calm_state": calm_state,
         "telemetry_status": telemetry_status,
         "constitutional_boundary_notice": (
@@ -7469,6 +7622,10 @@ def _to_federation_output(
     # If no signal but we have a verdict, derive signal (covers raw flux data paths)
     if signal is None and verdict:
         signal = _verdict_to_signal(verdict)
+    if not ok and signal == "stable_signal":
+        signal = "insufficient_context"
+        if str(verdict).upper() == "PASS":
+            verdict = "WARN"
 
     # Use signal for uncertainty mapping if available, else fall back to verdict
     _uncertainty_key = signal if signal else verdict
@@ -7522,9 +7679,11 @@ def _to_federation_output(
 
     out = {
         "ok": ok,
+        "status": "DEGRADED" if not ok else "ADVISORY",
         "observation": observation,
         "uncertainty": uncertainty,
         "signal": signal,
+        "decision_support": "LIMITED" if not ok else "ADVISORY",
         "constraints": constraints,
         "recommended_next_organ": recommended_next_organ,
         # P0-4: Non-medical boundary — required on all human-facing outputs
@@ -9071,12 +9230,40 @@ def well_13_signal_coverage(
     ctx: Context | None = None,
 ) -> dict[str, Any]:
     """
+    [DEPRECATED — use well_signal_coverage]
     DREAM ENGINE: Audit WELL's coverage of the 13 canonical human substrate
     signals. Returns per-signal status (active/partial/missing), coverage
     summary, and cross-organ handoff suggestions for gaps.
 
     Authority: reflect_only. WELL does not score the human here. WELL
     audits itself: which of the 13 substrate signals am I currently
+    seeing? Which are stale? Which are missing?
+
+    SUNAT item per GENESIS/004_WELL_13_CANON.md §5.2.
+    """
+    result = _well_13_signal_coverage_impl(operator_id=operator_id, ctx=ctx)
+    result["_advisory"] = {
+        "deprecated": True,
+        "canonical": "well_signal_coverage",
+        "deprecation_epoch": "2026-Q3",
+        "removal_allowed": False,
+        "note": "Magic number '13' removed from canonical name — signal count may change over epochs",
+    }
+    return result
+
+
+@mcp.tool()
+def well_signal_coverage(
+    operator_id: str | None = None,
+    ctx: Context | None = None,
+) -> dict[str, Any]:
+    """
+    DREAM ENGINE: Audit WELL's coverage of canonical human substrate
+    signals. Returns per-signal status (active/partial/missing), coverage
+    summary, and cross-organ handoff suggestions for gaps.
+
+    Authority: reflect_only. WELL does not score the human here. WELL
+    audits itself: which of the substrate signals am I currently
     seeing? Which are stale? Which are missing?
 
     SUNAT item per GENESIS/004_WELL_13_CANON.md §5.2.
@@ -9230,6 +9417,34 @@ def _well_13_signal_coverage_impl(
     }
 
 
+def _readiness_visibility_context() -> dict[str, Any]:
+    """Compact readiness evidence block for human-facing readiness outputs."""
+    state = _load_state()
+    coverage = _well_13_signal_coverage_impl(operator_id=state.get("operator_id", "arif"))
+    per_signal = coverage.get("per_signal", [])
+    summary = coverage.get("coverage_summary", {})
+    freshness = _check_data_freshness(state)
+    return {
+        "coverage_score": summary.get("coverage_score_0_to_10", 0.0),
+        "active_signals": [
+            sig.get("signal") for sig in per_signal if sig.get("status") == "active"
+        ],
+        "partial_signals": [
+            sig.get("signal") for sig in per_signal if sig.get("status") == "partial"
+        ],
+        "missing_signals": [
+            sig.get("signal") for sig in per_signal if sig.get("status") == "missing"
+        ],
+        "telemetry_age_hours": freshness.get("state_age_hours"),
+        "freshness": freshness.get("freshness_label"),
+        "truth_status": freshness.get("truth_status"),
+        "identity_valid": is_well(state),
+        "decision_support": "LIMITED"
+        if not is_well(state) or summary.get("coverage_score_0_to_10", 0.0) < 5.0
+        else "ADVISORY",
+    }
+
+
 # ALIAS_REGISTRY validation happens on first tool call, not at import time.
 # Canonical functions are defined later in the file and won't be in globals yet.
 _ALIAS_REGISTRY_VALIDATED = False
@@ -9250,6 +9465,7 @@ OMEGA_WELL_TOOLS = {
     "well_guard_dignity",
     "well_anchor_evidence",
     "well_13_signal_coverage",
+    "well_signal_coverage",
 }
 
 
@@ -10345,6 +10561,315 @@ except Exception as _e:
     print(f"[GOVERNANCE] WELL governance wrapper failed: {_e}")
 
 
+# ══════════════════════════════════════════════════════════════════════════════
+# F-Ω Federation Handoff Adapters — forged 2026-06-17 by FORGE (000Ω)
+#
+# Three new @mcp.tool() functions wiring explicit federation hooks that the
+# 13-signal coverage report flagged as MISSING:
+#
+#   1. well_handoff_dignity_to_arifos()  →  S12 → arifOS 888_JUDGE
+#   2. well_handoff_livelihood_to_wealth() →  S13 → WEALTH
+#   3. well_attest_to_kernel()           →  WELL → arifOS organ_attest
+#
+# Authority: REFLECT_ONLY.  WELL observes + signals; it does NOT judge.
+# Fail-open: if peer unreachable, returns federation_unavailable (no crash).
+# Reversibility: additive only — no existing function modified.
+# ══════════════════════════════════════════════════════════════════════════════
+
+_ARIFOS_MCP_URL = _os.environ.get("ARIFOS_MCP_URL", "http://127.0.0.1:8088/mcp")
+_WEALTH_MCP_URL = _os.environ.get("WEALTH_MCP_URL", "http://127.0.0.1:18082/mcp")
+_FED_TIMEOUT_S = float(_os.environ.get("WELL_FED_TIMEOUT_S", "5.0"))
+
+
+def _federation_post_tool_call(
+    base_url: str,
+    tool_name: str,
+    arguments: dict,
+    timeout: float | None = None,
+) -> dict[str, Any]:
+    """
+    Helper: POST a tools/call to a federated MCP server.
+
+    Supports two transport modes:
+      1. STATELESS (default for arifOS / WEALTH / WELL since 2026.05):
+         Skip initialize; call tools/call directly.
+      2. STATEFUL (legacy, for peers that return mcp-session-id header):
+         Two-step initialize → tools/call handshake.
+
+    Detection: if peer's initialize response includes mcp-session-id header,
+    use stateful mode; otherwise use stateless direct call.
+
+    Fail-open contract: returns federation_unavailable on any error.
+    """
+    _t = timeout if timeout is not None else _FED_TIMEOUT_S
+    try:
+        # Step 0: probe for stateful mode
+        _init_body = json.dumps(
+            {
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "initialize",
+                "params": {
+                    "protocolVersion": "2025-11-25",
+                    "capabilities": {},
+                    "clientInfo": {
+                        "name": "WELL-federation-adapter",
+                        "version": "2026.06.17",
+                    },
+                },
+            }
+        ).encode("utf-8")
+        _init_req = urllib.request.Request(
+            base_url,
+            data=_init_body,
+            headers={
+                "Content-Type": "application/json",
+                "Accept": "application/json, text/event-stream",
+            },
+        )
+        _session_id: str | None = None
+        try:
+            with urllib.request.urlopen(_init_req, timeout=_t) as _init_resp:
+                _session_id = _init_resp.headers.get("mcp-session-id")
+                # Consume body to free connection
+                _init_resp.read()
+        except Exception:
+            # If initialize fails, try stateless direct call
+            _session_id = None
+
+        # Build the tools/call request
+        _call_body = json.dumps(
+            {
+                "jsonrpc": "2.0",
+                "id": 2,
+                "method": "tools/call",
+                "params": {"name": tool_name, "arguments": arguments},
+            }
+        ).encode("utf-8")
+        _call_headers = {
+            "Content-Type": "application/json",
+            "Accept": "application/json, text/event-stream",
+        }
+        if _session_id:
+            _call_headers["mcp-session-id"] = _session_id
+        _call_req = urllib.request.Request(
+            base_url,
+            data=_call_body,
+            headers=_call_headers,
+        )
+        with urllib.request.urlopen(_call_req, timeout=_t) as _resp:
+            _raw = _resp.read().decode("utf-8")
+        # MCP may return JSON or JSONL (SSE-style)
+        try:
+            _json_out = json.loads(_raw)
+        except json.JSONDecodeError:
+            _first_line = _raw.splitlines()[0] if _raw else ""
+            _json_out = json.loads(_first_line) if _first_line else {}
+        return {
+            "ok": True,
+            "result": _json_out,
+            "session_id": _session_id,
+            "transport": "stateful" if _session_id else "stateless",
+        }
+    except Exception as _exc:
+        return {
+            "ok": False,
+            "fail_mode": "federation_unavailable",
+            "error": f"{type(_exc).__name__}: {str(_exc)[:200]}",
+        }
+
+
+def _extract_mcp_text_payload(mcp_result: dict) -> dict:
+    """
+    Extract the inner JSON payload from a MCP tools/call response.
+    MCP wraps results in {result: {content: [{type: text, text: "<json>"}]}}.
+    """
+    try:
+        for _c in mcp_result.get("result", {}).get("content", []):
+            if _c.get("type") == "text":
+                return json.loads(_c.get("text", "{}"))
+        return mcp_result.get("result", mcp_result)
+    except Exception:
+        return {}
+
+
+# ── 1. WELL → arifOS 888_JUDGE explicit handoff for S12 dignity ──────────────
+@mcp.tool()
+def well_handoff_dignity_to_arifos(
+    coercion_signals: list[str] | None = None,
+    dignity_preservation: float | None = None,
+    reductionism_risk: float | None = None,
+    signal: str = "dignity_leakage_under_review",
+    ctx: Context | None = None,
+) -> dict[str, Any]:
+    """
+    Ω-WELL-FED-S12: Explicit handoff of S12 (social_dignity_consent) signal
+    from WELL → arifOS 888_JUDGE for constitutional deliberation.
+
+    WELL observes, signals, and prepares. arifOS judges. arifOS issues
+    the verdict; WELL only reports the signal and the handoff receipt.
+    Per GENESIS/004 §2.1, this function returns 'signal' (not 'verdict').
+
+    Fail-open: if arifOS unreachable, returns federation_unavailable
+    with the signal preserved for later retry.
+    """
+    _dignity_packet = {
+        "organ": "WELL",
+        "signal_layer": "tier_4_dignity",
+        "signal_id": "S12_social_dignity_consent",
+        "signal": signal,
+        "coercion_signals": coercion_signals or [],
+        "dignity_preservation": dignity_preservation,
+        "reductionism_risk": reductionism_risk,
+        "ts": datetime.datetime.now(datetime.timezone.utc).isoformat() + "Z",
+        "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
+    }
+    _resp = _federation_post_tool_call(
+        _ARIFOS_MCP_URL,
+        "arif_judge_deliberate",
+        {
+            "mode": "judge",
+            "candidate": json.dumps(_dignity_packet),
+            "action_class": "dignity_breach_signal",
+            "actor_id": "well-system",
+        },
+    )
+    if not _resp.get("ok"):
+        return {
+            "ok": False,
+            "signal": signal,
+            "federation": "arifos",
+            "fail_mode": _resp.get("fail_mode", "federation_unavailable"),
+            "error": _resp.get("error"),
+            "packet": _dignity_packet,
+            "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
+        }
+    _arif_inner = _extract_mcp_text_payload(_resp["result"])
+    return {
+        "ok": True,
+        "signal": signal,
+        "federation": "arifos",
+        "arifos_session_id": _resp.get("session_id"),
+        "arifos_receipt": _arif_inner,
+        "packet": _dignity_packet,
+        "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
+    }
+
+
+# ── 2. WELL → WEALTH explicit handoff for S13 livelihood ────────────────────
+@mcp.tool()
+def well_handoff_livelihood_to_wealth(
+    duty_load: float | None = None,
+    cashflow_status: str | None = None,
+    ctx: Context | None = None,
+) -> dict[str, Any]:
+    """
+    Ω-WELL-FED-S13: Explicit handoff of S13 (environment_livelihood) signal
+    from WELL → WEALTH for capital/cashflow evidence pull.
+
+    WELL does not compute capital. WELL surfaces the readiness frame
+    (duty_load, role_burden) and asks WEALTH for the livelihood evidence
+    (cashflow_status, runway, expense ratio).  Federation = composition.
+
+    Fail-open: if WEALTH unreachable, returns federation_unavailable
+    with the readiness frame preserved for later retry.
+    """
+    _wealth_resp = _federation_post_tool_call(
+        _WEALTH_MCP_URL,
+        "wealth_personal_finance",
+        {"mode": "summary", "owner": "arif"},
+    )
+    _wealth_payload: dict = {}
+    if _wealth_resp.get("ok"):
+        _wealth_payload = _extract_mcp_text_payload(_wealth_resp["result"])
+
+    _livelihood_packet = {
+        "organ": "WELL",
+        "signal_layer": "tier_4_dignity_environment",
+        "signal_id": "S13_environment_livelihood",
+        "signal": "livelihood_signal_composed",
+        "readiness_frame": {
+            "duty_load": duty_load,
+            "cashflow_status_self_reported": cashflow_status,
+            "operator_id": "arif",
+        },
+        "wealth_evidence": _wealth_payload if _wealth_resp.get("ok") else None,
+        "wealth_fail_mode": _wealth_resp.get("fail_mode") if not _wealth_resp.get("ok") else None,
+        "ts": datetime.datetime.now(datetime.timezone.utc).isoformat() + "Z",
+        "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
+    }
+    return {
+        "ok": _wealth_resp.get("ok", False),
+        "signal": "livelihood_signal_composed",
+        "federation": "wealth",
+        "wealth_session_id": _wealth_resp.get("session_id"),
+        "wealth_receipt": _wealth_payload,
+        "packet": _livelihood_packet,
+        "fail_mode": _wealth_resp.get("fail_mode") if not _wealth_resp.get("ok") else None,
+        "error": _wealth_resp.get("error") if not _wealth_resp.get("ok") else None,
+        "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
+    }
+
+
+# ── 3. WELL → arifOS organ_attest (active federation heartbeat) ────────────
+@mcp.tool()
+def well_attest_to_kernel(ctx: Context | None = None) -> dict[str, Any]:
+    """
+    Ω-WELL-FED-ATTEST: Active organ attestation from WELL → arifOS kernel.
+
+    The external organ_heartbeat_daemon polls /health (read-only, one-way).
+    This tool performs an active attestation (WELL → kernel) that records
+    state in the kernel's organ registry via arif_organ_attest.
+
+    Fail-open: if arifOS unreachable, returns federation_unavailable.
+    The /health heartbeat (daemon) remains the canonical health source.
+    """
+    _state: dict = {}
+    try:
+        if "_load_state" in dir():
+            _state = _load_state() or {}
+    except Exception:
+        _state = {}
+    _attestation = {
+        "organ_id": "WELL",
+        "identity_hash": "1b1f46b3e0896994e27b354dfca58efd3f088e58f1428773ac3c45c2b5f3195a",
+        "authority": "REFLECT_ONLY",
+        "final_authority": "ARIF",
+        "verdict_local": _state.get("verdict", "WELL_HOLD"),
+        "well_score": _state.get("well_score"),
+        "freshness": _state.get("freshness", "UNKNOWN"),
+        "ts": datetime.datetime.now(datetime.timezone.utc).isoformat() + "Z",
+    }
+    _resp = _federation_post_tool_call(
+        _ARIFOS_MCP_URL,
+        "arif_organ_attest",
+        {
+            "organ_id": "WELL",
+            "actor_id": "well-system",
+        },
+    )
+    if not _resp.get("ok"):
+        return {
+            "ok": False,
+            "organ": "WELL",
+            "federation": "arifos",
+            "fail_mode": _resp.get("fail_mode", "federation_unavailable"),
+            "error": _resp.get("error"),
+            "attestation": _attestation,
+            "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
+        }
+    _arif_inner = _extract_mcp_text_payload(_resp["result"])
+    return {
+        "ok": True,
+        "organ": "WELL",
+        "federation": "arifos",
+        "arifos_session_id": _resp.get("session_id"),
+        "arifos_receipt": _arif_inner,
+        "attestation": _attestation,
+        "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
+    }
+
+
 if __name__ == "__main__":
     # ── Transport mode selection ─────────────────────────────────────────
     import argparse
@@ -10540,7 +11065,7 @@ if __name__ == "__main__":
                 "kappa_r": state.get("kappa_r", 0),
                 "rasa": state.get("rasa", False),
                 "amanah": state.get("amanah", "UNLOCKED"),
-                "verdict": classification["verdict"],
+                "well_signal": classification["well_signal"],  # REFLECT_ONLY — never "verdict"
                 "identity_valid": classification["well_ok"],
                 "has_telemetry": classification["has_telemetry"],
                 "service": "well-mcp",
@@ -11487,6 +12012,9 @@ def well_assess_homeostasis(
     VALID_HRV = ["low", "normal", "high"]
     VALID_EMOTIONAL = ["irritable", "anxious", "neutral", "calm", "elevated"]
     VALID_DECISION_CLASSES = ["C1", "C2", "C3", "C4", "C5"]
+    raw_emotional_state = emotional_state
+    normalized_emotional_class = emotional_state
+    operator_risk = "standard"
     if mode not in VALID_MODES:
         return {
             "error": "UNKNOWN_MODE",
@@ -11497,7 +12025,15 @@ def well_assess_homeostasis(
     if hrv_status not in VALID_HRV:
         hrv_status = "normal"
     if emotional_state not in VALID_EMOTIONAL:
-        emotional_state = "neutral"
+        lowered_emotion = str(emotional_state).lower()
+        if "tired" in lowered_emotion and "driven" in lowered_emotion:
+            emotional_state = "anxious"
+            normalized_emotional_class = "fatigued_drive_state"
+            operator_risk = "overextension"
+        else:
+            emotional_state = "neutral"
+            normalized_emotional_class = "unclassified_emotional_state"
+            operator_risk = "unknown_context"
     decision_class_upper = (
         decision_class.upper() if isinstance(decision_class, str) else "C3"
     )
@@ -11727,11 +12263,21 @@ def well_assess_homeostasis(
             if sleep_debt_days is not None
             else cog.get("sleep_debt_days", 0.0)
         )
-        _clarity = (
+        _raw_clarity = (
             cognitive_clarity
             if cognitive_clarity is not None
             else cog.get("clarity", 7.0)
         )
+        try:
+            _raw_clarity_float = float(_raw_clarity)
+        except (TypeError, ValueError):
+            _raw_clarity_float = 7.0
+        if cognitive_clarity is not None and 0.0 <= _raw_clarity_float <= 1.0:
+            _clarity = _raw_clarity_float * 10.0
+            _clarity_input_scale = "0_to_1"
+        else:
+            _clarity = _raw_clarity_float
+            _clarity_input_scale = "0_to_10"
         _decision_fatigue = (
             decision_fatigue
             if decision_fatigue is not None
@@ -12063,10 +12609,15 @@ def well_assess_homeostasis(
             "sleep_debt_days": _sleep_debt,
             "decision_fatigue": _decision_fatigue,
             "cognitive_clarity": _clarity,
+            "raw_cognitive_clarity": _raw_clarity,
+            "cognitive_clarity_input_scale": _clarity_input_scale,
             "stress_load": _stress_load,
             "accumulated_fatigue": round(_accumulated, 2),
             "hrv_status": hrv_status,
             "emotional_state": emotional_state,
+            "raw_emotional_state": raw_emotional_state,
+            "normalized_emotional_class": normalized_emotional_class,
+            "operator_risk": operator_risk,
             "chronic_fatigue": chronic_fatigue,
             "raw_fatigue_index": round(raw_fatigue, 2),
             "decision_class": decision_class_upper,
@@ -12163,10 +12714,11 @@ def well_validate_vitality(
     )
     from contracts.enrich_well import build_metabolic_output
 
-    return build_metabolic_output(
+    result = build_metabolic_output(
         tool_name="well_validate_vitality",
         internal_result=internal,
     )
+    return _inject_apex(result, "well_validate_vitality")
 
 
 @mcp.tool()
@@ -12227,25 +12779,28 @@ def well_assess_livelihood(
     sub_data = internal.get("data", {}).get(mode_key, {})
     assessment_ok = sub_data.get("ok", False) if sub_data else internal.get("ok", False)
 
-    return _to_federation_output(
-        {
-            "ok": assessment_ok,
-            "tool": "well_assess_livelihood",
-            "mode": mode,
-            "observation": {
+    return _inject_apex(
+        _to_federation_output(
+            {
                 "ok": assessment_ok,
-                "subject": subject or "Arif",
-                "substrate_class": substrate_class or "HUMAN_PERSON",
+                "tool": "well_assess_livelihood",
                 "mode": mode,
-                "assessment": sub_data,
-                "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
-                "human_judge_required": not assessment_ok,
-                "boundary_notice": "Not diagnosis. Not therapy. Reflective readiness only. Arif remains final judge.",
+                "observation": {
+                    "ok": assessment_ok,
+                    "subject": subject or "Arif",
+                    "substrate_class": substrate_class or "HUMAN_PERSON",
+                    "mode": mode,
+                    "assessment": sub_data,
+                    "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
+                    "human_judge_required": not assessment_ok,
+                    "boundary_notice": "Not diagnosis. Not therapy. Reflective readiness only. Arif remains final judge.",
+                },
+                "uncertainty": 0.5,
+                "signal": "advisory" if assessment_ok else "attention_needed",
             },
-            "uncertainty": 0.5,
-            "signal": "advisory" if assessment_ok else "attention_needed",
-        },
-        tool_name="well_assess_livelihood",
+            tool_name="well_assess_livelihood",
+        ),
+        "well_assess_livelihood",
     )
 
 
@@ -13200,6 +13755,8 @@ def well_system_registry_status() -> dict[str, Any]:
     somatic = list(SOMATIC_TOOLS | {"well_guard_dignity"})
     autonomic_names = [e["name"] for e in _WELL_AUTONOMIC_TOOLS]
     canonical_aliases = {k: v for k, v in ALIAS_REGISTRY.items()}
+    state = _load_state()
+    identity_valid = is_well(state)
 
     # Cross-check: any alias pointing to a non-somatic canonical is a gap
     alias_gaps = {
@@ -13208,17 +13765,24 @@ def well_system_registry_status() -> dict[str, Any]:
         if canon not in somatic
     }
 
-    registry_truth = "WARN" if alias_gaps else "PASS"
+    if not identity_valid:
+        registry_truth = "DEGRADED"
+    elif alias_gaps:
+        registry_truth = "WARN"
+    else:
+        registry_truth = "PASS"
 
     return _omega_well_output(
-        ok=True,
+        ok=registry_truth == "PASS",
         stage="WELL_SYSTEM",
         lane="MACHINE",
         mode="registry",
-        verdict="PASS" if registry_truth == "PASS" else "WARN",
+        verdict="PASS" if registry_truth == "PASS" else "HOLD",
         data={
             "service": "well-mcp",
             "version": "2026.05.15-ΩWELL+GWELL+FEDERATION",
+            "registry_status": registry_truth,
+            "identity_valid": identity_valid,
             "somatic_tools": sorted(somatic),
             "somatic_count": len(somatic),
             "autonomic_tools": sorted(autonomic_names),
@@ -13558,6 +14122,193 @@ def _inject_well_wisdom(response: dict[str, Any], tool_name: str) -> dict[str, A
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# well_classify_state — Human State Classifier (Phase 1 + Phase 3)
+# ═══════════════════════════════════════════════════════════════════════════════
+# Constitutional home: arifosmcp/rama/ (State Classifier)
+# Federation surface: WELL MCP (this file)
+# Physics: entropy reduction + invariance violation detection
+#
+# Imports from arifosmcp.rama — dependency already exists (vault_postgres,
+# well_bridge). State Classifier stays in arifOS; WELL exposes it.
+#
+# Phase 1: Deterministic rule-based Polyvagal + SDT classification
+# Phase 3: Contradiction detector (stated intent vs behavioral pattern)
+# DITEMPA BUKAN DIBERI
+
+
+def _well_modulate_posture(
+    polyvagal: str,
+    sdt_autonomy: str,
+    sdt_competence: str,
+    sdt_relatedness: str,
+) -> dict[str, Any]:
+    """Convert state vector into concrete agent behavior adjustments.
+
+    This is the Phase 2 Response Adapter (thin version).
+    Takes classifier output, returns modulated behavior parameters.
+
+    Returns dict with:
+        - complexity: simplified | normal | expanded
+        - pacing: slow | normal | fast
+        - silence_tolerance: low | medium | high
+        - challenge_level: none | gentle | normal | high
+        - response_length: short | medium | long
+        - tone: grounding | acknowledging | exploring
+    """
+    # Base from polyvagal state
+    if polyvagal == "sympathetic":
+        mod = {
+            "complexity": "simplified",
+            "pacing": "slow",
+            "silence_tolerance": "medium",
+            "challenge_level": "none",
+            "response_length": "short",
+            "tone": "grounding",
+        }
+    elif polyvagal == "dorsal":
+        mod = {
+            "complexity": "simplified",
+            "pacing": "slow",
+            "silence_tolerance": "high",
+            "challenge_level": "none",
+            "response_length": "short",
+            "tone": "acknowledging",
+        }
+    else:  # ventral
+        mod = {
+            "complexity": "normal",
+            "pacing": "normal",
+            "silence_tolerance": "medium",
+            "challenge_level": "normal",
+            "response_length": "medium",
+            "tone": "exploring",
+        }
+
+    # SDT overlays
+    if sdt_autonomy == "high":
+        mod["challenge_level"] = "none"
+        mod["tone"] = "acknowledging"
+        # Don't prescribe — offer options
+        mod["autonomy_directive"] = "offer_options_not_prescriptions"
+
+    if sdt_competence == "high":
+        mod["complexity"] = "simplified"
+        mod["response_length"] = "short"
+        mod["competence_directive"] = "scaffold_dont_rescue"
+
+    if sdt_relatedness == "high":
+        mod["tone"] = "acknowledging"
+        mod["relatedness_directive"] = "connect_before_content"
+
+    return mod
+
+
+@mcp.tool()
+def well_classify_state(
+    message: str,
+    session_id: str = "",
+    recent_messages: list[str] | None = None,
+    stated_intent: str = "",
+    ctx: Context | None = None,
+) -> dict[str, Any]:
+    """Classify human psychological state from message.
+
+    Phase 1: Deterministic rule-based Polyvagal + SDT classification.
+    Phase 3: Contradiction detector (stated intent vs behavioral pattern).
+
+    Physics: entropy reduction. Human arrives ambiguous; state vector exits structured.
+    Constitutional: F2 (evidence chain), F4 (clarity), F6 (dignity), F9 (no consciousness claims).
+
+    This is a REFLECT_ONLY tool. It reads state and produces a governed posture.
+    It does NOT decide, judge, or act. arifOS 888_JUDGE adjudicates.
+
+    Args:
+        message: The human message to classify.
+        session_id: Session identifier for audit trail.
+        recent_messages: Recent message history for repetition detection.
+        stated_intent: What the human said they want (for contradiction detection).
+    """
+    try:
+        from arifosmcp.rama.state_classifier import get_state_classifier
+        from arifosmcp.rama.state_classifier_governance import run_governance_loop
+        from gate.dignity_shadow import detect_contradiction, assess_dignity_risk
+    except ImportError as e:
+        return {
+            "ok": False,
+            "error": f"State Classifier import failed: {e}",
+            "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
+        }
+
+    # Phase 1: Classify state
+    governed = run_governance_loop(
+        message=message,
+        session_id=session_id or "",
+        recent_messages=recent_messages or [],
+    )
+
+    sv = governed.state_vector if hasattr(governed, "state_vector") else None
+
+    # Phase 2: Modulate posture
+    posture_mod = _well_modulate_posture(
+        polyvagal=governed.governed_posture.value if hasattr(governed, "governed_posture") else "explore",
+        sdt_autonomy="low",
+        sdt_competence="low",
+        sdt_relatedness="low",
+    )
+
+    # Phase 3: Contradiction detection (if stated_intent provided)
+    contradiction_result = None
+    if stated_intent and sv:
+        behavioral_signals = sv.polyvagal_evidence or []
+        contradiction_result = detect_contradiction(
+            stated_intent=stated_intent,
+            behavioral_signals=behavioral_signals,
+        )
+
+    # Dignity shadow check on the output itself
+    dignity_check = None
+    if sv and sv.polyvagal_evidence:
+        evidence_text = " ".join(sv.polyvagal_evidence)
+        dignity_check = assess_dignity_risk(evidence_text, sv.confidence)
+
+    # Build result
+    result: dict[str, Any] = {
+        "ok": True,
+        "state_vector": {
+            "polyvagal": sv.polyvagal.value if sv else "ventral",
+            "sdt_pressure": {
+                "autonomy": sv.sdt_pressure.autonomy.value if sv else "low",
+                "competence": sv.sdt_pressure.competence.value if sv else "low",
+                "relatedness": sv.sdt_pressure.relatedness.value if sv else "low",
+            },
+            "confidence": sv.confidence if sv else 0.4,
+            "evidence": sv.polyvagal_evidence if sv else [],
+        },
+        "governed_posture": {
+            "posture": governed.governed_posture.value if hasattr(governed, "governed_posture") else "explore",
+            "overridden": governed.posture_overridden if hasattr(governed, "posture_overridden") else False,
+            "directives": governed.directives if hasattr(governed, "directives") else [],
+            "posture_modulation": posture_mod,
+        },
+        "floor_checks": {
+            "passed": governed.floors_passed if hasattr(governed, "floors_passed") else 0,
+            "advisory": governed.floors_advisory if hasattr(governed, "floors_advisory") else 0,
+            "violated": governed.floors_violated if hasattr(governed, "floors_violated") else 0,
+        },
+        "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
+        "reflect_only": "WELL reads state. arifOS judges. Arif decides.",
+    }
+
+    if contradiction_result:
+        result["contradiction"] = contradiction_result
+
+    if dignity_check:
+        result["dignity_shadow"] = dignity_check
+
+    return result
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # Universal wisdom injection — monkey-patch all registered tool functions
 # ═══════════════════════════════════════════════════════════════════════════════
 
@@ -13595,6 +14346,14 @@ SOMATIC_TOOLS = {
     "well_13_signal_coverage",
     "well_system_registry_status",
     "well_registry_status",
+    # F-Ω Federation Handoff Adapters — forged 2026-06-17
+    # See FEDERATION_HOOKS.md for the canonical contract.
+    "well_handoff_dignity_to_arifos",       # S12 → arifOS 888_JUDGE
+    "well_handoff_livelihood_to_wealth",    # S13 → WEALTH
+    "well_attest_to_kernel",                # WELL → arifOS organ_attest
+    # Human State Classifier — Phase 1 + Phase 3
+    # Forged 2026-06-25. Deterministic rule-based Polyvagal + SDT + contradiction.
+    "well_classify_state",                  # State Classifier → federation surface
 }
 # NOTE: well_system_registry_status and well_registry_status are internal
 # diagnostic tools (no @mcp.tool decorator). Not part of public MCP surface.
@@ -13701,6 +14460,13 @@ _TOOL_ANNOTATIONS: dict[str, dict[str, Any]] = {
     },
     "well_medical_boundary": {
         "title": "Medical Boundary",
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": False,
+    },
+    "well_classify_state": {
+        "title": "Classify Human State",
         "readOnlyHint": True,
         "destructiveHint": False,
         "idempotentHint": True,
@@ -14123,17 +14889,22 @@ if __name__ == "__main__":
                 )
             )
         )
+        health_status = (
+            "healthy"
+            if classification["well_ok"] and classification.get("well_signal", "WELL_HOLD") == "WELL_PASS"
+            else "degraded"
+        )
 
         return JSONResponse(
             {
                 # ── Canonical 7-field health schema (federation convention) ───
-                "status": "healthy",
+                "status": health_status,
                 "final_authority": "ARIF",
                 "identity": "WELL",
                 "role": "Body / Human Intelligence",
                 "authority": "REFLECT_ONLY",
                 "identity_hash": identity_hash,
-                "verdict": classification["verdict"],
+                "well_signal": classification["well_signal"],  # REFLECT_ONLY — never "verdict"
                 "service": "well-mcp",
                 "version": "2026.05.15-ΩWELL+GWELL+FEDERATION",
                 "tool_count": len(SOMATIC_TOOLS),

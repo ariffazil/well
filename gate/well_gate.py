@@ -35,10 +35,14 @@ def reflect_readiness():
         if cognitive.get("clarity", 10) < 4:
             violations.append("W5_COGNITIVE_ENTROPY")
         
-        if violations:
-            return "DEGRADED", f"[WELL-MIRROR] Biological substrate flagging: {', '.join(violations)}", state.get("well_score", 0), violations
+        score_raw = state.get("well_score")
+        if score_raw is None or not isinstance(score_raw, (int, float)):
+            score_raw = 0
         
-        return "STABLE", "[WELL-MIRROR] Substrate stable. Mirror is clear.", state.get("well_score", 100), []
+        if violations:
+            return "DEGRADED", f"[WELL-MIRROR] Biological substrate flagging: {', '.join(violations)}", score_raw, violations
+        
+        return "STABLE", "[WELL-MIRROR] Substrate stable. Mirror is clear.", max(score_raw, 100) if score_raw < 100 else score_raw, []
     except Exception as e:
         return "ERROR", f"[WELL-ERROR] Schema mismatch: {str(e)}", 0, ["W_ERROR"]
 

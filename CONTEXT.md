@@ -1,31 +1,44 @@
-# CONTEXT.md — WELL (Human Readiness)
+<!-- SOT-MANIFEST
+owner: Arif
+last_verified: 2026-06-24
+valid_from: 2026-06-24
+valid_until: 2026-07-24
+confidence: high
+scope: /root/WELL
+-->
+
+# CONTEXT.md — WELL (Vitality Guard)
 
 > **Organ:** WELL | **Port:** 18083 | **Repo:** `ariffazil/well`
-> **Kernel SoT:** `ariffazil/arifos` (FEDERATION_CONTRACT.md + GENESIS/000)
-> **Live status:** `ariffazil/arifos/FEDERATION_STATUS.md`
-> **Last Updated:** 2026-06-14
+> **Last Updated:** 2026-06-24
 
 ## Live State
-- **Service:** `well.service` (systemd, enabled)
+
+- **Service:** `well.service` (systemd, HTTP mode)
 - **Health:** `http://127.0.0.1:18083/health`
-- **Tools:** 17 somatic MCP tools
-- **Authority:** REFLECT_ONLY — never adjudicates
-- **Biometric State:** truth_status=EXPIRED (F13 sovereign territory)
+- **Public MCP:** `https://well.arif-fazil.com/mcp`
+- **Runtime:** Python 3.12+ / FastMCP / Pydantic v2
+- **Role:** Human readiness — reflect, never judge or diagnose
+- **State file:** `/root/WELL/state.json`
+
+## Key Features
+
+- Metabolic flux computation (`well_compute_metabolic_flux`)
+- Homeostasis assessment (`well_assess_homeostasis`)
+- Sovereign entropy scoring (`well_assess_sovereign_entropy`)
+- Dignity guard (`well_guard_dignity`)
+- WELL → GEOX decision-class gate (`geox_well_decision_class`)
 
 ## Dependencies
-- arifOS MCP kernel (port 8088) — constitutional judgment
-- No database dependencies
-- Caddy reverse proxy for public endpoint
 
-## Federation Context
-- Federation organs = 7: arifOS (8088), AAA (3001), A-FORGE (7071), GEOX (8081), WEALTH (18082), WELL (18083), APEX legacy (3002).
-- A-FORGE hosts support services `MIND` on port 51001 and `MEMORY` on port 51002.
-- APEX (port 3002) is a legacy health probe; 888 JUDGE deliberation now lives in the AAA a2a-server.
-
-## Current Focus
-- Operational. GENESIS/004-012 canon chain established.
-- Biometric state stale — needs Arif sovereign injection via `well_log_state` or `biometric_inject.sh`.
+- arifOS MCP kernel (8088) — constitutional judgment
+- GEOX (8081) — receives decision-class gating
+- AAA (3001) — cockpit display
 
 ## Known Issues
-- `state.json` truth_status=EXPIRED — sovereign biometric data needed
-- `well_autosleeper.py` and `entropy-report.json` removed; both are now ignored generated artifacts
+
+- Federation Governance Gate previously failed due to missing `FEDERATION_CONTRACT.md` and `CONTEXT.md` — **resolved 2026-06-24**
+
+---
+
+*DITEMPA BUKAN DIBERI — Human readiness is forged, not assumed.*

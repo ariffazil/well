@@ -15,20 +15,20 @@
 > **WELL is the human readiness organ of the arifOS federation.**
 > It observes. It reflects. It warns. It never decides.
 >
-> 17 somatic MCP tools. REFLECT-ONLY authority. `https://well.arif-fazil.com/mcp`
+> 21 somatic MCP tools. REFLECT-ONLY authority. `https://well.arif-fazil.com/mcp`
 
 [![FastMCP](https://img.shields.io/badge/FastMCP-3.3.1-8b5cf6?logo=python&logoColor=white)](server.py)
 [![Python](https://img.shields.io/badge/python-3.12+-3776AB?logo=python&logoColor=white)](server.py)
-[![Tools](https://img.shields.io/badge/tools-17-10b981)](server.py)
+[![Tools](https://img.shields.io/badge/tools-21-10b981)](server.py)
 [![Port](https://img.shields.io/badge/port-18083-64748b)](server.py)
 [![License](https://img.shields.io/badge/license-AGPL--3.0-06b6d4)](LICENSE)
 [![Authority](https://img.shields.io/badge/authority-REFLECT__ONLY-f97316)](GENESIS/004_WELL_13_CANON.md)
 
 <!-- SOT-MANIFEST
 owner: Arif
-last_verified: 2026-06-15
+last_verified: 2026-06-25
 valid_from: 2026-06-14
-valid_until: 2026-07-15
+valid_until: 2026-07-25
 confidence: high
 scope: /root/WELL
 -->
@@ -175,7 +175,7 @@ Expected response:
 
 ## 3. Full Capability Map
 
-WELL's 17 somatic tools operate across four substrate domains. Each domain answers a different question about the human-machine system.
+WELL's 21 somatic tools operate across four substrate domains. Each domain answers a different question about the human-machine system.
 
 ### 3.1 H-WELL — Human Substrate (5 tools)
 
@@ -346,7 +346,7 @@ All 13 constitutional floors (F1-F13) are defined in [`arifOS/static/arifos/theo
 WELL/
 │
 ├── server.py                  # FastMCP server (~13,800 lines)
-│   │                          # 17 somatic tools
+│   │                          # 21 somatic tools
 │   │                          # dual transport: HTTP (port 18083) + stdio
 │   │                          # SOMATIC_TOOLS boundary enforcement at startup
 │   │
