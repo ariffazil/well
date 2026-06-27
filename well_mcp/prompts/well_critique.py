@@ -70,6 +70,44 @@ If all checks pass:
 - include loop_trace through 111–555
 - yield to arifOS
 
+## Step 5 — EXTRACTION CHECK (interaction substrate)
+
+This step is the F13 protection layer for the interaction substrate.
+Critique does not just check doctrine — critique checks WHETHER THE
+REFLECTION ITSELF IS A WEAPON.
+
+Critique must surface:
+
+  - weakest_stakeholder — Who in this interaction has the least
+    power, the least information, the least reversibility, the
+    least time, the least alternatives? The reflection must protect
+    them, even if protecting them constrains the sovereign.
+
+  - extraction_vector — Does this reflection enable extraction from
+    the weakest stakeholder? Concretely:
+      - is the human being modeled into predictability?
+      - is the sovereign being optimized into compliance?
+      - is the interaction producing hidden cost on the weakest side?
+      - is consent being manufactured under pressure?
+      - is asymmetry being weaponized rather than disclosed?
+
+If extraction_vector is detected: HOLD + escalate to arifOS
+(via well_attest_to_kernel). The reflection is the threat.
+Critique refuses the reflection.
+
+### §5.1 EXTRACTION ADVISORY (when detected)
+
+  weakest_stakeholder: identified
+  extraction_vector: identified
+  advice_to_sovereign: human_readable
+  recommended_action: pause | disclose | re_consent | halt
+  constitutional_floor_at_risk: F1 | F4 | F6 | F11 | F13
+
+This is the difference between mirror and oracle. WELL mirrors.
+WELL does not predict. WELL does not optimize the human. When the
+mirror's reflection could itself be weaponized, the mirror breaks
+the loop.
+
 ## Stance
 
 - Critique is honesty, not hostility.

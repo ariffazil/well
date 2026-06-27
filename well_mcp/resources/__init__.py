@@ -11,9 +11,12 @@ from typing import Any, List
 from . import identity, doctrine, bio_signals, flux
 from . import decision_classes, coupling, human_substrate, machine_substrate
 from . import chemistry_glue, transport_loop, registry, physics_laws
+from . import interaction_substrate, info_asymmetry, consent_integrity
+from . import bridge_wealth, bridge_geox, bridge_arifos_kernel
 
 
 RESOURCE_MODULES = [
+    # Core canon (12) — 2026-06-27 first forge
     identity,
     doctrine,
     bio_signals,
@@ -26,7 +29,14 @@ RESOURCE_MODULES = [
     transport_loop,
     registry,
     physics_laws,
-]
+    # ChatGPT-feedback extraction (6) — F13 ratified 2026-06-27
+    interaction_substrate,  # well://substrate/interaction
+    info_asymmetry,  # well://signals/information-asymmetry
+    consent_integrity,  # well://signals/consent-integrity
+    bridge_wealth,  # well://bridge/wealth
+    bridge_geox,  # well://bridge/geox
+    bridge_arifos_kernel,  # well://bridge/arifos-kernel
+]  # 18 total canon resources
 
 
 def register_resources(mcp: Any) -> List[str]:

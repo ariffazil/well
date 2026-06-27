@@ -8,6 +8,11 @@ Covers:
   5. Decision class mapping + downgrade
   6. F1–F13 floor status computation
   7. C5 irreversible → F13 HOLD
+  8. Loop-mapped prompts (9 stages)
+  9. Canon resources (18 — core 12 + ChatGPT-feedback extraction 6)
+  10. CAPTURED state (interaction substrate autonomy broken)
+  11. Extraction mode in critique
+  12. Advisory compositions (4 named logical surfaces)
 
 Run: cd /root/WELL && python3 -m pytest tests/test_well_mcp.py -v
      or: python3 tests/test_well_mcp.py
@@ -46,7 +51,7 @@ def test_package_imports():
     assert well_mcp.prompts is not None
     assert well_mcp.transport is not None
     assert well_mcp.tools is not None
-    assert len(well_mcp.resources.RESOURCE_MODULES) == 12
+    assert len(well_mcp.resources.RESOURCE_MODULES) == 18
     assert len(well_mcp.prompts.PROMPT_MODULES) == 9
     assert len(STAGE_NAMES) == 5
 
@@ -428,16 +433,31 @@ def test_loop_map_covers_all_9_stages():
     assert set(LOOP_MAP.values()) == expected
 
 
+def test_well_critique_includes_extraction_mode():
+    """well_critique prompt documents the extraction check (Step 5)."""
+    from well_mcp.prompts import well_critique as wc_mod
+
+    # The prompt module exposes a register() that returns a list of prompt names.
+    # Inspect the source — must contain extraction_check + weakest_stakeholder.
+    import inspect
+
+    src = inspect.getsource(wc_mod)
+    assert "Step 5 — EXTRACTION CHECK" in src
+    assert "weakest_stakeholder" in src
+    assert "extraction_vector" in src
+
+
 # ============================================================================
-# 9. CANON RESOURCES (12 expected)
+# 9. CANON RESOURCES (18 expected: 12 core + 6 ChatGPT-feedback extraction)
 # ============================================================================
 
 
-def test_all_12_canon_resources_registered():
-    """All 12 well:// resources are importable."""
+def test_all_18_canon_resources_registered():
+    """All 18 well:// resources are importable."""
     from well_mcp.resources import RESOURCE_MODULES
 
     expected_names = {
+        # Core canon (12)
         "identity",
         "doctrine",
         "bio_signals",
@@ -450,9 +470,228 @@ def test_all_12_canon_resources_registered():
         "transport_loop",
         "registry",
         "physics_laws",
+        # ChatGPT-feedback extraction (6) — F13 ratified 2026-06-27
+        "interaction_substrate",
+        "info_asymmetry",
+        "consent_integrity",
+        "bridge_wealth",
+        "bridge_geox",
+        "bridge_arifos_kernel",
     }
     actual_names = {m.__name__.split(".")[-1] for m in RESOURCE_MODULES}
     assert actual_names == expected_names
+    assert len(actual_names) == 18
+
+
+def test_interaction_substrate_resource_has_third_substrate_canon():
+    """well://substrate/interaction must reference the third-substrate framing."""
+    from well_mcp.resources import interaction_substrate as mod
+    import inspect
+
+    src = inspect.getsource(mod)
+    assert "third substrate" in src.lower() or "interaction substrate" in src.lower()
+    assert "CAPTURED" in src
+    assert "H × M × I" in src or "H_state × M_state × I_state" in src
+
+
+def test_info_asymmetry_resource_substrate_signal():
+    """well://signals/information-asymmetry registers as a substrate signal."""
+    from well_mcp.resources import info_asymmetry as mod
+    import inspect
+
+    src = inspect.getsource(mod)
+    # Must reference extraction risk + substrate signal semantics
+    assert "extraction" in src.lower()
+    # Module exposes a register() function
+    assert hasattr(mod, "register")
+
+
+def test_consent_integrity_resource_f13_protection_layer():
+    """well://signals/consent-integrity must mark F13 protection layer."""
+    from well_mcp.resources import consent_integrity as mod
+    import inspect
+
+    src = inspect.getsource(mod)
+    assert "F13" in src
+    # Must include INTACT/PRESSURED/DEGRADED/INVALID states
+    for state in ("INTACT", "PRESSURED", "DEGRADED", "INVALID"):
+        assert state in src, f"missing state {state}"
+    # Must have register() function
+    assert hasattr(mod, "register")
+
+
+def test_bridge_wealth_resource_allocation_signal():
+    """well://bridge/wealth registers as federation bridge contract."""
+    from well_mcp.resources import bridge_wealth as mod
+    import inspect
+
+    src = inspect.getsource(mod)
+    assert "WELL" in src and "WEALTH" in src
+    assert "stability_recovery" in src or "scale_speed" in src
+    assert hasattr(mod, "register")
+
+
+def test_bridge_geox_resource_planetary_substrate():
+    """well://bridge/geox registers as planetary ground truth bridge."""
+    from well_mcp.resources import bridge_geox as mod
+    import inspect
+
+    src = inspect.getsource(mod)
+    assert "WELL" in src and "GEOX" in src
+    # Must reference planetary substrate
+    assert (
+        "planet" in src.lower()
+        or "planetary" in src.lower()
+        or "carrying capacity" in src.lower()
+    )
+    assert hasattr(mod, "register")
+
+
+def test_bridge_arifos_kernel_resource_constitutional_escalation():
+    """well://bridge/arifos-kernel registers as constitutional escalation bridge."""
+    from well_mcp.resources import bridge_arifos_kernel as mod
+    import inspect
+
+    src = inspect.getsource(mod)
+    assert "arifOS" in src or "arifos" in src.lower()
+    # Must reference constitutional escalation trigger set
+    assert "CAPTURED" in src or "INVALID" in src
+    assert hasattr(mod, "register")
+
+
+# ============================================================================
+# 10. CAPTURED STATE — INTERACTION SUBSTRATE AUTONOMY BROKEN
+# ============================================================================
+
+
+def test_decision_classes_captured_state_documented():
+    """well://decision/classes canon documents CAPTURED state."""
+    from well_mcp.resources import decision_classes as mod
+    import inspect
+
+    src = inspect.getsource(mod)
+    # CAPTURED must be present in the routing matrix section
+    assert "CAPTURED" in src
+    # Must include §6 (CAPTURED STATE) section
+    assert "§6" in src or "CAPTURED STATE" in src
+    # Must differentiate CAPTURED from CRITICAL
+    assert "autonomy broken" in src or "physics broken" in src
+
+
+def test_decision_classes_captured_routing_hardens():
+    """CAPTURED routing matrix must harden all C-class actions."""
+    from well_mcp.resources import decision_classes as mod
+    import inspect
+
+    src = inspect.getsource(mod)
+    # CAPTURED + C1/C2 = DEFER
+    # CAPTURED + C5 = VOID
+    # These should be in the routing table or §6 section
+    assert "DEFER" in src
+    assert "VOID" in src
+
+
+# ============================================================================
+# 11. ADVISORY COMPOSITIONS (4 named logical surfaces)
+# ============================================================================
+
+
+def test_advisory_compositions_all_4_present():
+    """ADVISORY_COMPOSITIONS dict contains all 4 named surfaces."""
+    from well_mcp.tools import ADVISORY_COMPOSITIONS
+
+    expected = {
+        "well_assess_substrate_readiness",
+        "well_assess_information_asymmetry",
+        "well_assess_consent_integrity",
+        "well_trigger_resource_reallocation",
+    }
+    assert set(ADVISORY_COMPOSITIONS.keys()) == expected
+
+
+def test_advisory_compositions_captured_in_output():
+    """ADVISORY_COMPOSITIONS output includes CAPTURED readiness state."""
+    from well_mcp.tools import ADVISORY_COMPOSITIONS
+
+    substrate = ADVISORY_COMPOSITIONS["well_assess_substrate_readiness"]
+    assert "CAPTURED" in substrate["output"]
+    assert substrate["first_class"] is True
+    assert len(substrate["composes"]) >= 2
+
+
+def test_tool_canon_map_includes_interaction_substrate():
+    """TOOL_CANON_MAP covers interaction substrate + new signals."""
+    from well_mcp.tools import TOOL_CANON_MAP
+
+    # Must include the 6 new canon surfaces
+    expected_keys = {
+        "well://substrate/interaction",
+        "well://signals/information-asymmetry",
+        "well://signals/consent-integrity",
+        "well://bridge/wealth",
+        "well://bridge/geox",
+        "well://bridge/arifos-kernel",
+    }
+    assert expected_keys.issubset(set(TOOL_CANON_MAP.keys()))
+
+
+# ============================================================================
+# 12. TRANSPORT DIAGNOSTIC (mock register surface)
+# ============================================================================
+
+
+def test_mock_mcp_register_includes_all_18_resources():
+    """Mock MCP server can register all 18 canon resources + 9 prompts + tools."""
+    import well_mcp.resources as r
+    import well_mcp.prompts as p
+    import well_mcp.tools as t
+
+    class _MockMCP:
+        def __init__(self):
+            self.resources = []
+            self.prompts = []
+
+        def resource(self, uri):
+            def deco(fn):
+                self.resources.append(uri)
+                return fn
+
+            return deco
+
+        def prompt(self, name):
+            def deco(fn):
+                self.prompts.append(name)
+                return fn
+
+            return deco
+
+    mock = _MockMCP()
+    r_uris = r.register_resources(mock)
+    p_names = p.register_prompts(mock)
+
+    # 18 canon resources (mock.resources contains exactly these 18 URIs)
+    assert len(r_uris) == 18
+    assert len(mock.resources) == 18
+
+    # 9 loop-mapped prompts
+    assert len(p_names) == 9
+    assert len(mock.prompts) == 9
+
+    # Now register the tools canon map (adds 1 more resource URI)
+    t_uris = t.register_tools(mock)
+    assert t_uris == ["well://tools/canon_map"]
+    assert len(mock.resources) == 19  # 18 canon + 1 tools map
+
+    # Verify the 6 new URIs all surface in the canon surface
+    for new_uri in (
+        "well://substrate/interaction",
+        "well://signals/information-asymmetry",
+        "well://signals/consent-integrity",
+        "well://bridge/wealth",
+        "well://bridge/geox",
+        "well://bridge/arifos-kernel",
+    ):
+        assert new_uri in r_uris, f"missing URI: {new_uri}"
 
 
 # ============================================================================

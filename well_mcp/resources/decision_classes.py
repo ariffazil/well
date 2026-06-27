@@ -148,6 +148,60 @@ When the routing matrix produces HOLD or BLOCK:
 
 WELL does not adjudicate. WELL routes. arifOS judges. Arif decides.
 
+## §6. CAPTURED STATE — INTERACTION SUBSTRATE ROUTING
+
+The §3 table above is a 2x4 matrix (human × {OPTIMAL, STABLE,
+DEGRADED, CRITICAL}). When the interaction substrate (see
+well://substrate/interaction) drops, a fifth state emerges:
+
+  CAPTURED — autonomy is broken. The system can proceed but should not.
+
+CAPTURED is DISTINCT from CRITICAL:
+  CRITICAL = physics broken (cannot proceed)
+  CAPTURED = autonomy broken (can proceed but should not)
+
+CAPTURED covers: manipulation, addiction loops, algorithmic coercion,
+economic dependency, "the system knows the human better than the human
+can resist." This is the post-AGI asymmetry state.
+
+### §6.1 CAPTURED ROUTING TABLE
+
+When substrate_readiness = CAPTURED, the routing matrix hardens:
+
+  ┌─────────┬──────────────────────────────────────────────┐
+  │         │ CAPTURED                                     │
+  ├─────────┼──────────────────────────────────────────────┤
+  │ C1/C2   │ DEFER (mirror remains; mutation refused)     │
+  │ C3      │ HOLD (escalate to arifOS for floor check)    │
+  │ C4      │ BLOCK (constitutional escalation required)   │
+  │ C5      │ VOID (no F13 ratification possible in capture)│
+  └─────────┴──────────────────────────────────────────────┘
+
+CAPTURED is the constitutional escalation trigger. WELL refuses
+to optimize the captured human further. The bridge to arifOS
+fires unconditionally. The sovereign decides.
+
+### §6.2 CAPTURED + BRIDGE CASCADE
+
+When CAPTURED is detected, three bridges activate in order:
+
+  1. well://bridge/arifos-kernel  (constitutional escalation)
+  2. well://bridge/wealth         (allocation freeze)
+  3. well://bridge/geox           (ecological veto check)
+
+The cascade is INFORMATIONAL. Each bridge receives the same
+substrate assessment and acts within its lane.
+
+## §7. ASYMMETRY REVISITED — THE CAPTURED BOUNDARY
+
+The asymmetry from §4 is REINFORCED in CAPTURED state. The machine
+NEVER proceeds under CAPTURED regardless of C-class. The dignity
+floor hardens. The consent_integrity layer activates. The F13
+veto path is widened, not narrowed.
+
+When CAPTURED: the chemistry refuses to catalyze further reaction.
+The sovereign's authority is restored by architecture.
+
 DITEMPA BUKAN DIBERI — Routing is the chemistry of authority.
 """
 
