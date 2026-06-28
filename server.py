@@ -6419,8 +6419,39 @@ def _well_classify_substrate_impl(
 
     # ── EXPLICIT SYSTEM LABEL OVERRIDES ─────────────────────────────────────
     # arifOS MCP is a GOVERNANCE_SYSTEM, not a person
-    if "arif" in combined and any(
-        k in combined for k in ["mcp", "governance", "kernel", "arifos", "arifmcp"]
+    # BUT: if the subject is clearly a human describing themselves (contains
+    # strong human-role words like geoscientist, geologist, worked at etc),
+    # DO NOT override. The word "governance" may appear because the human
+    # built a governance system, but the subject is still a human person.
+    HUMAN_ROLE_INDICATORS = [
+        "geoscientist",
+        "geologist",
+        "engineer",
+        "exploration",
+        "worked at",
+        "years at",
+        "years of",
+        "operator",
+        "employee",
+        "staff",
+        "senior",
+        "role",
+        "position",
+        "hired",
+        "joined",
+        "my job",
+        "my career",
+        "my work",
+        "i built",
+        "i am a",
+    ]
+    _is_clearly_human = any(ind in combined for ind in HUMAN_ROLE_INDICATORS)
+    if (
+        "arif" in combined
+        and any(
+            k in combined for k in ["mcp", "governance", "kernel", "arifos", "arifmcp"]
+        )
+        and not _is_clearly_human
     ):
         detected_class = "GOVERNANCE_SYSTEM"
     # WELL MCP is a READINESS_MIRROR
@@ -12095,6 +12126,27 @@ def well_assess_homeostasis(
     # doesn't accept it). Sleep is one of WELL-13 Tier 2 (recovery/metabolic).
     if mode == "sleep":
         state = _load_state()
+        # P0-1 HARDENING (2026-06-28): If no verified body telemetry,
+        # return UNKNOWN — never compute OPTIMAL from defaults.
+        # Sleep mode previously scored 7.2/10 (OPTIMAL) from defaults
+        # of sleep_hours=7.0, sleep_quality=7.0, sleep_debt=0.0.
+        if not _has_verified_telemetry(state):
+            return _omega_well_output(
+                ok=False,
+                stage="222_SLEEP",
+                lane="AGI",
+                mode="sleep",
+                verdict="HOLD",
+                data={
+                    "sleep_recovery_score": None,
+                    "status": "UNKNOWN",
+                    "signal": "no_telemetry",
+                    "decision_class": decision_class_upper,
+                    "route_verdict": "HOLD",
+                    "routing_note": "No verified body telemetry. Cannot assess sleep recovery. Provide biometric data or confirm readiness manually.",
+                },
+                constitutional_compliance={"W2_SLEEP_RECOVERY": "UNKNOWN"},
+            )
         metrics = state.get("metrics", {})
         sleep_m = metrics.get("sleep", {})
 

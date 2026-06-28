@@ -192,6 +192,22 @@ def build_metabolic_output(
             for k, v in observation.items()
             if k not in ("ok", "Ω", "arifos", "aaa", "w0", "verdict", "error")
         }
+        # P1 HARDENING (2026-06-28): If underlying tool returned UNKNOWN_TELEMETRY
+        # or status=UNKNOWN, preserve that. Don't let enrichment inject OPTIMAL
+        # labels when the substrate has no verified biometric data.
+        _domain = observation.get("domain_verdict", "")
+        _status = observation.get("status", "")
+        _readiness = observation.get("readiness", {})
+        if isinstance(_readiness, dict):
+            _human = _readiness.get("human", "")
+            # If human readiness claims OPTIMAL but domain says UNKNOWN_TELEMETRY,
+            # the readiness is unverified. Downgrade to UNKNOWN.
+            if _human == "OPTIMAL" and (
+                "UNKNOWN_TELEMETRY" in str(_domain) or _status == "UNKNOWN"
+            ):
+                _readiness["human"] = "UNKNOWN"
+                _readiness["_note"] = "downgraded_from_OPTIMAL_no_verified_telemetry"
+                observation_data["readiness"] = _readiness
     else:
         observation_data = {"raw": observation}
 
