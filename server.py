@@ -1806,6 +1806,42 @@ def _build_unified_packet(ctx: Context | None = None) -> dict[str, Any]:
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
 
+def _ensure_well_identity(state: dict[str, Any]) -> dict[str, Any]:
+    """
+    Ensure canonical WELL identity invariants are present.
+
+    If the state carries the correct identity/role/authority but is missing
+    the numeric/spiritual invariants (e.g. written by an older telemetry
+    writer), inject the safe defaults. This is resilience, not corruption —
+    the organ ID is what matters. Mark injection for audit transparency.
+    """
+    identity = state.get("identity")
+    role = state.get("role")
+    authority = state.get("authority")
+    if (
+        identity == "WELL"
+        and role
+        in [
+            "Body",
+            "Body / Human Intelligence",
+            "Biological Substrate Governance",
+        ]
+        and authority == "REFLECT_ONLY"
+    ):
+        defaults = {
+            "delta_s": 0.0,
+            "peace2": 1.0,
+            "kappa_r": 0.95,
+            "rasa": True,
+            "amanah": "LOCK",
+        }
+        for key, value in defaults.items():
+            if key not in state:
+                state[key] = value
+                state.setdefault("_identity_defaults_injected", []).append(key)
+    return state
+
+
 def _load_state() -> dict[str, Any]:
     if not STATE_PATH.exists():
         return {
@@ -1814,6 +1850,11 @@ def _load_state() -> dict[str, Any]:
             "identity": "WELL",
             "role": "Body / Human Intelligence",
             "authority": "REFLECT_ONLY",
+            "delta_s": 0.0,
+            "peace2": 1.0,
+            "kappa_r": 0.95,
+            "rasa": True,
+            "amanah": "LOCK",
             "metrics": {},
             "well_score": None,
             "floors_violated": [],
@@ -1825,7 +1866,8 @@ def _load_state() -> dict[str, Any]:
             "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
         }
     with open(STATE_PATH) as f:
-        return json.load(f)
+        state = json.load(f)
+    return _ensure_well_identity(state)
 
 
 def _g_well_assess(state: dict[str, Any]) -> dict[str, Any]:
@@ -2824,9 +2866,10 @@ async def well_init(
     W0: WELL holds a mirror, not a veto. Operator sovereignty is invariant.
     """
     import sys
+    import os as _os  # P1 FIX: os was not imported before use
     import uuid as _uuid
 
-    ARIFOS_PATH = os.environ.get("ARIFOS_HOME", "/root") + "/arifOS"
+    ARIFOS_PATH = _os.environ.get("ARIFOS_HOME", "/root") + "/arifOS"
     if ARIFOS_PATH not in sys.path:
         sys.path.append(ARIFOS_PATH)
 
@@ -12303,7 +12346,7 @@ def well_assess_homeostasis(
                         "status": "UNKNOWN",
                         "signal": "no_telemetry",
                         "decision_class": decision_class_upper,
-                        "route_verdict": "HOLD",
+                        "route_signal": "HOLD",
                         "routing_note": "No verified body telemetry. Cannot assess sleep recovery. Provide biometric data or confirm readiness manually.",
                     },
                     constitutional_compliance={"W2_SLEEP_RECOVERY": "UNKNOWN"},
@@ -12372,29 +12415,29 @@ def well_assess_homeostasis(
         }
         threshold_score, block_threshold = thresholds[decision_class_upper]
         if status == "CRITICAL":
-            route_verdict = "ADVISORY_BLOCKED"
+            route_signal = "ADVISORY_BLOCKED"
             routing_note = "CRITICAL sleep recovery — all decision classes blocked."
         elif status == "DEGRADED":
             if decision_class_upper in ("C4", "C5"):
-                route_verdict = (
+                route_signal = (
                     "ADVISORY_BLOCKED"
                     if sleep_recovery_score < (block_threshold or 0)
                     else "DEFER"
                 )
             else:
-                route_verdict = "PROCEED"
+                route_signal = "PROCEED"
                 routing_note = (
                     f"DEGRADED sleep but {decision_class_upper} is low-stakes."
                 )
         elif status == "STABLE":
             if decision_class_upper in ("C4", "C5"):
-                route_verdict = "DEFER"
+                route_signal = "DEFER"
                 routing_note = f"STABLE sleep insufficient for {decision_class_upper}."
             else:
-                route_verdict = "PROCEED"
+                route_signal = "PROCEED"
                 routing_note = f"STABLE sleep clears {decision_class_upper}."
         else:  # OPTIMAL
-            route_verdict = "PROCEED"
+            route_signal = "PROCEED"
             routing_note = f"OPTIMAL sleep clears {decision_class_upper}."
 
         # Optional SAF statistical rigor on sleep vector
@@ -12424,7 +12467,12 @@ def well_assess_homeostasis(
             except OSError:
                 pass
         except Exception:
-            _saf_summary = {"embed_skipped": "saf_stats unavailable"}
+            # P1 FIX (2026-06-28): Do not leak internal dependency errors into
+            # human readiness output. SAF is optional — surface as disabled.
+            _saf_summary = {
+                "saf_status": "DISABLED_OPTIONAL",
+                "reason": "saf_stats unavailable",
+            }
 
         _data_payload = {
             "sleep_recovery_score": round(sleep_recovery_score, 2),
@@ -12434,7 +12482,7 @@ def well_assess_homeostasis(
             "sleep_debt_days": _sleep_debt,
             "signal": sleep_signal,
             "decision_class": decision_class_upper,
-            "route_verdict": route_verdict,
+            "route_signal": route_signal,
             "routing_note": routing_note,
         }
         if _saf_summary is not None:
@@ -12456,7 +12504,7 @@ def well_assess_homeostasis(
 
         return _to_federation_output(
             _omega_well_output(
-                ok=status in ("OPTIMAL", "STABLE") and route_verdict == "PROCEED",
+                ok=status in ("OPTIMAL", "STABLE") and route_signal == "PROCEED",
                 stage="222_SLEEP",
                 lane="AGI",
                 mode="sleep",
@@ -12506,7 +12554,7 @@ def well_assess_homeostasis(
                     "educational_context": educational_context,
                     "decision_class": actual_class,
                     "f9_soul_contract": boundary.get("f9_soul_contract", {}),
-                    "route_verdict": "ADVISORY_BLOCKED",
+                    "route_signal": "ADVISORY_BLOCKED",
                     "routing_note": (
                         "C5 medical query gate: physical medical advice requires "
                         "a licensed human doctor. WELL provides educational context only. "
@@ -12524,6 +12572,43 @@ def well_assess_homeostasis(
 
     if mode == "fatigue":
         state = _load_state()
+        # P1 FIX (2026-06-28): If no verified telemetry AND no biometric
+        # overrides provided, return LIMITED — never compute OPTIMAL from
+        # defaults alone. This prevents false confidence.
+        _has_overrides = any(
+            v is not None
+            for v in [
+                sleep_debt_days,
+                cognitive_clarity,
+                decision_fatigue,
+                stress_load,
+                accumulated_session_fatigue,
+            ]
+        )
+        if not _has_verified_telemetry(state) and not _has_overrides:
+            return _to_federation_output(
+                _omega_well_output(
+                    ok=False,
+                    stage="222_FATIGUE",
+                    lane="AGI",
+                    mode="fatigue",
+                    verdict="HOLD",
+                    telemetry_status="unknown",
+                    data={
+                        "homeostasis_score": None,
+                        "status": "LIMITED",
+                        "signal": "insufficient_context",
+                        "decision_class": decision_class_upper,
+                        "route_signal": "CAUTION",
+                        "routing_note": (
+                            "No verified telemetry and no biometric overrides. "
+                            "Cannot assess fatigue reliably. Status is LIMITED, not OPTIMAL."
+                        ),
+                    },
+                    constitutional_compliance={"W2_FATIGUE": "UNKNOWN"},
+                ),
+                tool_name="well_assess_homeostasis",
+            )
         metrics = state.get("metrics", {})
         cog = metrics.get("cognitive", {})
 
@@ -12641,33 +12726,56 @@ def well_assess_homeostasis(
         threshold_score, block_threshold = thresholds[decision_class_upper]
 
         if status == "CRITICAL":
-            route_verdict = "ADVISORY_BLOCKED"
+            route_signal = "ADVISORY_BLOCKED"
             routing_note = "CRITICAL homeostasis blocks all decision classes."
         elif status == "DEGRADED":
             if decision_class_upper in ("C4", "C5"):
-                route_verdict = (
+                route_signal = (
                     "ADVISORY_BLOCKED"
                     if homeostasis_score < (block_threshold or 0)
                     else "DEFER"
                 )
-                routing_note = f"{status} + {decision_class_upper} = {route_verdict}."
+                routing_note = f"{status} + {decision_class_upper} = {route_signal}."
             else:
-                route_verdict = "PROCEED"
+                route_signal = "PROCEED"
                 routing_note = f"{status} but {decision_class_upper} is low-stakes. Proceed with reduced confidence."
         elif status == "STABLE":
             if decision_class_upper in ("C4", "C5"):
-                route_verdict = "DEFER"
+                route_signal = "DEFER"
                 routing_note = f"STABLE is insufficient for {decision_class_upper}. Wait for OPTIMAL."
             else:
-                route_verdict = "PROCEED"
+                route_signal = "PROCEED"
                 routing_note = f"{status} clears {decision_class_upper}."
         else:  # OPTIMAL
             if decision_class_upper == "C5" and chronic_fatigue:
-                route_verdict = "DEFER"
+                route_signal = "DEFER"
                 routing_note = "OPTIMAL but chronic fatigue is active. C5 blocked during chronic fatigue."
             else:
-                route_verdict = "PROCEED"
+                route_signal = "PROCEED"
                 routing_note = f"{status} clears {decision_class_upper}."
+
+        # P1 FIX (2026-06-28): Telemetry honesty cap.
+        # Only VERIFIED biometric telemetry supports OPTIMAL / PROCEED claims.
+        # BEHAVIORAL, OPERATOR_REPORTED, and UNKNOWN telemetry must cap at LIMITED/CAUTION.
+        truth_status = state.get("truth_status", "UNVERIFIED")
+        if truth_status == "VERIFIED":
+            telemetry_status = "verified"
+        elif truth_status == "BEHAVIORAL":
+            telemetry_status = "behavioral"
+        elif truth_status == "OPERATOR_REPORTED":
+            telemetry_status = "operator_reported"
+        else:
+            telemetry_status = "unknown"
+
+        if telemetry_status != "verified" and status != "CRITICAL":
+            _original_route_signal = route_signal
+            status = "LIMITED"
+            route_signal = "CAUTION"
+            verdict = "UNKNOWN"
+            routing_note = (
+                f"Telemetry status is '{telemetry_status}'; readiness claim capped to CAUTION. "
+                f"Score-based signal without cap would have been {_original_route_signal}."
+            )
 
         # EUREKA FORGE (2026-06-02): distill the SAF statistical-rigor pattern
         # into the existing WELL fatigue verdict. No new tool added (F13).
@@ -12676,7 +12784,7 @@ def well_assess_homeostasis(
         # in the response. If the input vector is statistically anomalous
         # (Shapiro p<0.05 OR high outlier density vs typical 0-10 range),
         # we tag the verdict as CONDITIONAL — the routing matrix then
-        # reconsiders the route_verdict.
+        # reconsiders the route_signal.
         _saf_summary = None
         try:
             from core.shared.saf_stats import (
@@ -12736,8 +12844,13 @@ def well_assess_homeostasis(
             if (_p_shapiro is not None and _p_shapiro < 0.05) or _n_outliers >= 2:
                 verdict = "SABAR"
                 routing_note += f" | SAF: biometric vector non-normal (p={_p_shapiro}, outliers={_n_outliers}); verdict downgraded to SABAR."
-        except Exception as _saf_exc:
-            _saf_summary = {"embed_skipped": str(_saf_exc)[:120]}
+        except Exception:
+            # P1 FIX (2026-06-28): Do not leak internal dependency errors
+            # (numpy, os, pandas) into readiness output.
+            _saf_summary = {
+                "saf_status": "DISABLED_OPTIONAL",
+                "reason": "saf_stats unavailable",
+            }
 
         # EUREKA FORGE (2026-06-03): biometric strain profile + cross-metric
         # coherence. Lives OUTSIDE the 2026-06-02 forge so the original
@@ -12869,8 +12982,12 @@ def well_assess_homeostasis(
                 _bcsv.unlink()
             except OSError:
                 pass
-        except Exception as _saf_bc_exc:
-            _saf_descriptives = {"embed_skipped": str(_saf_bc_exc)[:120]}
+        except Exception:
+            # P1 FIX (2026-06-28): Do not leak internal dependency errors.
+            _saf_descriptives = {
+                "saf_status": "DISABLED_OPTIONAL",
+                "reason": "saf_stats unavailable",
+            }
             _saf_cross_metric = None
 
         _data_payload = {
@@ -12891,7 +13008,7 @@ def well_assess_homeostasis(
             "chronic_fatigue": chronic_fatigue,
             "raw_fatigue_index": round(raw_fatigue, 2),
             "decision_class": decision_class_upper,
-            "route_verdict": route_verdict,
+            "route_signal": route_signal,
             "routing_note": routing_note,
         }
         if _saf_summary is not None:
@@ -12917,11 +13034,12 @@ def well_assess_homeostasis(
 
         return _to_federation_output(
             _omega_well_output(
-                ok=status in ("OPTIMAL", "STABLE") and route_verdict == "PROCEED",
+                ok=status in ("OPTIMAL", "STABLE") and route_signal == "PROCEED",
                 stage="666_HEART",
                 lane="ASI",
                 mode="fatigue",
                 verdict=verdict,
+                telemetry_status=telemetry_status,
                 data=_data_payload,
                 constitutional_compliance={"W5_COGNITIVE_ENTROPY": status},
             ),
@@ -14026,7 +14144,13 @@ def well_system_registry_status() -> dict[str, Any]:
 
     Returns which tools are publicly callable, which are autonomic (intentionally
     hidden), and canonical alias mappings. Use this before assuming any WELL tool
-    is available or broken. registry_truth: PASS = surface matches manifest.
+    is available or broken.
+
+    P1 FIX (2026-06-28): Split into two layers:
+      - surface_registry: public MCP tool callability (PASS/FAIL)
+      - federation_registry: identity/session/federation attestation (PASS/DEGRADED)
+    These are reported separately so agents can distinguish "tools work" from
+    "organ identity is verified".
     """
     somatic = list(SOMATIC_TOOLS | {"well_guard_dignity"})
     autonomic_names = [e["name"] for e in _WELL_AUTONOMIC_TOOLS]
@@ -14041,6 +14165,11 @@ def well_system_registry_status() -> dict[str, Any]:
         if canon not in somatic
     }
 
+    # P1: Split surface vs federation health
+    surface_registry_status = "FAIL" if alias_gaps else "PASS"
+    federation_registry_status = "PASS" if identity_valid else "DEGRADED"
+
+    # Overall: DEGRADED if either layer fails
     if not identity_valid:
         registry_truth = "DEGRADED"
     elif alias_gaps:
@@ -14048,16 +14177,74 @@ def well_system_registry_status() -> dict[str, Any]:
     else:
         registry_truth = "PASS"
 
+    # Overall advisory signal for downstream agents
+    overall_signal = (
+        "safe_to_interpret" if registry_truth == "PASS" else "unsafe_to_interpret"
+    )
+
+    # P2 FIX (2026-06-28): Every autonomic tool must map to a public canonical
+    # replacement OR be explicitly marked hidden_by_design. This prevents agents
+    # from treating intentionally hidden tools as broken.
+    _canonical_replacements = {
+        "well_get_health": "well_assess_reliability(mode='health')",
+        "well_000_ops": "well_assess_reliability(mode='health')",
+        "well_machine_health_probe": "well_assess_reliability(mode='machine')",
+        "well_reflect_intelligence": "well_validate_vitality(mode='readiness')",
+        "well_anchor_evidence": "arif_seal (arifOS organ — cross-organ)",
+        "well_get_state": "well_trace_lineage(mode='recall')",
+        "well_check_invariant": "well_assess_reliability(mode='health')",
+        "well_log_signal": "well_trace_lineage(mode='recall')",
+        "well_list_events": "well_trace_lineage(mode='recall')",
+        "well_reflect_trend": "well_compute_metabolic_flux(mode='compute')",
+        "well_reflect_readiness": "well_validate_vitality(mode='readiness')",
+        "well_suggest_mode": "well_validate_vitality(mode='readiness')",
+        "well_suggest_recovery": "well_check_repair(mode='precheck')",
+        "well_reflect_niat": "well_validate_vitality(mode='readiness')",
+        "well_classify_task": "well_classify_substrate(subject='task')",
+        "well_000_init": "well_classify_substrate(subject='self')",
+        "well_111_sense": "well_classify_substrate(subject='probe')",
+        "well_222_fetch": "well_measure_gradient(mode='evidence')",
+        "well_333_mind": "well_assess_metabolism(mode='human')",
+        "well_444_kernel": "well_detect_boundary(mode='boundary')",
+        "well_555_memory": "well_trace_lineage(mode='recall')",
+        "well_666_heart": "well_assess_homeostasis(mode='empathize')",
+        "well_777_forge": "well_check_repair(mode='precheck')",
+        "well_888_judge": "well_validate_vitality(mode='readiness')",
+        "well_999_vault": "well_trace_lineage(mode='recall')",
+        "well_state": "well_trace_lineage(mode='recall')",
+        "well_readiness": "well_validate_vitality(mode='readiness')",
+        "well_init": "well_classify_substrate(subject='self')",
+        "well_machine_state": "well_assess_reliability(mode='machine')",
+        "well_assess_governance": "well_detect_boundary(mode='boundary')",
+    }
+    for name in autonomic_names:
+        if name not in _canonical_replacements:
+            _canonical_replacements[name] = (
+                "hidden_by_design — no somatic replacement (internal WELL autonomic)"
+            )
+
     return _omega_well_output(
         ok=registry_truth == "PASS",
         stage="WELL_SYSTEM",
         lane="MACHINE",
         mode="registry",
         verdict="PASS" if registry_truth == "PASS" else "HOLD",
+        telemetry_status="registry_probe",
         data={
             "service": "well-mcp",
             "version": "2026.05.15-ΩWELL+GWELL+FEDERATION",
             "registry_status": registry_truth,
+            "overall_signal": overall_signal,
+            # P1: Explicit two-layer split
+            "surface_registry": {
+                "status": surface_registry_status,
+                "meaning": "public MCP tools callable",
+            },
+            "federation_registry": {
+                "status": federation_registry_status,
+                "identity_valid": identity_valid,
+                "meaning": "identity/session/federation attestation",
+            },
             "identity_valid": identity_valid,
             "somatic_tools": sorted(somatic),
             "somatic_count": len(somatic),
@@ -14069,11 +14256,7 @@ def well_system_registry_status() -> dict[str, Any]:
             "boundary_notice": "Autonomic tools are intentionally hidden — not broken. "
             "They exist in code but are excluded from the MCP surface "
             "by somatic boundary enforcement.",
-            "canonical_replacements": {
-                "well_get_health": "well_assess_reliability(mode='health')",
-                "well_000_ops": "well_assess_reliability(mode='health')",
-                "well_machine_health_probe": "well_assess_reliability(mode='machine')",
-            },
+            "canonical_replacements": _canonical_replacements,
             "final_authority": "ARIF",
         },
     )

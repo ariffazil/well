@@ -126,6 +126,19 @@ def _requires_888_judge(tool_name: str, verdict: str | None) -> bool:
 # ── Main builder ───────────────────────────────────────────────────────────────
 
 
+def _compute_substrate_manifest_hash() -> str:
+    """SHA-256 of WELL substrate manifest — identity anchor."""
+    try:
+        from pathlib import Path
+
+        manifest_path = Path("/root/WELL/GENESIS/012_SUBSTRATE_MANIFEST.md")
+        if manifest_path.exists():
+            return f"sha256:{hashlib.sha256(manifest_path.read_bytes()).hexdigest()}"
+    except Exception:
+        pass
+    return "sha256:missing"
+
+
 def build_metabolic_output(
     tool_name: str,
     internal_result: dict[str, Any],
@@ -261,7 +274,8 @@ def build_metabolic_output(
         "timestamp_utc": timestamp_utc,
         "constitution_hash": constitution_hash,  # DEPRECATED — backward compat
         "domain_law": domain_law,
-        "substrate_manifest_hash": substrate_manifest_hash,
+        "substrate_manifest_hash": substrate_manifest_hash
+        or _compute_substrate_manifest_hash(),
         # Contract metadata
         "schema_name": SCHEMA_NAME,
         "schema_version": SCHEMA_VERSION,
