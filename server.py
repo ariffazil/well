@@ -1465,6 +1465,7 @@ except Exception as _e:
 # ── WELL MCP Compatibility Layer registration ──────────────────────────────────
 try:
     from compatibility import register_legacy_tools
+
     register_legacy_tools(mcp)
     logger.info("WELL compatibility stubs registered successfully.")
 except Exception as _e:
@@ -1621,6 +1622,89 @@ def well_health_check() -> dict:
     reliability["federation_geometry_source"] = fed_geometry_source
     reliability["federation_geometry_note"] = fed_geometry_note
     # ── END FEDERATION GEOMETRY 1a ───────────────────────────────────
+
+    # ── 4-DIMENSION HEALTH CHECK (2026-06-28) ────────────────────────
+    # Report across machine, governance, intelligence, and human axes.
+    # Each dimension has status, detail, and where to look for issues.
+    dimensions = {}
+
+    # 1. MACHINE — service health, tool surface, MCP availability
+    dimensions["machine"] = {
+        "status": reliability.get("status", "UNKNOWN"),
+        "detail": "WELL server process, MCP transport, tool surface",
+        "service": "well",
+        "transport": "streamable-http",
+        "tool_count": reliability.get("tool_count", 0),
+    }
+
+    # 2. GOVERNANCE — F1-F13 floor compliance, constitutional integrity
+    # Probes arifOS for floor state (non-blocking)
+    gov_status = "UNKNOWN"
+    gov_detail = "Floor compliance checks delegated to arifOS kernel"
+    try:
+        _gov_req = urllib.request.Request(
+            "http://127.0.0.1:8088/health",
+            headers={"Accept": "application/json"},
+        )
+        with urllib.request.urlopen(_gov_req, timeout=1.5) as _gov_resp:
+            _gov_body = json.loads(_gov_resp.read().decode("utf-8"))
+            gov_status = _gov_body.get("status", "UNKNOWN")
+            gov_detail = f"arifOS reports: {gov_status}"
+    except Exception as _gov_exc:
+        gov_status = "DEGRADED"
+        gov_detail = f"arifOS unreachable: {type(_gov_exc).__name__}"
+    dimensions["governance"] = {
+        "status": gov_status,
+        "detail": gov_detail,
+        "floor_authority": "arifOS kernel (port 8088)",
+        "well_gate": "REFLECT_ONLY — WELL does not adjudicate floors",
+    }
+
+    # 3. INTELLIGENCE — agent readiness, epistemic coherence, tool surface
+    # Reports WELL's tool surface integrity and cognitive readiness
+    _well_state = _load_state()
+    _tools_ok = reliability.get("tool_count", 0) > 0
+    _state_age = (
+        _well_state.get("state_age_hours", -1) if isinstance(_well_state, dict) else -1
+    )
+    dimensions["intelligence"] = {
+        "status": "OK" if _tools_ok else "DEGRADED",
+        "detail": "WELL tool surface and epistemic readiness",
+        "tools_ok": _tools_ok,
+        "state_age_hours": _state_age if _state_age >= 0 else "unknown",
+        "epistemic_label": "OBSERVED" if _state_age < 24 else "STALE",
+    }
+
+    # 4. HUMAN — operator vitality, fatigue, dignity (from state.json)
+    _human_status = "UNKNOWN"
+    _human_detail = "No biometric data loaded"
+    try:
+        if isinstance(_well_state, dict):
+            _vitality = _well_state.get("vitality", {}) or {}
+            _fatigue = _well_state.get("fatigue", {}) or {}
+            _recent = _well_state.get("recent_human_entry", None)
+            if _vitality and _vitality.get("status"):
+                _human_status = _vitality["status"]
+                _human_detail = f"Vitality: {_vitality.get('score', 'N/A')}, Fatigue: {_fatigue.get('level', 'N/A')}"
+            elif _recent:
+                _human_status = "STALE"
+                _human_detail = f"Last human data: {_recent}"
+            else:
+                _human_status = "DATA_GAP"
+                _human_detail = "No human vitality data in state.json"
+    except Exception:
+        _human_status = "ERROR"
+        _human_detail = "Failed to read human state"
+    dimensions["human"] = {
+        "status": _human_status,
+        "detail": _human_detail,
+        "dignity_guard": "F6 MARUAH — WELL reflects, never diagnoses",
+        "authority": "REFLECT_ONLY — Arif holds final judgment",
+    }
+
+    reliability["health_dimensions"] = dimensions
+    reliability["health_model"] = "4-dimension (machine·governance·intelligence·human)"
+    # ── END 4-DIMENSION HEALTH CHECK ─────────────────────────────────
     return reliability
 
 
@@ -14457,7 +14541,8 @@ def well_classify_state(
 #   well_anchor_evidence       → SEAL axis / vault (arifOS 999_VAULT)
 SOMATIC_TOOLS = {
     "well_health_check",
-    "mcp_health_check",  # legacy alias
+    # "mcp_health_check" removed 2026-06-28 — legacy alias, use well_health_check
+    "well_classify_substrate",
     "well_classify_substrate",
     "well_trace_lineage",
     "well_detect_boundary",
@@ -14725,12 +14810,7 @@ _WELL_SOMATIC_MANIFEST: list[dict[str, object]] = [
     # verified at runtime. well_system_registry_status and well_registry_status
     # are callable (handlers exist) and now exposed in the somatic surface.
     {"name": "well_health_check", "axis": "identity", "expose": True},
-    {
-        "name": "mcp_health_check",
-        "axis": "identity",
-        "expose": True,
-        "deprecated_alias": "well_health_check",
-    },
+    # "mcp_health_check" removed 2026-06-28 — legacy alias, use well_health_check
     {"name": "well_classify_substrate", "axis": "identity", "expose": True},
     {"name": "well_trace_lineage", "axis": "trace", "expose": True},
     {"name": "well_detect_boundary", "axis": "boundary", "expose": True},
@@ -14923,7 +15003,7 @@ if _REFLECT_LOADED and _wrap_canonical_tools is not None:
     try:
         _canonical_tool_fns = {
             "well_health_check": well_health_check,
-            "mcp_health_check": well_health_check,  # legacy alias
+            # "mcp_health_check" removed 2026-06-28 — legacy alias, use well_health_check
             "well_classify_substrate": _well_classify_substrate_impl,
             "well_trace_lineage": well_trace_lineage,
             "well_detect_boundary": well_detect_boundary,
