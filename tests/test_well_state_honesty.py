@@ -90,7 +90,7 @@ def test_classify_mocked_state_returns_insufficient_data():
     assert classification["well_score"] is None
     assert classification["owner_summary"]["color"] == "RED"
     assert "sovereign_state_unknown" in classification["owner_summary"]["reasons"]
-    assert classification["freshness_band"] == "VOID"
+    assert classification["freshness_band"] == "STALE"
     assert classification["freshness"]["status"] == "expired"
 
 

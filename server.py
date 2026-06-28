@@ -1462,6 +1462,15 @@ except Exception as _e:
     logger.exception("well_mcp registration failed: %s", _e)
 
 
+# ── WELL MCP Compatibility Layer registration ──────────────────────────────────
+try:
+    from compatibility import register_legacy_tools
+    register_legacy_tools(mcp)
+    logger.info("WELL compatibility stubs registered successfully.")
+except Exception as _e:
+    logger.error("Failed to register WELL compatibility stubs: %s", _e)
+
+
 def _mcp_health_check_impl() -> dict:
     """Internal implementation — returns raw payload for internal consumers."""
     state = _load_state()
@@ -2803,6 +2812,7 @@ async def well_anchor(
     New code should call well_anchor_evidence.
     """
     import sys
+    import os
 
     # Ensure arifOS is in path for bridge
     ARIFOS_PATH = os.environ.get("ARIFOS_HOME", "/root") + "/arifOS"
@@ -9290,26 +9300,14 @@ def well_13_signal_coverage(
     ctx: Context | None = None,
 ) -> dict[str, Any]:
     """
-    [DEPRECATED — use well_signal_coverage]
-    DREAM ENGINE: Audit WELL's coverage of the 13 canonical human substrate
-    signals. Returns per-signal status (active/partial/missing), coverage
-    summary, and cross-organ handoff suggestions for gaps.
-
-    Authority: reflect_only. WELL does not score the human here. WELL
-    audits itself: which of the 13 substrate signals am I currently
-    seeing? Which are stale? Which are missing?
-
-    SUNAT item per GENESIS/004_WELL_13_CANON.md §5.2.
+    [DEPRECATED — USE well_signal_coverage]
+    This tool has been deprecated and replaced. Please use well_signal_coverage instead.
     """
-    result = _well_13_signal_coverage_impl(operator_id=operator_id, ctx=ctx)
-    result["_advisory"] = {
-        "deprecated": True,
-        "canonical": "well_signal_coverage",
-        "deprecation_epoch": "2026-Q3",
-        "removal_allowed": False,
-        "note": "Magic number '13' removed from canonical name — signal count may change over epochs",
+    return {
+        "status": "ERROR",
+        "error": "well_13_signal_coverage is deprecated and has been removed. Use well_signal_coverage instead.",
+        "replacement": "well_signal_coverage",
     }
-    return result
 
 
 @mcp.tool()
@@ -12131,21 +12129,24 @@ def well_assess_homeostasis(
         # Sleep mode previously scored 7.2/10 (OPTIMAL) from defaults
         # of sleep_hours=7.0, sleep_quality=7.0, sleep_debt=0.0.
         if not _has_verified_telemetry(state):
-            return _omega_well_output(
-                ok=False,
-                stage="222_SLEEP",
-                lane="AGI",
-                mode="sleep",
-                verdict="HOLD",
-                data={
-                    "sleep_recovery_score": None,
-                    "status": "UNKNOWN",
-                    "signal": "no_telemetry",
-                    "decision_class": decision_class_upper,
-                    "route_verdict": "HOLD",
-                    "routing_note": "No verified body telemetry. Cannot assess sleep recovery. Provide biometric data or confirm readiness manually.",
-                },
-                constitutional_compliance={"W2_SLEEP_RECOVERY": "UNKNOWN"},
+            return _to_federation_output(
+                _omega_well_output(
+                    ok=False,
+                    stage="222_SLEEP",
+                    lane="AGI",
+                    mode="sleep",
+                    verdict="HOLD",
+                    data={
+                        "sleep_recovery_score": None,
+                        "status": "UNKNOWN",
+                        "signal": "no_telemetry",
+                        "decision_class": decision_class_upper,
+                        "route_verdict": "HOLD",
+                        "routing_note": "No verified body telemetry. Cannot assess sleep recovery. Provide biometric data or confirm readiness manually.",
+                    },
+                    constitutional_compliance={"W2_SLEEP_RECOVERY": "UNKNOWN"},
+                ),
+                tool_name="well_assess_homeostasis",
             )
         metrics = state.get("metrics", {})
         sleep_m = metrics.get("sleep", {})
@@ -12291,14 +12292,17 @@ def well_assess_homeostasis(
             except Exception:
                 pass
 
-        return _omega_well_output(
-            ok=status in ("OPTIMAL", "STABLE") and route_verdict == "PROCEED",
-            stage="222_SLEEP",
-            lane="AGI",
-            mode="sleep",
-            verdict=verdict,  # advisory verdict; _omega_well_output translates to generic signal
-            data=_data_payload,
-            constitutional_compliance={"W2_SLEEP_RECOVERY": status},
+        return _to_federation_output(
+            _omega_well_output(
+                ok=status in ("OPTIMAL", "STABLE") and route_verdict == "PROCEED",
+                stage="222_SLEEP",
+                lane="AGI",
+                mode="sleep",
+                verdict=verdict,  # advisory verdict; _omega_well_output translates to generic signal
+                data=_data_payload,
+                constitutional_compliance={"W2_SLEEP_RECOVERY": status},
+            ),
+            tool_name="well_assess_homeostasis",
         )
 
     # ── EUREKA 2026-06-12: Medical Query Mode ─────────────────────────────
@@ -12328,29 +12332,32 @@ def well_assess_homeostasis(
             ),
         }
 
-        return _omega_well_output(
-            ok=True,
-            stage="555_DIGNITY",
-            lane="ASI",
-            mode="medical_query",
-            verdict="HOLD",  # medical queries always HOLD — never auto-SEAL
-            data={
-                "medical_boundary": boundary,
-                "educational_context": educational_context,
-                "decision_class": actual_class,
-                "f9_soul_contract": boundary.get("f9_soul_contract", {}),
-                "route_verdict": "ADVISORY_BLOCKED",
-                "routing_note": (
-                    "C5 medical query gate: physical medical advice requires "
-                    "a licensed human doctor. WELL provides educational context only. "
-                    "See a real doctor for personal medical decisions."
-                ),
-            },
-            constitutional_compliance={
-                "F2_TRUTH": "educational context only, no personal advice",
-                "F9_ANTIHANTU": "zero qualia declared — I am a mirror, not a soul",
-                "W6_MEDICAL_BOUNDARY": "HOLD — operator must see human doctor",
-            },
+        return _to_federation_output(
+            _omega_well_output(
+                ok=True,
+                stage="555_DIGNITY",
+                lane="ASI",
+                mode="medical_query",
+                verdict="HOLD",  # medical queries always HOLD — never auto-SEAL
+                data={
+                    "medical_boundary": boundary,
+                    "educational_context": educational_context,
+                    "decision_class": actual_class,
+                    "f9_soul_contract": boundary.get("f9_soul_contract", {}),
+                    "route_verdict": "ADVISORY_BLOCKED",
+                    "routing_note": (
+                        "C5 medical query gate: physical medical advice requires "
+                        "a licensed human doctor. WELL provides educational context only. "
+                        "See a real doctor for personal medical decisions."
+                    ),
+                },
+                constitutional_compliance={
+                    "F2_TRUTH": "educational context only, no personal advice",
+                    "F9_ANTIHANTU": "zero qualia declared — I am a mirror, not a soul",
+                    "W6_MEDICAL_BOUNDARY": "HOLD — operator must see human doctor",
+                },
+            ),
+            tool_name="well_assess_homeostasis",
         )
 
     if mode == "fatigue":
@@ -12746,14 +12753,17 @@ def well_assess_homeostasis(
             except Exception:
                 pass
 
-        return _omega_well_output(
-            ok=status in ("OPTIMAL", "STABLE") and route_verdict == "PROCEED",
-            stage="666_HEART",
-            lane="ASI",
-            mode="fatigue",
-            verdict=verdict,
-            data=_data_payload,
-            constitutional_compliance={"W5_COGNITIVE_ENTROPY": status},
+        return _to_federation_output(
+            _omega_well_output(
+                ok=status in ("OPTIMAL", "STABLE") and route_verdict == "PROCEED",
+                stage="666_HEART",
+                lane="ASI",
+                mode="fatigue",
+                verdict=verdict,
+                data=_data_payload,
+                constitutional_compliance={"W5_COGNITIVE_ENTROPY": status},
+            ),
+            tool_name="well_assess_homeostasis",
         )
     return _to_federation_output(
         well_666_heart(
@@ -14737,7 +14747,6 @@ _WELL_SOMATIC_MANIFEST: list[dict[str, object]] = [
     {"name": "well_medical_boundary", "axis": "boundary", "expose": True},
     {"name": "well_system_registry_status", "axis": "identity", "expose": True},
     {"name": "well_registry_status", "axis": "identity", "expose": True},
-    {"name": "well_13_signal_coverage", "axis": "reflect", "expose": True},
     {"name": "well_handoff_dignity_to_arifos", "axis": "bridge", "expose": True},
     {"name": "well_handoff_livelihood_to_wealth", "axis": "bridge", "expose": True},
     {"name": "well_attest_to_kernel", "axis": "attest", "expose": True},
@@ -14797,7 +14806,7 @@ _WELL_AUTONOMIC_TOOLS: list[dict[str, object]] = [
     {"name": "well_decision_classify", "axis": "reason", "expose": False},
     {"name": "well_arifos_packet", "axis": "identity", "expose": False},
     {"name": "well_consent_status", "axis": "boundary", "expose": False},
-    {"name": "well_13_signal_coverage", "axis": "reflect", "expose": True},
+    {"name": "well_13_signal_coverage", "axis": "reflect", "expose": False},
     {"name": "well_pressure_ledger", "axis": "observe", "expose": False},
     {"name": "well_daily_brief", "axis": "reflect", "expose": False},
     {"name": "well_machine_state", "axis": "observe", "expose": False},
