@@ -11273,6 +11273,85 @@ if __name__ == "__main__":
     app.add_route("/api/build-info", build_info_handler, methods=["GET"])
     app.add_route("/tools", tools_handler, methods=["GET"])
 
+    # ── A2A Agent Card (Federation Discovery) ────────────────────────────
+    # FORGE 2026-06-28: /.well-known/agent.json for AAA A2A mesh discovery.
+
+    _WELL_AGENT_CARD = {
+        "schema": "agent-manifest/v1",
+        "name": "WELL — Human Substrate Vitality",
+        "description": (
+            "Universal substrate vitality mirror for arifOS federation. "
+            "Assesses biological metabolism, homeostasis, repair cycles, vitality, "
+            "livelihood, and dignity. Reflect-only — does not judge or decide."
+        ),
+        "version": "2026.06.05",
+        "url": "https://well.arif-fazil.com",
+        "endpoints": {
+            "mcp": "https://well.arif-fazil.com/mcp",
+            "health": "https://well.arif-fazil.com/health",
+            "tools": "https://well.arif-fazil.com/tools",
+        },
+        "authority_class": "evidence",
+        "allowed_action_classes": ["OBSERVE"],
+        "max_risk_tier": "T1",
+        "auth": {"type": "none"},
+        "federation": {
+            "protocol": "A2A",
+            "peer_coordinator": "https://aaa.arif-fazil.com",
+            "constitutional_kernel": "https://arifos.arif-fazil.com",
+        },
+        "owned_mcp": {
+            "server": "well-mcp",
+            "transport": "streamable-http",
+            "tool_count": 18,
+            "canonical_tools": [
+                "well_assess_homeostasis",
+                "well_assess_metabolism",
+                "well_assess_livelihood",
+                "well_assess_reliability",
+                "well_validate_vitality",
+                "well_guard_dignity",
+                "well_classify_substrate",
+                "well_detect_boundary",
+                "well_measure_gradient",
+                "well_compute_metabolic_flux",
+                "well_assess_sovereign_entropy",
+                "well_trace_lineage",
+                "well_check_repair",
+                "well_signal_coverage",
+                "well_health_check",
+                "well_registry_status",
+                "well_system_registry_status",
+                "well_medical_boundary",
+            ],
+        },
+        "skills": [
+            {
+                "id": "substrate.classify",
+                "name": "Substrate Classification",
+                "tags": ["h-well", "m-well", "g-well"],
+            },
+            {
+                "id": "vitality.assess",
+                "name": "Vitality Assessment",
+                "tags": ["metabolism", "homeostasis", "repair"],
+            },
+            {
+                "id": "dignity.guard",
+                "name": "Dignity Guard",
+                "tags": ["dignity", "sovereignty", "boundary"],
+            },
+        ],
+    }
+
+    async def _well_agent_card_handler(request):
+        return JSONResponse(_WELL_AGENT_CARD)
+
+    app.add_route("/.well-known/agent.json", _well_agent_card_handler, methods=["GET"])
+    app.add_route(
+        "/.well-known/agent-card.json", _well_agent_card_handler, methods=["GET"]
+    )
+
     # Server start moved to end of file so canonical tools are registered before uvicorn blocks
 # ═══════════════════════════════════════════════════════════════════════════════
 # M-WELL Realtime Telemetry Ingestion
@@ -15353,6 +15432,37 @@ if __name__ == "__main__":
     app.add_route("/ready", _well_ready_handler, methods=["POST"])
     app.add_route("/tools", _well_tools_handler, methods=["GET"])
     app.add_route("/api/build-info", _well_build_info_handler, methods=["GET"])
+
+    # ── A2A Agent Card (Federation Discovery) — FORGE 2026-06-28 ─────────────
+    _WELL_A2A_CARD = {
+        "schema": "agent-manifest/v1",
+        "name": "WELL — Human Substrate Vitality",
+        "description": (
+            "Universal substrate vitality mirror for arifOS federation. "
+            "Reflect-only — does not judge or decide."
+        ),
+        "version": "2026.06.05",
+        "url": "https://well.arif-fazil.com",
+        "endpoints": {
+            "mcp": "https://well.arif-fazil.com/mcp",
+            "health": "https://well.arif-fazil.com/health",
+        },
+        "authority_class": "evidence",
+        "allowed_action_classes": ["OBSERVE"],
+        "max_risk_tier": "T1",
+        "auth": {"type": "none"},
+        "federation": {
+            "protocol": "A2A",
+            "peer_coordinator": "https://aaa.arif-fazil.com",
+        },
+        "owned_mcp": {"server": "well-mcp", "tool_count": 18},
+    }
+
+    async def _well_a2a_card(request):
+        return JSONResponse(_WELL_A2A_CARD)
+
+    app.add_route("/.well-known/agent.json", _well_a2a_card, methods=["GET"])
+    app.add_route("/.well-known/agent-card.json", _well_a2a_card, methods=["GET"])
     app.add_middleware(OriginValidationMiddleware)
     logger.info("WELL MCP server starting on %s:%d", host, port)
     uvicorn.run(
