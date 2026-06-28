@@ -1812,12 +1812,19 @@ def _ensure_well_identity(state: dict[str, Any]) -> dict[str, Any]:
 
     If the state carries the correct identity/role/authority but is missing
     the numeric/spiritual invariants (e.g. written by an older telemetry
-    writer), inject the safe defaults. This is resilience, not corruption —
-    the organ ID is what matters. Mark injection for audit transparency.
+    writer), inject the safe defaults. If a state is clearly a WELL substrate
+    snapshot (has well_score / metrics / w0) but lacks identity fields,
+    migrate it gently rather than declaring identity failure. Mark injection
+    for audit transparency.
     """
     identity = state.get("identity")
     role = state.get("role")
     authority = state.get("authority")
+    is_well_shape = (
+        isinstance(state.get("metrics"), dict)
+        and ("well_score" in state or "w0" in state)
+        and "operator_id" in state
+    )
     if (
         identity == "WELL"
         and role
@@ -1828,17 +1835,27 @@ def _ensure_well_identity(state: dict[str, Any]) -> dict[str, Any]:
         ]
         and authority == "REFLECT_ONLY"
     ):
-        defaults = {
-            "delta_s": 0.0,
-            "peace2": 1.0,
-            "kappa_r": 0.95,
-            "rasa": True,
-            "amanah": "LOCK",
-        }
-        for key, value in defaults.items():
-            if key not in state:
-                state[key] = value
-                state.setdefault("_identity_defaults_injected", []).append(key)
+        pass
+    elif identity is None and is_well_shape:
+        # Migration path: WELL substrate snapshot written without identity invariants
+        state["identity"] = "WELL"
+        state["role"] = "Body / Human Intelligence"
+        state["authority"] = "REFLECT_ONLY"
+        state.setdefault("_identity_migrated", True)
+    else:
+        return state
+
+    defaults = {
+        "delta_s": 0.0,
+        "peace2": 1.0,
+        "kappa_r": 0.95,
+        "rasa": True,
+        "amanah": "LOCK",
+    }
+    for key, value in defaults.items():
+        if key not in state:
+            state[key] = value
+            state.setdefault("_identity_defaults_injected", []).append(key)
     return state
 
 
