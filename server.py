@@ -14154,10 +14154,14 @@ def well_validate_consensus(
     )
 
 
-# internal — not MCP-facing (collapsed 2026-05-26)
-@mcp.tool()
+# DEPRECATED 2026-06-28 — use well_registry_status (blueprint canonical format) instead.
+# Internal function kept for programmatic use. MCP registration removed.
 def well_system_registry_status() -> dict[str, Any]:
     """WELL registry truth probe — somatic surface vs autonomic internals.
+
+    DEPRECATED: Use well_registry_status (blueprint canonical format) instead.
+    This function is kept for internal programmatic use but is no longer
+    exposed as an MCP tool.
 
     Returns which tools are publicly callable, which are autonomic (intentionally
     hidden), and canonical alias mappings. Use this before assuming any WELL tool
@@ -14425,10 +14429,10 @@ def well_registry_status() -> dict[str, Any]:
         "canonical_callable": canonical_callable,
         "alias_conflicts": alias_conflicts,
         "verdict": verdict,
-        "well_system_registry_status": "well_system_registry_status",
+        "well_system_registry_status": "DEPRECATED — use well_registry_status",
         "registry_note": (
             "Static registration check against SOMATIC_TOOLS. "
-            "Use well_system_registry_status for live federation probe."
+            "Use well_registry_status for registry diagnostics."
         ),
         "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
         "boundary_notice": WELL_BOUNDARY_NOTICE,
@@ -14836,7 +14840,6 @@ SOMATIC_TOOLS = {
     "well_guard_dignity",
     "well_medical_boundary",
     "well_13_signal_coverage",
-    "well_system_registry_status",
     "well_registry_status",
     # F-Ω Federation Handoff Adapters — forged 2026-06-17
     # See FEDERATION_HOOKS.md for the canonical contract.
@@ -14847,7 +14850,8 @@ SOMATIC_TOOLS = {
     # Forged 2026-06-25. Deterministic rule-based Polyvagal + SDT + contradiction.
     "well_classify_state",  # State Classifier → federation surface
 }
-# NOTE: well_system_registry_status and well_registry_status are internal
+# NOTE: well_registry_status is the canonical blueprint format tool.
+# well_system_registry_status is deprecated (internal only, no MCP registration).
 # diagnostic tools (no @mcp.tool decorator). Not part of public MCP surface.
 
 # MCP Spec 2025-11-25 tool annotations (SEP-1862/1913/1984/2417)
@@ -15103,7 +15107,12 @@ _WELL_SOMATIC_MANIFEST: list[dict[str, object]] = [
     {"name": "well_assess_sovereign_entropy", "axis": "vitality", "expose": True},
     {"name": "well_guard_dignity", "axis": "critique", "expose": True},
     {"name": "well_medical_boundary", "axis": "boundary", "expose": True},
-    {"name": "well_system_registry_status", "axis": "identity", "expose": True},
+    {
+        "name": "well_system_registry_status",
+        "axis": "identity",
+        "expose": False,
+        "note": "DEPRECATED — use well_registry_status",
+    },
     {"name": "well_registry_status", "axis": "identity", "expose": True},
     {"name": "well_signal_coverage", "axis": "reflect", "expose": True},
     {"name": "well_handoff_dignity_to_arifos", "axis": "bridge", "expose": True},
