@@ -4547,6 +4547,107 @@ def well_daily_brief(ctx: Context | None = None) -> dict[str, Any]:
 
 
 # ══════════════════════════════════════════════════════════════════════════════
+# well_readiness — ZEN SINGLE VERDICT
+# One pipe in, one verdict out. No overlap with 17 somatic tools.
+# ══════════════════════════════════════════════════════════════════════════════
+
+TTL_FRESH = 12    # hours — GREEN
+TTL_WARN = 24     # hours — YELLOW
+TTL_STALE = 48    # hours — RED/STALE
+
+
+@mcp.tool()
+def well_readiness() -> dict[str, Any]:
+    """
+    ZEN: Single readiness verdict. One tool, one answer.
+    
+    Returns:
+      - color: GREEN | YELLOW | RED | STALE
+      - score: 0-100
+      - ttl_hours: hours since last data
+      - action: PROCEED | SIMPLIFY | HOLD | INJECT_NEEDED
+      - biometric: key signals (peace2, delta_s, kappa_r, rasa, clarity, sleep)
+    
+    TTL rules:
+      < 12h  = GREEN (if score OK)
+      12-24h = YELLOW
+      24-48h = RED
+      > 48h  = STALE → INJECT_NEEDED
+    
+    Use this for quick federation checks. Use well_validate_vitality for full assessment.
+    """
+    state = _load_state()
+    score = _state_score(state) or 0
+    
+    # Compute TTL
+    ts_str = state.get("last_successful_read") or state.get("signals_meta", {}).get("injection_ts")
+    ttl_hours = 999.0
+    if ts_str:
+        try:
+            ts = datetime.datetime.fromisoformat(ts_str.replace("Z", "+00:00"))
+            now = datetime.datetime.now(datetime.timezone.utc)
+            ttl_hours = max(0, (now - ts).total_seconds() / 3600)
+        except (ValueError, TypeError):
+            pass
+    
+    # Classify
+    if ttl_hours > TTL_STALE:
+        color, action = "STALE", "INJECT_NEEDED"
+    elif ttl_hours > TTL_WARN:
+        color, action = "RED", "HOLD"
+    elif ttl_hours > TTL_FRESH:
+        color, action = "YELLOW", "SIMPLIFY"
+    elif score >= 75:
+        color, action = "GREEN", "PROCEED"
+    elif score >= 50:
+        color, action = "YELLOW", "SIMPLIFY"
+    else:
+        color, action = "RED", "HOLD"
+    
+    # Build reason
+    reasons = []
+    if color == "STALE":
+        reasons.append(f"No data for {ttl_hours:.0f}h")
+    elif color == "RED":
+        reasons.append(f"Data is {ttl_hours:.0f}h old")
+    elif color == "YELLOW":
+        reasons.append(f"Data aging ({ttl_hours:.0f}h)")
+    else:
+        reasons.append(f"Fresh ({ttl_hours:.1f}h)")
+    
+    if score < 50:
+        reasons.append(f"low score ({score:.0f})")
+    elif score < 75:
+        reasons.append(f"moderate score ({score:.0f})")
+    
+    # Extract biometric signals
+    bio = state.get("biometric", {})
+    signals = state.get("signals", {})
+    sleep = signals.get("s05_sleep_architecture", {})
+    
+    return {
+        "ok": True,
+        "color": color,
+        "score": round(score, 1),
+        "ttl_hours": round(ttl_hours, 1),
+        "action": action,
+        "reason": " | ".join(reasons),
+        "biometric": {
+            "peace2": bio.get("peace2"),
+            "delta_s": bio.get("delta_s"),
+            "kappa_r": bio.get("kappa_r"),
+            "rasa": bio.get("rasa"),
+            "clarity": state.get("metrics", {}).get("cognitive", {}).get("clarity"),
+            "sleep_hours": sleep.get("hours"),
+        },
+        "freshness": state.get("freshness", "UNKNOWN"),
+        "confidence": state.get("confidence", "UNKNOWN"),
+        "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
+    }
+
+
+
+# ══════════════════════════════════════════════════════════════════════════════
 # M-WELL — Machine Substrate
 # Tracks tool/system health, model reliability, context integrity, compute limits
 # Purpose: Is the Instrument technically reliable enough for this task?
@@ -14885,6 +14986,7 @@ SOMATIC_TOOLS = {
     # Human State Classifier — Phase 1 + Phase 3
     # Forged 2026-06-25. Deterministic rule-based Polyvagal + SDT + contradiction.
     "well_classify_state",  # State Classifier → federation surface
+    "well_readiness",  # ZEN: single verdict — color/score/TTL/action
 }
 # NOTE: well_registry_status is the canonical blueprint format tool.
 # well_system_registry_status is deprecated (internal only, no MCP registration).
