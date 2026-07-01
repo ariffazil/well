@@ -15,14 +15,12 @@
 > **WELL is the human readiness organ of the arifOS federation.**
 > It observes. It reflects. It warns. It never decides.
 >
-> 17 canonical somatic MCP tools. REFLECT-ONLY authority. Integrated public frontdoor: `https://mcp.arif-fazil.com/mcp`
+> 21 canonical somatic MCP tools. REFLECT-ONLY authority. Integrated public frontdoor: `https://mcp.arif-fazil.com/mcp`
 
-[![FastMCP](https://img.shields.io/badge/FastMCP-3.3.1-8b5cf6?logo=python&logoColor=white)](server.py)
-[![Python](https://img.shields.io/badge/python-3.12+-3776AB?logo=python&logoColor=white)](server.py)
-[![Tools](https://img.shields.io/badge/tools-17-10b981)](server.py)
-[![Port](https://img.shields.io/badge/port-18083-64748b)](server.py)
-[![License](https://img.shields.io/badge/license-AGPL--3.0-06b6d4)](LICENSE)
-[![Authority](https://img.shields.io/badge/authority-REFLECT__ONLY-f97316)](GENESIS/004_WELL_13_CANON.md)
+[![Agentic CI](https://github.com/ariffazil/well/actions/workflows/agentic-ci.yml/badge.svg?branch=main)](https://github.com/ariffazil/well/actions/workflows/agentic-ci.yml)
+[![Governance Gate](https://github.com/ariffazil/well/actions/workflows/governance-gate.yml/badge.svg?branch=main)](https://github.com/ariffazil/well/actions/workflows/governance-gate.yml)
+[![Build Validation](https://github.com/ariffazil/well/actions/workflows/publish-image.yml/badge.svg?branch=main)](https://github.com/ariffazil/well/actions/workflows/publish-image.yml)
+[![License](https://img.shields.io/github/license/ariffazil/well?label=License)](LICENSE)
 
 <!-- SOT-MANIFEST
 owner: Arif
@@ -185,7 +183,7 @@ Expected response:
 
 ## 3. Full Capability Map
 
-WELL's 17 canonical somatic tools operate across four substrate domains. Each domain answers a different question about the human-machine system.
+WELL's 21 canonical somatic tools operate across four substrate domains. Each domain answers a different question about the human-machine system.
 
 ### 3.1 H-WELL — Human Substrate (5 tools)
 
@@ -356,7 +354,7 @@ All 13 constitutional floors (F1-F13) are defined in [`arifOS/static/arifos/theo
 WELL/
 │
 ├── server.py                  # FastMCP server (~13,800 lines)
-│   │                          # 17 somatic tools (13 public + 4 autonomic)
+│   │                          # 21 somatic tools (canonical WELL surface)
 │   │                          # dual transport: HTTP (port 18083) + stdio
 │   │                          # SOMATIC_TOOLS boundary enforcement at startup
 │   │
