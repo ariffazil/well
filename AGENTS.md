@@ -25,7 +25,7 @@ Arif. This is the **WELL** organ of the arifOS federation — Substrate Vitality
 
 The human-system readiness mirror. WELL assesses biological metabolism, homeostasis, repair cycles, vitality, livelihood, and dignity across human, machine, and coupled substrates.
 
-**17 somatic MCP tools** (canonical). FastMCP server (~13,839 lines, 51 decorated helpers).
+**22 somatic MCP tools** (canonical). FastMCP server (~15,755 lines, 72 decorated helpers).
 Running at `https://well.arif-fazil.com/mcp` via bare-metal systemd.
 
 | Substrate | Tools | Purpose |
@@ -70,7 +70,7 @@ python test_well.py
 
 | File | Purpose |
 |------|---------|
-| `server.py` | FastMCP server (~14,072 lines, 17 somatic tools) |
+| `server.py` | FastMCP server (~15,755 lines, 22 somatic tools) |
 | `vault_bridge.py` | VAULT999 append-only ledger client |
 | `gate/well_gate.py` | Pre-JUDGE biological readiness mirror |
 | `gate/dignity_shadow.py` | Dignity shadow scoring |

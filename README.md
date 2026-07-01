@@ -15,7 +15,7 @@
 > **WELL is the human readiness organ of the arifOS federation.**
 > It observes. It reflects. It warns. It never decides.
 >
-> 21 canonical somatic MCP tools. REFLECT-ONLY authority. Integrated public frontdoor: `https://mcp.arif-fazil.com/mcp`
+> 22 canonical somatic MCP tools. REFLECT-ONLY authority. Integrated public frontdoor: `https://mcp.arif-fazil.com/mcp`
 
 [![Agentic CI](https://github.com/ariffazil/well/actions/workflows/agentic-ci.yml/badge.svg?branch=main)](https://github.com/ariffazil/well/actions/workflows/agentic-ci.yml)
 [![Governance Gate](https://github.com/ariffazil/well/actions/workflows/governance-gate.yml/badge.svg?branch=main)](https://github.com/ariffazil/well/actions/workflows/governance-gate.yml)
@@ -140,9 +140,9 @@ Expected response:
   "status": "healthy",
   "organ": "WELL",
   "port": 18083,
-  "tools_loaded": 17,
+  "tool_count": 22,
   "authority": "REFLECT_ONLY",
-  "truth_status": "EXPIRED",
+  "truth_status": "VERIFIED",
   "federation_geometry": {
     "source": "arifOS:8088/mcp",
     "verdict": "OK"
@@ -183,7 +183,7 @@ Expected response:
 
 ## 3. Full Capability Map
 
-WELL's 21 canonical somatic tools operate across four substrate domains. Each domain answers a different question about the human-machine system.
+WELL's 22 canonical somatic tools operate across four substrate domains, plus federation handoff, ZEN, and diagnostic helpers. Each domain answers a different question about the human-machine system.
 
 ### 3.1 H-WELL — Human Substrate (5 tools)
 
@@ -226,16 +226,21 @@ WELL's 21 canonical somatic tools operate across four substrate domains. Each do
 | 12 | `well_classify_substrate` | Substrate classification and boundary sensing | Human / AI / Coupled / Institution |
 | 13 | `well_detect_boundary` | Membrane, body, machine, federation boundary detection | Boundary breach, overreach, persona drift |
 
-### 3.5 Autonomic Tools (not on public MCP surface)
+### 3.5 Federation, ZEN, and Diagnostic Tools
 
-These tools run internally — useful for diagnostics but not exposed as public MCP actions:
+These tools bridge WELL to the federation, expose internal diagnostics, or provide single-verdict ZEN surfaces:
 
 | # | Tool | Purpose |
 |---|------|---------|
-| 14 | `well_system_registry_status` | Internal tool surface audit |
-| 15 | `well_registry_status` | Registry truth diagnostic |
+| 14 | `well_medical_boundary` | Explicit non-diagnosis guard with F9 Soul Contract |
+| 15 | `well_health_check` | Canonical health probe (legacy `mcp_health_check` removed 2026-06-28) |
 | 16 | `well_13_signal_coverage` | Audit of 13 canonical signal coverage |
-| 17 | `mcp_health_check` | DEPRECATED alias → `well_assess_reliability(mode="health")` |
+| 17 | `well_registry_status` | Registry truth diagnostic (blueprint canonical format) |
+| 18 | `well_handoff_dignity_to_arifos` | S12 → arifOS 888_JUDGE dignity handoff |
+| 19 | `well_handoff_livelihood_to_wealth` | S13 → WEALTH livelihood handoff |
+| 20 | `well_attest_to_kernel` | WELL → arifOS organ attest |
+| 21 | `well_classify_state` | Human state classifier (Phase 1 + Phase 3) |
+| 22 | `well_readiness` | ZEN single verdict — color/score/TTL/action |
 
 ### 3.6 The 13-Signal Substrate Map
 
@@ -353,8 +358,8 @@ All 13 constitutional floors (F1-F13) are defined in [`arifOS/static/arifos/theo
 ```
 WELL/
 │
-├── server.py                  # FastMCP server (~13,800 lines)
-│   │                          # 21 somatic tools (canonical WELL surface)
+├── server.py                  # FastMCP server (~15,755 lines)
+│   │                          # 22 somatic tools (canonical WELL surface)
 │   │                          # dual transport: HTTP (port 18083) + stdio
 │   │                          # SOMATIC_TOOLS boundary enforcement at startup
 │   │
@@ -433,9 +438,9 @@ WELL is your mirror — not your coach, not your doctor, not your judge. It refl
 | `kappa_r` | 0.0–1.0 | Resilience. 0.0 = brittle, anything will break you. 1.0 = highly resilient. |
 | `malu_index` | 0.0–1.0 | Accumulated shame signal. > 0.85 = HOLD trigger. |
 
-### Biometric State — Currently EXPIRED
+### Biometric State — Currently VERIFIED
 
-Your `state.json` is stale (last updated 2026-04-30, test mock data). WELL will show `truth_status=EXPIRED` until you inject real values.
+Your `state.json` was last updated 2026-07-01 and is fresh. WELL currently reports `truth_status=VERIFIED`.
 
 **To fix (2 minutes, sovereign only):**
 
@@ -653,7 +658,7 @@ python -m pytest tests/ -q --tb=short
 curl -s http://127.0.0.1:18083/health | python3 -m json.tool
 
 # 3. Confirm invariants
-#    - tools_loaded: 17
+#    - tool_count: 22
 #    - authority: REFLECT_ONLY
 #    - SOMATIC_TOOLS boundary enforced
 #    - tool_count matches GENESIS/004 canon

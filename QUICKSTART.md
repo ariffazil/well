@@ -6,7 +6,7 @@
 
 ## What You'll Have
 
-A running FastMCP server on `http://localhost:18083` exposing 45 readiness-assessment tools.
+A running FastMCP server on `http://localhost:18083` exposing 22 readiness-assessment tools.
 
 ## Prerequisites
 

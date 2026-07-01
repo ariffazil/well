@@ -3,8 +3,8 @@
   "version": "2026.06.30",
   "protocolVersion": "2025-11-25",
   "name": "WELL MCP",
-  "description": "Human readiness — 17 somatic tools. Substrate vitality mirror. W0 Sovereignty: WELL holds a mirror, not a veto.",
-  "tools": 17,
+  "description": "Human readiness — 22 somatic tools. Substrate vitality mirror. W0 Sovereignty: WELL holds a mirror, not a veto.",
+  "tools": 22,
   "endpoint": "https://well.arif-fazil.com/mcp",
   "identity": {
     "canonical_name": "WELL",
@@ -29,10 +29,15 @@
     "well_assess_livelihood",
     "well_assess_reliability",
     "well_compute_metabolic_flux",
+    "well_assess_sovereign_entropy",
     "well_guard_dignity",
-    "well_classify_state",
     "well_medical_boundary",
-    "well_signal_coverage",
-    "well_registry_status"
+    "well_13_signal_coverage",
+    "well_registry_status",
+    "well_handoff_dignity_to_arifos",
+    "well_handoff_livelihood_to_wealth",
+    "well_attest_to_kernel",
+    "well_classify_state",
+    "well_readiness"
   ]
 }

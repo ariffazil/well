@@ -1,8 +1,8 @@
 <!-- SOT-MANIFEST
 owner: Arif
-last_verified: 2026-06-24
+last_verified: 2026-07-01
 valid_from: 2026-06-24
-valid_until: 2026-07-24
+valid_until: 2026-07-31
 confidence: high
 scope: /root/WELL
 -->
@@ -64,7 +64,7 @@ WELL is the **Vitality Guard** organ. It reads human readiness signals (sleep, f
 
 - **HTTP/SSE:** `https://well.arif-fazil.com/mcp`
 - **stdio:** `python server.py --transport stdio`
-- **Canonical tools:** FastMCP vitality/readiness tools
+- **Canonical tools:** 22 FastMCP vitality/readiness tools
 
 ---
 

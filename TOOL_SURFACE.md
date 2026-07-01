@@ -2,7 +2,7 @@
 > **Canonical Source:** `ariffazil/well`
 > **Authority:** WELL organ, governed by `ariffazil/arifOS`
 > **Purpose:** Document the live public MCP surface and its invariants
-> **Status:** OPERATIONAL | 17 somatic tools
+> **Status:** OPERATIONAL | 22 somatic tools
 
 ---
 
@@ -10,24 +10,24 @@
 
 **Production endpoint:** `https://well.arif-fazil.com/mcp`
 **Transport:** `streamable-http` (MCP protocol)
-**Live tool count:** 17 somatic (15 public MCP + 2 internal diagnostics stripped at runtime)
+**Live tool count:** 22 somatic
 **Health endpoint:** `https://well.arif-fazil.com/health`
 
 ### Invariant
 
 ```
-/health tool_count (17) = canonical WELL somatic set (17)
+/health tool_count (22) = canonical WELL somatic set (22)
 ```
 
 This invariant is enforced at startup by `_enforce_somatic_boundary()` in `server.py`. Any `@mcp.tool` not in the canonical somatic set is removed before the server begins accepting connections.
 
 ---
 
-## Canonical SOMATIC_TOOLS Set (17)
+## Canonical SOMATIC_TOOLS Set (22)
 
 | # | Tool | Class | Note |
 |---|------|-------|------|
-| 1 | `mcp_health_check` | `DEPRECATED_ALIAS` | Delegates to `well_assess_reliability(mode="health")`. Retained for backward compatibility. |
+| 1 | `well_health_check` | `CANONICAL_PUBLIC` | Canonical health probe. Legacy `mcp_health_check` alias removed 2026-06-28. |
 | 2 | `well_classify_substrate` | `CANONICAL_PUBLIC` | Substrate classification and boundary sensing. |
 | 3 | `well_trace_lineage` | `CANONICAL_PUBLIC` | Memory, trend, ledger, and vault chain tracing. |
 | 4 | `well_detect_boundary` | `CANONICAL_PUBLIC` | Boundary detection across membrane, body, machine, and federation. |
@@ -42,20 +42,26 @@ This invariant is enforced at startup by `_enforce_somatic_boundary()` in `serve
 | 13 | `well_assess_sovereign_entropy` | `CANONICAL_PUBLIC` | Measure sovereign unpredictability / extraction resistance. |
 | 14 | `well_guard_dignity` | `CANONICAL_PUBLIC` | Guard soul, personhood, meaning, and symbolic boundaries. |
 | 15 | `well_medical_boundary` | `CANONICAL_PUBLIC` | Explicit non-diagnosis guard with F9 Soul Contract. |
-| 16 | `well_system_registry_status` | `INTERNAL_DIAGNOSTIC` | Registry truth diagnostic (stripped from public surface). |
-| 17 | `well_registry_status` | `INTERNAL_DIAGNOSTIC` | Internal tool surface audit (stripped from public surface). |
+| 16 | `well_13_signal_coverage` | `CANONICAL_PUBLIC` | Audit of 13 canonical signal coverage. |
+| 17 | `well_registry_status` | `CANONICAL_PUBLIC` | Registry truth diagnostic (blueprint canonical format). |
+| 18 | `well_handoff_dignity_to_arifos` | `CANONICAL_PUBLIC` | S12 → arifOS 888_JUDGE dignity handoff. |
+| 19 | `well_handoff_livelihood_to_wealth` | `CANONICAL_PUBLIC` | S13 → WEALTH livelihood handoff. |
+| 20 | `well_attest_to_kernel` | `CANONICAL_PUBLIC` | WELL → arifOS organ attest. |
+| 21 | `well_classify_state` | `CANONICAL_PUBLIC` | Human state classifier (Phase 1 + Phase 3). |
+| 22 | `well_readiness` | `CANONICAL_PUBLIC` | ZEN single verdict — color/score/TTL/action. |
 
 ---
 
-## Public MCP Surface (15)
+## Public MCP Surface (22)
 
-The two `INTERNAL_DIAGNOSTIC` tools above are removed by the somatic boundary, leaving **15 tools** on the public MCP surface.
+All 22 tools in the canonical somatic set are exposed on the public MCP surface. No diagnostics are stripped at runtime.
 
 ---
 
 ## Deprecation Notes
 
-- `mcp_health_check` — deprecated alias. Use `well_assess_reliability(mode="health")` directly.
+- `mcp_health_check` — removed 2026-06-28. Use `well_health_check` or `well_assess_reliability(mode="health")` directly.
+- `well_system_registry_status` — deprecated. Use `well_registry_status` (blueprint canonical format).
 - No stage aliases (`well_NNN_*`) on the public MCP surface — stripped at startup.
 - `well_reflect_intelligence` and `well_anchor_evidence` were removed from the public surface per orthogonal MCP alignment (2026-05-14).
 
@@ -65,10 +71,10 @@ The two `INTERNAL_DIAGNOSTIC` tools above are removed by the somatic boundary, l
 
 | Metric | Count |
 |--------|-------|
-| Total `@mcp.tool` decorators in source | 61 |
-| Canonical somatic set | 17 |
-| Public MCP surface (boundary enforced) | 15 |
-| Internal / autonomic helpers and aliases | 44 |
+| Total `@mcp.tool` decorators in source | 72 |
+| Canonical somatic set | 22 |
+| Public MCP surface (boundary enforced) | 22 |
+| Internal / autonomic helpers and aliases | 50 |
 
 ---
 
@@ -76,7 +82,7 @@ The two `INTERNAL_DIAGNOSTIC` tools above are removed by the somatic boundary, l
 
 The following remain internal-only (no public exposure):
 
-- `well_system_registry_status` / `well_registry_status` — internal diagnostics
+- `well_system_registry_status` — deprecated internal diagnostic
 - All `well_NNN_*` stage aliases (000–999) — stripped by somatic boundary
 - All legacy helpers not in the canonical somatic set — stripped by somatic boundary
 
@@ -88,8 +94,8 @@ The following remain internal-only (no public exposure):
 |-------|-----------|----------|
 | `well_contrast_report` | `well_state(include="trend")` | ✅ 2026-05-26 |
 | `well_fatigue_accumulator(mode="check")` | `well_assess_homeostasis(mode="fatigue")` | ✅ 2026-05-26 |
-| `mcp_health_check` | `well_assess_reliability(mode="health")` | ✅ 2026-05-26 |
+| `mcp_health_check` | `well_health_check` / `well_assess_reliability(mode="health")` | ✅ 2026-06-28 |
 
 ---
 
-*Last Updated: 2026-06-14 | DITEMPA BUKAN DIBERI*
+*Last Updated: 2026-07-01 | DITEMPA BUKAN DIBERI*

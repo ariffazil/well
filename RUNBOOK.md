@@ -1,8 +1,8 @@
 # RUNBOOK.md — WELL (Human Readiness)
 
 > **Organ:** WELL | **Port:** 18083
-> **Last Updated:** 2026-06-21
-> **Tools:** 21 somatic | **Server:** `server.py` (~14K lines)
+> **Last Updated:** 2026-07-01
+> **Tools:** 22 somatic | **Server:** `server.py` (~15,755 lines)
 
 ## Start / Stop
 ```bash
