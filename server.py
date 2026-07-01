@@ -15253,6 +15253,7 @@ _WELL_SOMATIC_MANIFEST: list[dict[str, object]] = [
     },
     {"name": "well_registry_status", "axis": "identity", "expose": True},
     {"name": "well_signal_coverage", "axis": "reflect", "expose": True},
+    {"name": "well_readiness", "axis": "judge", "expose": True},
     {"name": "well_handoff_dignity_to_arifos", "axis": "bridge", "expose": True},
     {"name": "well_handoff_livelihood_to_wealth", "axis": "bridge", "expose": True},
     {"name": "well_attest_to_kernel", "axis": "attest", "expose": True},
@@ -15386,7 +15387,12 @@ def _enforce_somatic_boundary(mcp_server: FastMCP) -> None:
         return
     removed: list[str] = []
     somatic_count = 0
-    for key in list(getattr(provider, "_components", {}).keys()):
+    _all_keys = list(getattr(provider, "_components", {}).keys())
+    _tool_keys = [k for k in _all_keys if k.startswith("tool:")]
+    for key in _all_keys:
+        if not key.startswith("tool:"):
+            continue
+        _tn = key[5:].rstrip("@v")
         if not key.startswith("tool:"):
             continue
         tool_name = key[5:].rstrip("@v")
@@ -15394,13 +15400,18 @@ def _enforce_somatic_boundary(mcp_server: FastMCP) -> None:
             from federation.tool_manifest import is_tool_somatic as _its
 
             visible = _its(tool_name)
+            if visible:
+                print(f"BOUNDARY KEEP (federation): {tool_name}", flush=True)
         except Exception:
             visible = tool_name in SOMATIC_TOOLS
+            if visible:
+                print(f"BOUNDARY KEEP (somatic): {tool_name}", flush=True)
         if not visible:
             try:
                 mcp_server.remove_tool(tool_name)
                 removed.append(tool_name)
-            except Exception:
+            except Exception as e:
+                print(f"BOUNDARY REMOVE FAILED: {tool_name} — {type(e).__name__}: {e}", flush=True)
                 pass
         else:
             somatic_count += 1
