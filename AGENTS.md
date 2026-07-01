@@ -84,6 +84,23 @@ python test_well.py
 
 WELL remains local-only for biometrics data isolation (F6 MARUAH / REFLECT_ONLY boundary). It does not use `supabase-py` and does not persist to the cloud. All metrics reside strictly on local disk within `state.json` and `events.jsonl`. For details, see [ADR_WELL_PERSISTENCE_LOCAL_20260621.md](file:///root/arifOS/adr/ADR_WELL_PERSISTENCE_LOCAL_20260621.md).
 
+## 🎭 Pain Detection Beneath Humour (FORGED 2026-07-01)
+
+> **Canonical skill:** `agent-humour-doctrine` (Hermes)
+
+WELL detects distress signals that may be disguised as humour:
+
+- Self-directed jokes ("I'm so stupid") may indicate low self-worth
+- "Aku nak campak laptop ni" may carry real frustration
+- Repeated dark humour may signal burnout or depression
+- "Just joking" after vulnerable statements may be emotional withdrawal
+
+Use `well_guard_dignity` when humour patterns suggest distress. Use `well_assess_homeostasis` to check fatigue/stress state when dark humour appears.
+
+**The rule:** Answer the pain, not the joke.
+
+---
+
 ## Federation Position
 
 ```
