@@ -37,3 +37,6 @@ well_autosleeper.py
 # Scratch
 scratch/
 
+
+# GitHub Copilot workspace — not VPS-aware, do not commit
+Copilot/
