@@ -2665,6 +2665,8 @@ def well_log(
         "human_decision_required": r_score["human_decision_required"],
         "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
     }
+
+
 def well_contrast_report(
     lookback_days: int = 14,
     ctx: Context | None = None,
@@ -4475,36 +4477,38 @@ def well_daily_brief(ctx: Context | None = None) -> dict[str, Any]:
 # One pipe in, one verdict out. No overlap with 17 somatic tools.
 # ══════════════════════════════════════════════════════════════════════════════
 
-TTL_FRESH = 12    # hours — GREEN
-TTL_WARN = 24     # hours — YELLOW
-TTL_STALE = 48    # hours — RED/STALE
+TTL_FRESH = 12  # hours — GREEN
+TTL_WARN = 24  # hours — YELLOW
+TTL_STALE = 48  # hours — RED/STALE
 
 
 @mcp.tool()
 def well_readiness() -> dict[str, Any]:
     """
     ZEN: Single readiness verdict. One tool, one answer.
-    
+
     Returns:
       - color: GREEN | YELLOW | RED | STALE
       - score: 0-100
       - ttl_hours: hours since last data
       - action: PROCEED | SIMPLIFY | HOLD | INJECT_NEEDED
       - biometric: key signals (peace2, delta_s, kappa_r, rasa, clarity, sleep)
-    
+
     TTL rules:
       < 12h  = GREEN (if score OK)
       12-24h = YELLOW
       24-48h = RED
       > 48h  = STALE → INJECT_NEEDED
-    
+
     Use this for quick federation checks. Use well_validate_vitality for full assessment.
     """
     state = _load_state()
     score = _state_score(state) or 0
-    
+
     # Compute TTL
-    ts_str = state.get("last_successful_read") or state.get("signals_meta", {}).get("injection_ts")
+    ts_str = state.get("last_successful_read") or state.get("signals_meta", {}).get(
+        "injection_ts"
+    )
     ttl_hours = 999.0
     if ts_str:
         try:
@@ -4513,7 +4517,7 @@ def well_readiness() -> dict[str, Any]:
             ttl_hours = max(0, (now - ts).total_seconds() / 3600)
         except (ValueError, TypeError):
             pass
-    
+
     # Classify
     if ttl_hours > TTL_STALE:
         color, action = "STALE", "INJECT_NEEDED"
@@ -4527,7 +4531,7 @@ def well_readiness() -> dict[str, Any]:
         color, action = "YELLOW", "SIMPLIFY"
     else:
         color, action = "RED", "HOLD"
-    
+
     # Build reason
     reasons = []
     if color == "STALE":
@@ -4538,17 +4542,17 @@ def well_readiness() -> dict[str, Any]:
         reasons.append(f"Data aging ({ttl_hours:.0f}h)")
     else:
         reasons.append(f"Fresh ({ttl_hours:.1f}h)")
-    
+
     if score < 50:
         reasons.append(f"low score ({score:.0f})")
     elif score < 75:
         reasons.append(f"moderate score ({score:.0f})")
-    
+
     # Extract biometric signals
     bio = state.get("biometric", {})
     signals = state.get("signals", {})
     sleep = signals.get("s05_sleep_architecture", {})
-    
+
     return {
         "ok": True,
         "color": color,
@@ -4567,8 +4571,29 @@ def well_readiness() -> dict[str, Any]:
         "freshness": state.get("freshness", "UNKNOWN"),
         "confidence": state.get("confidence", "UNKNOWN"),
         "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
+        # Discovery 8+9: Memory + Epistemic signals
+        "_memory": {
+            "class": "LIVE_PROBE"
+            if color == "GREEN"
+            else "CACHED_MEMORY"
+            if color != "STALE"
+            else "STALE",
+            "last_verified": ts_str,
+            "is_fresh": color in ("GREEN", "YELLOW"),
+            "source": "well_readiness",
+        },
+        "_epistemic": {
+            "evidence_layer": "OBS",
+            "confidence": 0.85
+            if color == "GREEN"
+            else 0.60
+            if color == "YELLOW"
+            else 0.40,
+            "source": "well_readiness",
+            "reversible": True,
+            "authority_claim": "EVIDENCE" if color == "GREEN" else "ADVISORY",
+        },
     }
-
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -11362,6 +11387,7 @@ if __name__ == "__main__":
     # whole federation; this endpoint mirrors its metadata.
     async def _well_oauth_protected_resource(request):
         from starlette.responses import JSONResponse
+
         return JSONResponse(
             {
                 "resource": "https://mcp.arif-fazil.com/mcp",
@@ -11371,10 +11397,21 @@ if __name__ == "__main__":
             },
             headers={"Access-Control-Allow-Origin": "*"},
         )
-    app.add_route("/.well-known/oauth-protected-resource", _well_oauth_protected_resource, methods=["GET"])
-    app.add_route("/.well-known/oauth-protected-resource/mcp", _well_oauth_protected_resource, methods=["GET"])
+
+    app.add_route(
+        "/.well-known/oauth-protected-resource",
+        _well_oauth_protected_resource,
+        methods=["GET"],
+    )
+    app.add_route(
+        "/.well-known/oauth-protected-resource/mcp",
+        _well_oauth_protected_resource,
+        methods=["GET"],
+    )
+
     async def _well_oauth_authorization_server(request):
         from starlette.responses import JSONResponse
+
         return JSONResponse(
             {
                 "issuer": "https://mcp.arif-fazil.com",
@@ -11388,7 +11425,12 @@ if __name__ == "__main__":
             },
             headers={"Access-Control-Allow-Origin": "*"},
         )
-    app.add_route("/.well-known/oauth-authorization-server", _well_oauth_authorization_server, methods=["GET"])
+
+    app.add_route(
+        "/.well-known/oauth-authorization-server",
+        _well_oauth_authorization_server,
+        methods=["GET"],
+    )
     app.add_route("/health", health_handler, methods=["GET"])
     app.add_route("/ready", _well_ready_handler, methods=["POST"])
     app.add_route("/api/build-info", build_info_handler, methods=["GET"])
@@ -15335,7 +15377,10 @@ def _enforce_somatic_boundary(mcp_server: FastMCP) -> None:
                 mcp_server.remove_tool(tool_name)
                 removed.append(tool_name)
             except Exception as e:
-                print(f"BOUNDARY REMOVE FAILED: {tool_name} — {type(e).__name__}: {e}", flush=True)
+                print(
+                    f"BOUNDARY REMOVE FAILED: {tool_name} — {type(e).__name__}: {e}",
+                    flush=True,
+                )
                 pass
         else:
             somatic_count += 1
