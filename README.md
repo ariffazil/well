@@ -752,6 +752,41 @@ This repository operates under the arifOS Federation constitution (F1-F13). See 
 
 ---
 
+## 🔌 MCP Connection
+
+Connect to WELL via the Model Context Protocol:
+
+| Property | Value |
+|----------|-------|
+| **Endpoint** | `https://well.arif-fazil.com/mcp` |
+| **Transport** | Streamable HTTP (JSON-RPC 2.0) |
+| **Tools** | 22 tools |
+| **Health** | `https://well.arif-fazil.com/health` |
+
+### Claude Code / Cursor
+
+Add to your MCP client config:
+```json
+{
+  "mcpServers": {
+    "well": {
+      "url": "https://well.arif-fazil.com/mcp"
+    }
+  }
+}
+```
+
+### Direct Usage
+
+```bash
+curl -X POST https://well.arif-fazil.com/mcp \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json" \
+  -d '{"jsonrpc":"2.0","method":"tools/list","id":1}'
+```
+
+---
+
 **DITEMPA BUKAN DIBERI — Human readiness is forged, not given.**
 
 **999 SEAL ALIVE**
