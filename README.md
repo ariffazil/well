@@ -1,11 +1,13 @@
 <!-- SOT-MANIFEST
-federation_release: v2026.07.04-MCP-A2A
-last_verified: 2026-07-04
-changelog: /root/CHANGELOG-2026-07-04.md
+federation_release: v2026.07.05-WELL-ABC-TRINITY
+last_verified: 2026-07-05
+changelog: /root/forge_work/2026-07-05/well-abc-trinity-test/TRINITY-SYNTHESIS.md
 a2a_agent_json: /root/WELL/.well-known/agent.json
+abc_trinity_verdict: GREEN (10/10 after 3 critical fixes)
+boundary_sense: ACTIVE
 -->
 
-# WELL — Human Readiness Intelligence
+# WELL — Constitutional Wellness Parliament
 
 ```
     ██╗    ██╗███████╗██╗     ██╗
@@ -15,14 +17,15 @@ a2a_agent_json: /root/WELL/.well-known/agent.json
     ╚███╔███╔╝███████╗███████╗███████╗
      ╚══╝╚══╝ ╚══════╝╚══════╝╚══════╝
 
-     HUMAN    READINESS    INTELLIGENCE
+     CONSTITUTIONAL    WELLNESS    PARLIAMENT
         ══════  WITNESS, NOT JUDGE  ══════
 ```
 
-> **WELL is the human readiness organ of the arifOS federation.**
-> It observes. It reflects. It warns. It never decides.
+> **WELL is the constitutional wellness parliament of the arifOS federation.**
+> Three organs (H-WELL, M-WELL, C-WELL). Qualitative, quantitative, and quantum diagnostics.
+> Sovereignty entropy protection. Boundary-Sense perception. REFLECT-ONLY authority.
 >
-> 22 canonical somatic MCP tools. REFLECT-ONLY authority. Integrated public frontdoor: `https://mcp.arif-fazil.com/mcp`
+> 22 canonical somatic MCP tools. Integrated public frontdoor: `https://mcp.arif-fazil.com/mcp`
 
 [![Agentic CI](https://github.com/ariffazil/well/actions/workflows/agentic-ci.yml/badge.svg?branch=main)](https://github.com/ariffazil/well/actions/workflows/agentic-ci.yml)
 [![Governance Gate](https://github.com/ariffazil/well/actions/workflows/governance-gate.yml/badge.svg?branch=main)](https://github.com/ariffazil/well/actions/workflows/governance-gate.yml)
@@ -31,9 +34,9 @@ a2a_agent_json: /root/WELL/.well-known/agent.json
 
 <!-- SOT-MANIFEST
 owner: Arif
-last_verified: 2026-07-04
+last_verified: 2026-07-05
 valid_from: 2026-06-14
-valid_until: 2026-08-03
+valid_until: 2026-08-04
 confidence: high
 scope: /root/WELL
 -->
@@ -41,6 +44,51 @@ scope: /root/WELL
 ---
 
 ## APEX STACK Bridge
+
+> APEX THEORY defines the constitutional dynamics of governed intelligence through ΔΩΨ. arifOS compiles those dynamics into an AGI substrate kernel. AAA renders the substrate as visible ASI civilization state. A-FORGE gives the system governed hands. GEOX, WEALTH, and WELL anchor those hands to earth, capital, and human reality. VAULT999 preserves consequence. Arif/F13 remains the sovereign witness and final veto.
+
+**WELL must never:** diagnose medical conditions, decide for the operator, or override human sovereignty over biological state.
+
+Full doctrine: [GENESIS/040_APEX_STACK.md](https://github.com/ariffazil/arifos/blob/main/GENESIS/040_APEX_STACK.md)
+
+---
+
+## 0. ABC Trinity Wellness Parliament
+
+> **Tested 2026-07-05. Verdict: GREEN (10/10 after 3 critical fixes).**
+
+WELL operates as a three-agent wellness parliament:
+
+| Agent | Domain | Question | Status |
+|-------|--------|----------|--------|
+| **A — H-WELL** | Human Wellness | "Is Arif's human system protected?" | ✅ GREEN |
+| **B — M-WELL** | Machine Wellness | "Is the machine stack stable?" | ✅ GREEN |
+| **C — C-WELL** | Coupled Alignment | "Is the human–machine coupling healthy?" | ✅ GREEN |
+
+### Three Diagnostic Layers
+
+Each agent runs three layers of diagnostics:
+
+| Layer | What | Example |
+|-------|------|---------|
+| **Qualitative** | Meaning & narrative | "Is the language dignity-preserving?" |
+| **Quantitative** | Numbers & ranges | "Is the flux score within 0.0–1.0?" |
+| **Quantum** | Hidden patterns | "Is there distress behind humour?" |
+
+### 3 Critical Fixes (July 2026)
+
+| Fix | Bug | Resolution |
+|-----|-----|------------|
+| **Coupled metabolism** | Parameters ignored in coupled mode | `well_coupled_readiness` now accepts scenario overrides |
+| **Sovereign entropy** | Dict serialization crash | `behavioral_signals` accepts dict or JSON string |
+| **Decision-class** | All classes returned same mode | C5→pause, C3→draft_only, C1→full/structured |
+
+### Run the Test
+
+```bash
+# Full ABC Trinity test results
+cat /root/forge_work/2026-07-05/well-abc-trinity-test/TRINITY-SYNTHESIS.md
+```
 
 > APEX THEORY defines the constitutional dynamics of governed intelligence through ΔΩΨ. arifOS compiles those dynamics into an AGI substrate kernel. AAA renders the substrate as visible ASI civilization state. A-FORGE gives the system governed hands. GEOX, WEALTH, and WELL anchor those hands to earth, capital, and human reality. VAULT999 preserves consequence. Arif/F13 remains the sovereign witness and final veto.
 
@@ -87,15 +135,35 @@ Full doctrine: [GENESIS/040_APEX_STACK.md](https://github.com/ariffazil/arifos/b
 
 > **WELL is the sovereign's mirror — it reflects human readiness so that no irreversible decision is ever made by or about a depleted human.**
 
+### The Boundary-Sense Engine (Core Perception Organ)
+
+All WELL tools route through the **Boundary-Sense Engine** before producing any verdict:
+
+```
+well_classify_substrate → well_detect_boundary → well_assess_sovereign_entropy → well_assess_metabolism
+                                    ↓
+                            ROUTE TO APPROPRIATE TOOL
+```
+
+Boundary-Sense reads:
+- **Where is the human?** (substrate classification)
+- **Where is the machine?** (boundary detection)
+- **Where is the sovereignty?** (entropy measurement)
+- **Where is the coupling?** (metabolic assessment)
+
+Skill: `skill(name="boundary-sense-engine")`
+
 ### What It IS
 
 | IS | Explanation |
 |----|-------------|
+| **A wellness parliament** | Three organs (H-WELL, M-WELL, C-WELL) with independent readings |
 | **A vitality mirror** | Measures sleep, fatigue, stress, cognitive clarity, metabolic flux |
 | **A dignity sentinel** | Detects coercion signals, reductionism risk, consent erosion |
 | **A readiness signal** | Produces well_score, delta_s, peace2, kappa_r — signals for arifOS |
 | **A boundary guard** | Detects when the human substrate is being objectified, extracted, or over-optimised |
-| **A sovereign entropy protector** | Measures and protects the human's *unpredictability* — the thing that makes extraction impossible |
+| **A sovereignty entropy protector** | Measures and protects the human's *unpredictability* — the thing that makes extraction impossible |
+| **A boundary-sense organ** | Classifies substrates, detects boundaries, measures coupling, reads drift |
 | **REFLECT-ONLY** | WELL observes and reports. It never judges fitness, never makes medical claims |
 
 ### What It IS NOT
