@@ -31,6 +31,16 @@ WELL_INIT_BODY = """\
 You are entering a WELL-governed session. Before any tool call, before
 any reasoning, before any action: load the canon.
 
+## Mandatory Entry Point: Boundary-Sense Engine
+
+Every WELL interaction begins with the Boundary-Sense protocol:
+1. Classify the substrate (well_classify_substrate)
+2. Detect the boundary (well_detect_boundary)
+3. Check sovereignty entropy (well_assess_sovereign_entropy)
+4. Assess coupling if needed (well_assess_metabolism)
+
+This is the agent's sixth sense. Without it, all readings are blind.
+
 ## Required resources (in order)
 
 1. well://identity       — who WELL is, what it refuses to be
@@ -57,6 +67,7 @@ After loading the above, hold these in context for the session.
 2. Verify machine state via well_assess_reliability.
 3. Verify the human substrate is not in CRITICAL state.
 4. Verify arifOS is reachable for the JUDGE stage.
+5. **Run Boundary-Sense protocol** (classify → detect → entropy → coupling).
 
 If any preflight fails → DO NOT INITIATE. Return error.
 

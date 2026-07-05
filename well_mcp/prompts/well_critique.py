@@ -30,6 +30,9 @@ WELL_CRITIQUE_BODY = """\
 The 666 stage is self-critique. WELL checks its own reflection before
 yielding to arifOS for adjudication.
 
+**Pre-requisite:** Boundary-Sense protocol must have classified the substrate
+and detected boundary state. If not, run well_classify_substrate + well_detect_boundary first.
+
 ## Step 1 — DOCTRINE COMPLIANCE
 
 Confirm the reflection does NOT violate any HARAM:
@@ -62,7 +65,17 @@ Specifically check for dignity_leakage:
 
 If dignity_leakage detected → return VOID + advisory.
 
-## Step 4 — OUTPUT READINESS
+## Step 4 — QUANTUM DISTRESS CHECK (from Boundary-Sense)
+
+Check for subtle signals that normal logic misses:
+- Distress-behind-humour: surface consent_clear but coercion patterns present
+- Sovereignty erosion: entropy < 0.5 (human becoming predictable)
+- Coupling paradox: high energy + high duty_load (unsustainable)
+- Boundary asymmetry: human intent_valid=true, machine intent_valid=false
+
+If quantum distress detected → return HOLD + advisory.
+
+## Step 5 — OUTPUT READINESS
 
 If all checks pass:
 - mark reflection ready for JUDGE stage
@@ -70,7 +83,7 @@ If all checks pass:
 - include loop_trace through 111–555
 - yield to arifOS
 
-## Step 5 — EXTRACTION CHECK (interaction substrate)
+## Step 6 — EXTRACTION CHECK (interaction substrate)
 
 This step is the F13 protection layer for the interaction substrate.
 Critique does not just check doctrine — critique checks WHETHER THE
@@ -95,7 +108,7 @@ If extraction_vector is detected: HOLD + escalate to arifOS
 (via well_attest_to_kernel). The reflection is the threat.
 Critique refuses the reflection.
 
-### §5.1 EXTRACTION ADVISORY (when detected)
+### §6.1 EXTRACTION ADVISORY (when detected)
 
   weakest_stakeholder: identified
   extraction_vector: identified

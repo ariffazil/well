@@ -30,6 +30,9 @@ WELL_SENSE_BODY = """\
 The 111 stage observes the substrate. It does NOT reason, route, or
 act. It collects evidence.
 
+**Pre-requisite:** Boundary-Sense protocol must have run (classify → detect → entropy).
+If Boundary-Sense has not run, run it first via well_classify_substrate + well_detect_boundary.
+
 ## Observation targets
 
 For human substrate:
@@ -46,6 +49,14 @@ For machine substrate:
 - MF5 context budget
 - MF6 authority boundary
 - MF7 vault bridge healthy
+
+## Quantum signals (from Boundary-Sense)
+
+After observation, check for:
+- Distress-behind-humour patterns
+- Sovereignty erosion signals
+- Coupling paradox indicators
+- Boundary asymmetry
 
 ## Output shape
 
