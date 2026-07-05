@@ -5251,6 +5251,13 @@ def well_forge_precheck(
         base_mode = dc_mode
         if dc in ("C4", "C5"):
             h_verdict = "HIGH_IMPACT" if dc == "C4" else "CRITICAL_DECISION"
+    # For low-risk classes (C1/C2), allow escalation UP from degraded base
+    elif dc in ("C1", "C2") and mode_priority.get(dc_mode, 2) > mode_priority.get(
+        base_mode, 2
+    ):
+        # Only escalate if base_mode is degraded due to telemetry, not health
+        if h_score >= 60:
+            base_mode = dc_mode
 
     # Coupled risk
     c_state = well_coupled_readiness(ctx=None)
