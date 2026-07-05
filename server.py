@@ -4483,7 +4483,7 @@ TTL_STALE = 48  # hours — RED/STALE
 
 
 @mcp.tool()
-def well_readiness() -> dict[str, Any]:
+def well_readiness(ctx: Context | None = None) -> dict[str, Any]:
     """
     ZEN: Single readiness verdict. One tool, one answer.
 
@@ -12368,7 +12368,8 @@ def well_assess_homeostasis(
     dignity_preservation: float | None = None,
     coercion_signals: list[str] | None = None,
     reductionism_risk: float | None = None,
-    # Biometric overrides for fatigue mode — pass inputs directly instead of relying on state.json
+    # Biometric overrides — pass inputs directly instead of relying on state.json
+    sleep_hours: float | None = None,
     sleep_debt_days: float | None = None,
     cognitive_clarity: float | None = None,
     decision_fatigue: float | None = None,
@@ -12477,11 +12478,11 @@ def well_assess_homeostasis(
         metrics = state.get("metrics", {})
         sleep_m = metrics.get("sleep", {})
 
-        # Sleep mode: public signature only exposes sleep_debt_days as override.
-        # sleep_hours and sleep_quality are read from state.json (logged via
-        # well_log). This is consistent with the "Biometric overrides for
-        # fatigue mode" comment on the public signature.
-        _sleep_hours = sleep_m.get("sleep_hours", 7.0)
+        # Sleep mode: sleep_hours and sleep_debt_days can be overridden via
+        # parameters (biometric overrides), falling back to state.json.
+        _sleep_hours = (
+            sleep_hours if sleep_hours is not None else sleep_m.get("sleep_hours", 7.0)
+        )
         _sleep_quality = sleep_m.get("sleep_quality", 7.0)
         _sleep_debt = (
             sleep_debt_days
