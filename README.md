@@ -36,7 +36,7 @@ boundary_sense: ACTIVE
 owner: Arif
 last_verified: 2026-07-06
 valid_from: 2026-06-14
-valid_until: 2026-08-04
+valid_until: 2026-08-05
 confidence: high
 scope: /root/WELL
 -->
@@ -50,6 +50,8 @@ scope: /root/WELL
 **WELL must never:** diagnose medical conditions, decide for the operator, or override human sovereignty over biological state.
 
 Full doctrine: [GENESIS/040_APEX_STACK.md](https://github.com/ariffazil/arifos/blob/main/GENESIS/040_APEX_STACK.md)
+
+**Orthogonal CANON:** [ariffazil/CANON.md](https://github.com/ariffazil/ariffazil/blob/main/CANON.md) — this repo is **WELL** (cooling, consolidation, human Δ care). REFLECT_ONLY. Not judge, not hands.
 
 ---
 
