@@ -1,8 +1,8 @@
 <!-- SOT-MANIFEST
 owner: Arif
-last_verified: 2026-07-05
+last_verified: 2026-07-09
 valid_from: 2026-07-05
-valid_until: 2026-08-04
+valid_until: 2026-08-08
 confidence: high
 scope: /root/WELL
 epistemic_status: SOURCE_OF_TRUTH
@@ -28,8 +28,9 @@ Arif. This is the **WELL** organ of the arifOS federation — Substrate Vitality
 
 The human-system readiness mirror. WELL assesses biological metabolism, homeostasis, repair cycles, vitality, livelihood, and dignity across human, machine, and coupled substrates.
 
-**22 somatic MCP tools** (canonical). FastMCP server (~15,755 lines, 72 decorated helpers).
+**Somatic MCP tools** (canonical). FastMCP server (~15,755 lines, 72 decorated helpers).
 Running at `https://well.arif-fazil.com/mcp` via bare-metal systemd.
+Tool count is a runtime fact — verify with `tools/list`.
 
 | Substrate | Tools | Purpose |
 |-----------|-------|---------|

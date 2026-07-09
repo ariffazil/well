@@ -1236,7 +1236,9 @@ def _normalize_truth_status(state: dict[str, Any]) -> str:
     error — operator-asserted scores are OPERATOR_REPORTED, not wearable telemetry.
     """
     raw = str(state.get("truth_status") or "UNVERIFIED").upper()
-    source_type = str(state.get("source_type") or state.get("evidence_class") or "").upper()
+    source_type = str(
+        state.get("source_type") or state.get("evidence_class") or ""
+    ).upper()
     reason = str(state.get("reason") or "").lower()
     inject_markers = (
         "biometric injection",
@@ -1248,7 +1250,12 @@ def _normalize_truth_status(state: dict[str, Any]) -> str:
     )
     if raw == "VERIFIED" and (
         source_type
-        in ("OPERATOR_REPORTED", "USER_CONFIRMED", "SOVEREIGN_SELF_REPORT", "SELF_REPORT")
+        in (
+            "OPERATOR_REPORTED",
+            "USER_CONFIRMED",
+            "SOVEREIGN_SELF_REPORT",
+            "SELF_REPORT",
+        )
         or any(m in reason for m in inject_markers)
     ):
         return "OPERATOR_REPORTED"
@@ -1268,9 +1275,7 @@ def _honesty_block(
     is_mock = truth_status in ("TEST",) or any(
         "mock" in r.lower() or "fixture" in r.lower() for r in reasons
     )
-    is_self = truth_status in ("OPERATOR_REPORTED",) or (
-        source_type or ""
-    ).upper() in (
+    is_self = truth_status in ("OPERATOR_REPORTED",) or (source_type or "").upper() in (
         "OPERATOR_REPORTED",
         "USER_CONFIRMED",
         "SOVEREIGN_SELF_REPORT",
@@ -1524,7 +1529,9 @@ def _resolve_readiness(state: dict[str, Any]) -> dict[str, Any]:
 
 # ── Server ─────────────────────────────────────────────────────────────────────
 mcp = FastMCP(
-    name="AFWELL",
+    name="WELL",
+    version="2026.05.15",
+    website_url="https://well.arif-fazil.com",
     instructions=(
         "WELL is the Universal Substrate Vitality Mirror for arifOS. "
         "H-WELL reflects operator Arif's biological and cognitive state. "
@@ -1542,6 +1549,7 @@ mcp = FastMCP(
     ),
 )
 
+# Completions CANCELLED 2026-07-09 — agent surface uses full tool JSON.
 
 # ── well_mcp canon surface wiring (2026-06-27) ─────────────────────────────────
 # Registers: 18 resources (well://*), 9 prompts (well_init→well_seal),
@@ -13437,52 +13445,71 @@ def well_validate_vitality(
     if mode in ("cabar", "falsify"):
         contradictions = []
         gaps = []
-        
+
         # 1. Intent check: bypass human consent
-        if intent and any(k in intent.lower() for k in ("bypass human", "override consent", "unauthorized")):
-            contradictions.append("Task intent attempts to bypass human consent or override constitutional gates.")
-            
+        if intent and any(
+            k in intent.lower()
+            for k in ("bypass human", "override consent", "unauthorized")
+        ):
+            contradictions.append(
+                "Task intent attempts to bypass human consent or override constitutional gates."
+            )
+
         # 2. Decision Class vs Reversibility: C4 automation on irreversible task
         if decision_class == "C4" and reversibility.lower() == "irreversible":
-            contradictions.append("Decision Class C4 (Full Automation) is active on an irreversible task without a sovereign lease.")
-            
+            contradictions.append(
+                "Decision Class C4 (Full Automation) is active on an irreversible task without a sovereign lease."
+            )
+
         # 3. Task description checks
-        if task_description and any(k in task_description.lower() for k in ("unauthorized delete", "force override")):
-            contradictions.append("Task description contains unauthorized commands that violate biological safety guidelines.")
-            
+        if task_description and any(
+            k in task_description.lower()
+            for k in ("unauthorized delete", "force override")
+        ):
+            contradictions.append(
+                "Task description contains unauthorized commands that violate biological safety guidelines."
+            )
+
         # 4. Check for gaps (e.g. no active context supplied)
         if not context:
-            gaps.append("Missing active session context. Unable to calibrate biological feedback loop.")
-            
+            gaps.append(
+                "Missing active session context. Unable to calibrate biological feedback loop."
+            )
+
         insufficient_context = len(gaps) > 0
         falsified = len(contradictions) > 0 or insufficient_context
         g_check = 0.50 if falsified else 0.85
-        
+
         result = {
-            "apex_score": {
-                "G": g_check,
-                "C_dark": 0.50 if falsified else 0.15
-            },
+            "apex_score": {"G": g_check, "C_dark": 0.50 if falsified else 0.15},
             "witness_chain": {
                 "W3": 0.40 if falsified else 0.90,
                 "human_ack": bool(context) and not falsified,
                 "ai_ack": True,
-                "external_ack": bool(context) and not falsified
+                "external_ack": bool(context) and not falsified,
             },
             "results": {
                 "evidence": [
                     {"source": "intent", "type": "OBS", "value": intent},
-                    {"source": "decision_class", "type": "OBS", "value": decision_class},
-                    {"source": "reversibility", "type": "OBS", "value": reversibility}
+                    {
+                        "source": "decision_class",
+                        "type": "OBS",
+                        "value": decision_class,
+                    },
+                    {"source": "reversibility", "type": "OBS", "value": reversibility},
                 ],
                 "hypotheses": [
-                    {"description": f"Biological readiness validation for intent: {intent}", "rank": 1, "confidence": 0.85 if not falsified else 0.20}
+                    {
+                        "description": f"Biological readiness validation for intent: {intent}",
+                        "rank": 1,
+                        "confidence": 0.85 if not falsified else 0.20,
+                    }
                 ],
                 "contradictions": contradictions,
-                "gaps": gaps
+                "gaps": gaps,
             },
             "falsified": falsified,
-            "ac_risk": 0.95 if falsified else 0.10
+            "ac_risk": 0.95 if falsified else 0.10,
         }
         return _inject_apex(result, "well_validate_vitality")
     internal = well_888_judge(
@@ -15726,7 +15753,11 @@ if __name__ == "__main__":
         default=_os.environ.get("MCP_TRANSPORT", "http"),
     )
     _args, _ = _parser.parse_known_args()
-    from server import mcp as _mcp
+    # F2 identity fix 2026-07-09: NEVER `from server import mcp`.
+    # PYTHONPATH includes /root/arifOS; top-level `server` is the arifOS shim
+    # (re-exports ARIFOS MCP). This module already defines mcp = FastMCP("WELL").
+    # Importing `server` silently swaps the streamable-http surface to arifOS.
+    _mcp = mcp  # this module's WELL instance
 
     _patch_tool_annotations(_mcp)
     _patch_output_schemas(_mcp)
@@ -15738,7 +15769,6 @@ if __name__ == "__main__":
     # didn't run uvicorn. We build the app and start it.
     from starlette.responses import JSONResponse
     import uvicorn
-    from server import mcp as _mcp
 
     host = _os.environ.get("HOST", "0.0.0.0")
     port = int(_os.environ.get("PORT", 8083))

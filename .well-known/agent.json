@@ -2,7 +2,7 @@
   "$schema": "https://google.com/genai/a2a/agent-card/v1",
   "arifos_internal_card": "/.well-known/agent-card.json",
   "name": "WELL",
-  "description": "Human substrate governance — operator biological state, cognitive pressure, fatigue, dignity under F1-F13. REFLECT_ONLY: never makes clinical or diagnostic claims, never adjudicates strategic action, signals readiness for the federation. 22 canonical well_* tools across Ω-WELL-01..12.",
+  "description": "Human substrate governance — operator biological state, cognitive pressure, fatigue, dignity under F1-F13. REFLECT_ONLY: never makes clinical or diagnostic claims, never adjudicates strategic action, signals readiness for the federation.",
   "version": "2026.07.01",
   "protocolVersion": "1.0.0",
   "url": "https://well.arif-fazil.com",

@@ -23,6 +23,8 @@ from typing import Any
 import sys
 import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+sys.path.insert(0, '/root/arifOS')
+from arifosmcp.schemas.arifos_response import ArifOSResponse, ActionClass, ensure_arifos_response
 
 try:
     from server import _load_state, _state_score
@@ -96,7 +98,7 @@ def well_apex_envelope(
             "understanding": {"pass": coherent, "score": round(0.9 if coherent else 0.4, 4), "detail": "coherent" if coherent else f"floors_violated={floors_violated}"},
             "energy": {"pass": True, "score": round(energy, 4), "detail": f"safe_mode={safe_mode}"},
             "authority": {"pass": bool(actor_id), "score": 1.0 if actor_id else 0.0, "detail": f"actor={actor_id}", "actor_id": actor_id},
-            "reversibility": {"pass": True, "score": 1.0, "detail": "READ action_class", "action_class": "READ"},
+            "reversibility": {"pass": True, "score": 1.0, "detail": "READ action_class", "action_class": ActionClass.OBSERVE},
             "proof": {"pass": True, "score": 0.85, "detail": "ZKPC_OBSERVATION", "proof_level": "ZKPC_OBSERVATION"},
             "sovereign": {"pass": True, "score": 1.0, "detail": "no F13 halt"},
         },
