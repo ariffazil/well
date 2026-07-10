@@ -1,6 +1,6 @@
 <!-- SOT-MANIFEST
 federation_release: v2026.07.05-WELL-ABC-TRINITY
-last_verified: 2026-07-09T04:50Z
+last_verified: 2026-07-10T04:50Z
 live_commit: 9eb8951
 port: 18083
 tool_count: 22
@@ -42,9 +42,9 @@ machine_sot: /root/A-FORGE/forge_work/2026-07-09/MACHINE-SOT-2026-07-09.json
 
 <!-- SOT-MANIFEST
 owner: Arif
-last_verified: 2026-07-09
+last_verified: 2026-07-10
 valid_from: 2026-06-14
-valid_until: 2026-08-08
+valid_until: 2026-08-09
 confidence: high
 scope: /root/WELL
 -->
