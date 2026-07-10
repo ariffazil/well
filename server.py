@@ -16105,6 +16105,63 @@ if __name__ == "__main__":
     app.add_route("/.well-known/agent.json", _well_a2a_card, methods=["GET"])
     app.add_route("/.well-known/agent-card.json", _well_a2a_card, methods=["GET"])
     app.add_middleware(OriginValidationMiddleware)
+
+    # ═══════════════════════════════════════════════════════════════════════════════
+    # POST-REGISTRATION ENRICHMENT — Binding 3 compliance (mcp-builder-doctrine v1.1.0)
+    # Appends "Use when..." trigger guidance to all WELL tool descriptions.
+    # Without this, the model sees docstrings without trigger context.
+    # ═══════════════════════════════════════════════════════════════════════════════
+    _WELL_TRIGGERS = {
+        "well_health_check": "Use when: checking WELL organ status, schema version, or federation health.",
+        "well_medical_boundary": "Use when: the user mentions medical symptoms — WELL is not a doctor, redirects to professional care.",
+        "well_readiness": "Use when: quick single-readiness verdict needed (GREEN/YELLOW/RED score).",
+        "well_signal_coverage": "Use when: auditing which canonical human substrate signals WELL is currently seeing.",
+        "well_classify_substrate": "Use when: classifying a subject's substrate type (human, machine, coupled).",
+        "well_trace_lineage": "Use when: recalling past WELL state, trends, or vault chain history.",
+        "well_detect_boundary": "Use when: detecting boundaries across membrane, body, machine, or federation.",
+        "well_measure_gradient": "Use when: measuring chemical, energy, pressure, attention, or compute gradients.",
+        "well_assess_metabolism": "Use when: assessing biological metabolism and system throughput across substrates.",
+        "well_assess_homeostasis": "Use when: assessing regulation, stability, and empathic balance under change.",
+        "well_check_repair": "Use when: checking repair, recovery, resilience, and forge cycle integrity.",
+        "well_validate_vitality": "Use when: validating vitality, readiness, and NIAT before a governed action.",
+        "well_assess_livelihood": "Use when: assessing human wellness, role, dignity, support, and meaning.",
+        "well_assess_reliability": "Use when: assessing machine, tool, institution, and operational reliability.",
+        "well_compute_metabolic_flux": "Use when: computing unified thermodynamic entropy rate (cognitive + machine).",
+        "well_assess_sovereign_entropy": "Use when: measuring the sovereign's resistance to behavioral modeling.",
+        "well_guard_dignity": "Use when: guarding soul, personhood, meaning, and symbolic boundaries.",
+        "well_registry_status": "Use when: inspecting WELL tool registry — intended vs registered vs callable.",
+    }
+    try:
+        import sys as _sys
+
+        _enriched = 0
+        # Access tools via FastMCP's local provider component registry
+        _components = getattr(getattr(mcp, "_local_provider", None), "_components", {})
+        # Debug: print tool keys
+        _tool_keys = [k for k in _components if k.startswith("tool:")]
+        for tool_name, trigger in _WELL_TRIGGERS.items():
+            _key = f"tool:{tool_name}@"
+            if _key in _components:
+                existing = getattr(_components[_key], "description", "") or ""
+                if "Use when" not in existing:
+                    _components[_key].description = f"{existing} {trigger}".strip()
+                    _enriched += 1
+                else:
+                    print(
+                        file=_sys.stderr,
+                    )
+            else:
+                print(
+                    file=_sys.stderr,
+                )
+        logger.info(
+            f"WELL_ENRICH: enriched {_enriched}/{len(_WELL_TRIGGERS)} tool descriptions with triggers"
+        )
+    except Exception as e:
+        logger.warning(f"WELL_ENRICH: skipped — {e}")
+        import sys
+
+
     logger.info("WELL MCP server starting on %s:%d", host, port)
     uvicorn.run(
         app, host=host, port=port, log_level=_os.environ.get("LOG_LEVEL", "info")
