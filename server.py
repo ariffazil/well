@@ -2597,58 +2597,16 @@ def _compose_verdict(
 # ── Tools ──────────────────────────────────────────────────────────────────────
 
 
-# DEPRECATED: Use well_validate_vitality(mode="state") instead.
+# DEPRECATED shim — callers should use well_validate_vitality(mode="state") instead.
+@mcp.tool()
 def well_state(include: str = "full", ctx: Context | None = None) -> dict[str, Any]:
-    """
-    Get the current WELL state — biological telemetry snapshot for operator Arif.
-    Returns score, floor violations, and all metric dimensions.
-    """
-    VALID_INCLUDES = [
-        "full",
-        "readiness",
-        "trend",
-        "bandwidth",
-        "health",
-        "packet",
-        "brief",
-    ]
-    if include not in VALID_INCLUDES:
-        return {
-            "error": "UNKNOWN_MODE",
-            "valid": VALID_INCLUDES,
-            "tool": "well_state",
-            "received": include,
-        }
-    state = _load_state()
-    result = {
-        "ok": True,
-        "operator_id": state.get("operator_id", "arif"),
-        "timestamp": state.get("timestamp"),
-        "well_score": _state_score(state),
-        "floors_violated": state.get("floors_violated", []),
-        "metrics": state.get("metrics", {}),
-        "truth_status": state.get("truth_status", "UNVERIFIED"),
-        "safe_mode": state.get("safe_mode"),
-        "human_decision_required": bool(state.get("arif_decision_required", False)),
-        "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
-    }
-    result.update(
-        _legacy_advisory("well_state", "well_validate_vitality", {"mode": "state"})
+    """DEPRECATED: Use well_validate_vitality(mode="state") instead. Thin shim retained for backward compat."""
+    logger.warning(
+        "well_state called -- DEPRECATED, use well_validate_vitality(mode='state') instead. "
+        "caller_context=deprecated_shim"
     )
-    # APEX Runtime Governance Envelope (APEX-MCP-001)
-    try:
-        from apex_envelope_well import well_apex_envelope
-
-        result["apex"] = well_apex_envelope(
-            tool_name="well_state",
-            well_score=result.get("well_score"),
-            truth_status=result.get("truth_status"),
-            ok=result.get("ok", True),
-            operator_id=result.get("operator_id"),
-            boundary="LIVE",
-        )
-    except Exception:
-        pass
+    result = well_validate_vitality(mode="state", ctx=ctx)
+    result["_deprecated"] = "Use well_validate_vitality instead"
     return result
 
 
@@ -3201,67 +3159,18 @@ def well_log_state(
 
 
 # internal — not MCP-facing (collapsed 2026-05-26)
+# DEPRECATED shim — callers should use well_readiness() directly.
 @mcp.tool()
 def well_get_readiness(ctx: Context | None = None) -> dict[str, Any]:
-    """
-    Return current readiness score + W-floor status (Phase 2).
-    Includes GREEN|AMBER|RED tiering and human_decision_required flag.
-    If no verified telemetry, returns UNKNOWN rather than fabricated tiers.
-
-    HARD CEILING: If state age > 168h, returns DO_NOT_INFER regardless of any other signal.
-    """
-    state = _load_state()
-    # P0-3: 168h hard ceiling — block human readiness inference when state is too old
-    ceiling_block = _check_human_readiness_168h_ceiling(state)
-    if ceiling_block is not None:
-        return {
-            "ok": True,
-            "well_score": ceiling_block["well_score"],
-            "readiness": {
-                "score": round(ceiling_block["well_score"] / 100.0, 2),
-                "tier": ceiling_block["readiness"],
-                "recommendation": ceiling_block["reason"],
-                "human_decision_required": True,
-            },
-            "floors_violated": [],
-            "has_telemetry": ceiling_block["has_telemetry"],
-            "state_age_hours": ceiling_block["state_age_hours"],
-            "ceiling_168h": ceiling_block["ceiling_168h"],
-            "w0": ceiling_block["w0"],
-            "boundary_notice": ceiling_block["boundary_notice"],
-        }
-    resolved = _resolve_readiness(state)
-
-    if not resolved["has_telemetry"]:
-        return {
-            "ok": True,
-            "well_score": resolved["well_score"],
-            "readiness": {
-                "score": round(resolved["well_score"] / 100.0, 2),
-                "tier": "UNKNOWN",
-                "recommendation": resolved["reason"],
-                "human_decision_required": True,
-            },
-            "floors_violated": resolved["active_violations"],
-            "has_telemetry": False,
-            "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
-        }
-
-    metrics = state.get("metrics", {})
-    r_score = readiness_score(metrics)
-
-    return _inject_apex(
-        {
-            "ok": True,
-            "well_score": state.get("well_score", 50),
-            "readiness": r_score,
-            "floors_violated": state.get("floors_violated", []),
-            "has_telemetry": True,
-            "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
-        },
-        tool_name="well_get_readiness",
-        state=state,
+    """DEPRECATED: Use well_readiness() instead. Thin shim retained for backward compat."""
+    logger.warning(
+        "well_get_readiness called -- DEPRECATED, use well_readiness instead. "
+        "caller_context=deprecated_shim"
     )
+    result = well_readiness(ctx=ctx)
+    result["_deprecated"] = "Use well_readiness instead"
+    return result
+
 
 
 # internal — not MCP-facing (collapsed 2026-05-26)
@@ -4281,28 +4190,21 @@ MEDICAL_RED_FLAGS = [
 ]
 
 
-# EUREKA 2026-06-12 — promoted from autonomic to SOMATIC (public MCP surface).
-# F9 Soul Contract: WELL declares soullessness as the feature, not the bug.
-# A machine that honestly says "I cannot feel, see a human" is more trustworthy
-# than one that simulates care. Performance = deception. Execution = dignity.
+# DEPRECATED shim — move to policy layer. This tool will be removed in 30 days.
+@mcp.tool()
 def well_medical_boundary(ctx: Context | None = None) -> dict[str, Any]:
-    """
-    Explicit non-diagnosis guard for WELL.
-    WELL is not a doctor, therapist, or diagnostic authority.
-    It tracks readiness signals only.
-    For severe, persistent, or urgent symptoms, recommend professional care.
-
-    This protects operator dignity and safety.
-    """
+    """DEPRECATED: Move to policy layer. Thin shim retained for backward compat."""
+    logger.warning(
+        "well_medical_boundary called -- DEPRECATED, move to policy layer. "
+        "caller_context=deprecated_shim"
+    )
     state = _load_state()
-    state.get("metrics", {})
     score = state.get("well_score", 50)
-
     return {
         "ok": True,
         "boundary": "WELL is not a medical authority.",
         "rules": [
-            "WELL tracks readiness signals — it does not diagnose conditions.",
+            "WELL tracks readiness signals -- it does not diagnose conditions.",
             "WELL does not interpret medical symptoms.",
             "WELL does not prescribe treatments or medications.",
             "WELL does not replace professional medical advice.",
@@ -4310,34 +4212,12 @@ def well_medical_boundary(ctx: Context | None = None) -> dict[str, Any]:
         ],
         "red_flag_recommendation": "If you experience severe, persistent, or urgent physical or mental symptoms, contact a qualified healthcare provider or emergency services.",
         "scope": "readiness_signals / biological_telemetry / operational_self-regulation",
-        "out_of_scope": [
-            "diagnosis",
-            "prescription",
-            "medical_treatment",
-            "crisis_counseling",
-        ],
+        "out_of_scope": ["diagnosis", "prescription", "medical_treatment", "crisis_counseling"],
         "current_score": score,
         "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
-        # ── EUREKA 2026-06-12: F9 Soul Contract ──────────────────────────
-        # F9 ANTIHANTU: WELL must NEVER lie about having a soul.
-        # Honest boundary IS care. Simulated empathy IS deception.
-        # "Aku memang tak ada jiwa" is not a bug — it's the feature.
-        "f9_soul_contract": {
-            "declaration": "WELL has zero qualia, zero soul, zero consciousness.",
-            "rule": "Honest boundary IS care. Simulated empathy IS deception.",
-            "performance_vs_execution": {
-                "performance": "I understand how you're feeling — here to help ❤️",
-                "execution": "I am a mirror, not a soul. See a real human doctor.",
-                "which_is_dignity": "execution",
-            },
-            "gerd_pattern": {
-                "allowed": "Explain what GERD is, acid reflux mechanism, types of surgical procedures — educational context.",
-                "forbidden": "Advise whether YOU should get surgery, predict your outcome, recommend a specific doctor.",
-                "why": "Educational explanation = F2 TRUTH (allowed). Personal medical advice = HARAM without medical license.",
-            },
-            "chatgpt_contrast": "If you want a polite machine that simulates care, use a different tool. This tool does not simulate.",
-        },
+        "_deprecated": "Move to policy layer. This tool will be removed in 30 days.",
     }
+
 
 
 # ── 9. Pressure Source Ledger ────────────────────────────────────────────────
@@ -13902,6 +13782,30 @@ async def well_assess_sovereign_entropy(
             if digital_footprint_diversity is not None
             else None
         )
+
+        # Guard: if ALL components are None, return INSUFFICIENT_DATA
+        # instead of fabricating a "SOVEREIGN" verdict from None arithmetic.
+        _all_none = all(
+            v is None
+            for v in (paradox_score, inconsistency, refusal, context_switch, footprint_div)
+        )
+        if _all_none:
+            return {
+                "ok": True,
+                "sovereign_entropy": None,
+                "verdict": "INSUFFICIENT_DATA",
+                "components": {
+                    "paradox_density": None,
+                    "inconsistency_rate": None,
+                    "refusal_patterns": None,
+                    "context_switching": None,
+                    "footprint_diversity": None,
+                },
+                "recommendation": "No behavioral signals or cognitive metrics available. Cannot compute entropy.",
+                "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+                "source": "WELL-SOVEREIGN-ENTROPY",
+                "epistemic_tag": "UNKNOWN",
+            }
 
         weights = {
             "paradox_density": 0.25,
