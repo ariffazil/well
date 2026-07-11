@@ -1632,7 +1632,7 @@ def _mcp_health_check_impl() -> dict:
     }
 
 
-@mcp.tool()
+# ZEN 2026-07-11: decorator removed — use well_registry
 def well_health_check() -> dict:
     """
     WELL organ health check with provenance and schema version.
@@ -2598,9 +2598,6 @@ def _compose_verdict(
 
 
 # DEPRECATED: Use well_validate_vitality(mode="state") instead.
-# @mcp.tool() REMOVED by FORGE entropy audit 2026-07-03 — reduces callable surface from 27→26.
-# Internal callers use well_validate_vitality directly. Legacy bridge in compatibility.py.
-@mcp.tool()
 def well_state(include: str = "full", ctx: Context | None = None) -> dict[str, Any]:
     """
     Get the current WELL state — biological telemetry snapshot for operator Arif.
@@ -2921,7 +2918,6 @@ def well_contrast_report(
 
 
 # DEPRECATED: Use well_classify_substrate instead.
-# @mcp.tool() removed — internal use only.
 async def well_init(
     session_id: str | None = None,
     actor_id: str = "well-substrate",
@@ -3045,7 +3041,6 @@ async def well_anchor(
 
 
 # internal — not MCP-facing (collapsed 2026-05-26)
-@mcp.tool()
 def well_check_floors(ctx: Context | None = None) -> dict[str, Any]:
     """
     [DEPRECATED — use well_validate_vitality(mode='floors')]
@@ -3184,7 +3179,6 @@ def well_check_floors(ctx: Context | None = None) -> dict[str, Any]:
 
 
 # internal — not MCP-facing (collapsed 2026-05-26)
-@mcp.tool()
 def well_log_state(
     sleep_hours: float | None = None,
     stress_level: float | None = None,
@@ -3271,7 +3265,6 @@ def well_get_readiness(ctx: Context | None = None) -> dict[str, Any]:
 
 
 # internal — not MCP-facing (collapsed 2026-05-26)
-@mcp.tool()
 def well_check_floor(
     floor_id: str | None = None, ctx: Context | None = None
 ) -> dict[str, Any]:
@@ -3532,7 +3525,6 @@ def well_trend_analysis(ctx: Context | None = None) -> dict[str, Any]:
 # ── 2. Bandwidth Recommendation ───────────────────────────────────────────────
 
 
-@mcp.tool()
 def well_bandwidth_recommendation(ctx: Context | None = None) -> dict[str, Any]:
     """
     [DEPRECATED — use well_assess_metabolism(mode='bandwidth')]
@@ -4293,7 +4285,6 @@ MEDICAL_RED_FLAGS = [
 # F9 Soul Contract: WELL declares soullessness as the feature, not the bug.
 # A machine that honestly says "I cannot feel, see a human" is more trustworthy
 # than one that simulates care. Performance = deception. Execution = dignity.
-@mcp.tool()
 def well_medical_boundary(ctx: Context | None = None) -> dict[str, Any]:
     """
     Explicit non-diagnosis guard for WELL.
@@ -4731,7 +4722,6 @@ def well_readiness(ctx: Context | None = None) -> dict[str, Any]:
 
 # M-WELL State — loads machine telemetry from state.json (m_machine section)
 # DEPRECATED: Use well_assess_reliability(mode="vitals") instead.
-# @mcp.tool() removed — internal use only.
 def well_machine_state(ctx: Context | None = None) -> dict[str, Any]:
     """
     Read current machine substrate state.
@@ -5779,8 +5769,7 @@ def _check_data_freshness(state: dict[str, Any]) -> dict[str, Any]:
 # ── WELL-01 well_get_health ───────────────────────────────────────────────────
 # DEPRECATED: Use well_assess_reliability(mode="health") instead.
 # NOTE: Expose=False in SOMATIC_TOOLS — not in public MCP tools/list, not a phantom
-# @mcp.tool() REMOVED by FORGE entropy audit 2026-07-03 — reduces callable surface.
-# @mcp.tool()
+# (internal — use well_health_check)
 def well_get_health(ctx: Context | None = None) -> dict[str, Any]:
     """
     Canonical three-layer health check.
@@ -5951,7 +5940,6 @@ def well_get_health(ctx: Context | None = None) -> dict[str, Any]:
 
 # ── WELL-02 well_get_state ────────────────────────────────────────────────────
 # internal — not MCP-facing (collapsed 2026-05-26)
-@mcp.tool()
 def well_get_state(
     domain: str | None = None, ctx: Context | None = None
 ) -> dict[str, Any]:
@@ -5997,7 +5985,6 @@ def well_get_state(
 
 # ── WELL-03 well_check_invariant ──────────────────────────────────────────────
 # internal — not MCP-facing (collapsed 2026-05-26)
-@mcp.tool()
 def well_check_invariant(
     floor_id: str | None = None, ctx: Context | None = None
 ) -> dict[str, Any]:
@@ -6268,7 +6255,6 @@ def well_suggest_mode(
 # ── WELL-09 well_suggest_recovery ─────────────────────────────────────────────
 # [INTERNAL] Suggest non-medical stabilizing actions. Suggest, not prescribe.
 # Use well_recovery_protocol(ctx=ctx) directly instead.
-@mcp.tool()
 def well_suggest_recovery(ctx: Context | None = None) -> dict[str, Any]:
     return well_recovery_protocol(ctx=ctx)
 
@@ -8189,7 +8175,6 @@ def _to_federation_output(
 # AAA: Agent Registry + Contract Validation
 
 
-@mcp.tool()  # Alias — deprecated; use well_classify_substrate
 async def well_000_init(
     mode: str = "init",
     session_id: str | None = None,
@@ -8261,7 +8246,6 @@ async def well_000_init(
 # AAA: Task Discovery + Federation Manifest
 
 
-@mcp.tool()  # Alias — deprecated; use well_classify_substrate
 def well_111_sense(
     mode: str = "classify",
     subject: str = "",
@@ -8362,7 +8346,6 @@ def well_111_sense(
 # AAA: Evidence Receipt + Witness Lock
 
 
-@mcp.tool()  # Alias — deprecated; use well_measure_gradient
 def well_222_fetch(
     mode: str = "evidence",
     evidence_source: str = "unknown",
@@ -8454,7 +8437,6 @@ def well_222_fetch(
 # AAA: Risk Assessment + Governance Adapter
 
 
-@mcp.tool()  # Alias — deprecated; use well_assess_metabolism / well_assess_livelihood
 def well_333_mind(
     mode: str = "human",
     subject: str | None = None,
@@ -8667,7 +8649,6 @@ def well_333_mind(
 # AAA: Governance Adapter + Routing Decision
 
 
-@mcp.tool()  # Alias — deprecated; use well_reflect_intelligence
 def well_444_kernel(
     mode: str = "route",
     task_description: str | None = None,
@@ -8794,7 +8775,6 @@ def well_444_kernel(
 # AAA: Event Store + Audit Trail
 
 
-@mcp.tool()  # Alias — deprecated; use well_trace_lineage
 def well_555_memory(
     mode: str = "recall",
     limit: int = 10,
@@ -8865,7 +8845,6 @@ def well_555_memory(
 # AAA: Escalation Rules + Empathy Scan
 
 
-@mcp.tool()  # Alias — deprecated; use well_assess_homeostasis / well_guard_dignity
 def well_666_heart(
     mode: str = "critique",
     subject: str | None = None,
@@ -9017,7 +8996,6 @@ def well_666_heart(
 # AAA: A-FORGE Bridge + Execution Mode
 
 
-@mcp.tool()  # Alias — deprecated; use well_check_repair
 def well_777_forge(
     mode: str = "precheck",
     task_description: str | None = None,
@@ -9128,7 +9106,6 @@ def well_777_forge(
 # AAA: 888_JUDGE Gate + Constitutional Arbitration
 
 
-@mcp.tool()  # Alias — deprecated; use well_validate_vitality
 def well_888_judge(
     mode: str = "readiness",
     intent: str | None = None,
@@ -9300,7 +9277,6 @@ async def well_999_vault(
 # AAA: Cockpit Dashboard + Federation Handoff
 
 
-@mcp.tool()  # Alias — deprecated; use well_anchor_evidence
 def well_444_reply(
     mode: str = "packet",
     target: str = "arifos",
@@ -9382,7 +9358,6 @@ def well_444_reply(
 # AAA: A2A Gateway + Agent Card Dispatch
 
 
-@mcp.tool()  # Alias — deprecated; use well_detect_boundary / AAA gateway status
 def well_444_gateway(
     mode: str = "status",
     peer: str | None = None,
@@ -9471,7 +9446,6 @@ def well_444_gateway(
 # AAA: Cockpit Health Metrics + Prometheus
 
 
-@mcp.tool()  # Alias — deprecated; use well_assess_reliability
 def well_000_ops(
     mode: str = "health",
     ctx: Context | None = None,
@@ -9712,7 +9686,6 @@ def _resolve_path(state: dict[str, Any], path: list[str]) -> Any:
     return cur
 
 
-@mcp.tool()
 def well_13_signal_coverage(
     operator_id: str | None = None,
     ctx: Context | None = None,
@@ -9728,7 +9701,7 @@ def well_13_signal_coverage(
     }
 
 
-@mcp.tool()
+# ZEN 2026-07-11: decorator removed — use well_registry
 def well_signal_coverage(
     operator_id: str | None = None,
     ctx: Context | None = None,
@@ -11912,7 +11885,6 @@ def well_machine_trend(
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
-@mcp.tool()
 def well_fatigue_accumulator(
     mode: str = "check",
     session_duration_minutes: float | None = None,
@@ -13903,32 +13875,32 @@ async def well_assess_sovereign_entropy(
 
         paradox_score = cognitive.get(
             "paradox_density",
-            behavioral_signals.get("paradox_density", 0.7)
+            behavioral_signals.get("paradox_density", None)
             if behavioral_signals
-            else 0.7,
+            else None,
         )
         inconsistency = cognitive.get(
             "inconsistency_rate",
-            behavioral_signals.get("inconsistency_rate", 0.6)
+            behavioral_signals.get("inconsistency_rate", None)
             if behavioral_signals
-            else 0.6,
+            else None,
         )
         refusal = cognitive.get(
             "refusal_patterns",
-            behavioral_signals.get("refusal_patterns", 0.8)
+            behavioral_signals.get("refusal_patterns", None)
             if behavioral_signals
-            else 0.8,
+            else None,
         )
         context_switch = cognitive.get(
             "context_switching_frequency",
-            behavioral_signals.get("context_switching_frequency", 0.75)
+            behavioral_signals.get("context_switching_frequency", None)
             if behavioral_signals
-            else 0.75,
+            else None,
         )
         footprint_div = (
             digital_footprint_diversity
             if digital_footprint_diversity is not None
-            else 0.65
+            else None
         )
 
         weights = {
@@ -13947,8 +13919,7 @@ async def well_assess_sovereign_entropy(
             + footprint_div * weights["footprint_diversity"]
         )
 
-        noise = random.uniform(-0.03, 0.03)
-        entropy = max(0.0, min(1.0, raw_entropy + noise))
+        entropy = raw_entropy
 
         if entropy >= 0.75:
             verdict = "SOVEREIGN"
@@ -14308,7 +14279,7 @@ async def well_anchor_evidence(
 
 
 # DEPRECATED: Governance assessment now handled by arifOS constitutional kernel.
-# @mcp.tool() removed — internal use only (used by well_validate_vitality path).
+# G-WELL internal helper — not MCP-registered
 def well_assess_governance(
     mode: str = "coherence",
     target: str = "local",
@@ -14692,7 +14663,7 @@ def well_system_registry_status() -> dict[str, Any]:
 
 
 # internal — not MCP-facing (collapsed 2026-05-26)
-@mcp.tool()
+# ZEN 2026-07-11: decorator removed — use well_registry
 def well_registry_status() -> dict[str, Any]:
     """WELL registry truth diagnostic — blueprint canonical format.
 
@@ -15091,6 +15062,38 @@ def _well_modulate_posture(
     return mod
 
 
+
+@mcp.tool()
+def well_registry(
+    mode: str = "health",
+    operator_id: str | None = None,
+    ctx: Context | None = None,
+) -> dict[str, Any]:
+    """WELL registry introspection (ZEN 2026-07-11 well_registry).
+
+    Modes:
+      health   — organ health / schema / federation (was well_health_check)
+      registry — tool registry truth probe (was well_registry_status)
+      coverage — substrate signal coverage audit (was well_signal_coverage)
+
+    Use when: inspecting WELL organ health, tool registry, or signal coverage.
+    """
+    m = (mode or "health").lower().strip()
+    if m in ("health", "status", "ping"):
+        return well_health_check()
+    if m in ("registry", "tools", "surface"):
+        return well_registry_status()
+    if m in ("coverage", "signals", "well_13"):
+        return well_signal_coverage(operator_id=operator_id, ctx=ctx)
+    return {
+        "ok": False,
+        "error_code": "UNKNOWN_MODE",
+        "reason": f"Unknown mode '{mode}'. Valid: health | registry | coverage",
+        "tool": "well_registry",
+    }
+
+
+
 @mcp.tool()
 def well_classify_state(
     message: str,
@@ -15230,9 +15233,8 @@ def well_classify_state(
 #   well_guard_dignity         → CRITIQUE axis / meaning (arifOS 666_HEART)
 #   well_anchor_evidence       → SEAL axis / vault (arifOS 999_VAULT)
 SOMATIC_TOOLS = {
-    "well_health_check",
-    # "mcp_health_check" removed 2026-06-28 — legacy alias, use well_health_check
-    "well_classify_substrate",
+    # ZEN 2026-07-11: introspection collapsed into well_registry (health|registry|coverage)
+    "well_registry",
     "well_classify_substrate",
     "well_trace_lineage",
     "well_detect_boundary",
@@ -15246,18 +15248,8 @@ SOMATIC_TOOLS = {
     "well_compute_metabolic_flux",
     "well_assess_sovereign_entropy",
     "well_guard_dignity",
-    "well_medical_boundary",
-    "well_13_signal_coverage",
-    "well_registry_status",
-    # F-Ω Federation Handoff Adapters — forged 2026-06-17
-    # See FEDERATION_HOOKS.md for the canonical contract.
-    "well_handoff_dignity_to_arifos",  # S12 → arifOS 888_JUDGE
-    "well_handoff_livelihood_to_wealth",  # S13 → WEALTH
-    "well_attest_to_kernel",  # WELL → arifOS organ_attest
-    # Human State Classifier — Phase 1 + Phase 3
-    # Forged 2026-06-25. Deterministic rule-based Polyvagal + SDT + contradiction.
-    "well_classify_state",  # State Classifier → federation surface
-    "well_readiness",  # ZEN: single verdict — color/score/TTL/action
+    # well_medical_boundary removed as callable — disclaimer injected in readiness/vitality
+    "well_readiness",  # thin cached-verdict view; full judge path = well_validate_vitality
 }
 # NOTE: well_registry_status is the canonical blueprint format tool.
 # well_system_registry_status is deprecated (internal only, no MCP registration).
@@ -15376,6 +15368,322 @@ _TOOL_ANNOTATIONS: dict[str, dict[str, Any]] = {
         "destructiveHint": False,
         "idempotentHint": True,
         "openWorldHint": False,
+    },
+}
+
+
+# WELL_PURPOSE_CONTRACTS — use_when / do_not_use_when for all somatic tools
+# Matching the _components + TOOL_PURPOSE_CONTRACTS pattern from arifOS + GEOX
+# Forged: 2026-07-10
+WELL_PURPOSE_CONTRACTS: dict[str, dict[str, Any]] = {
+    "well_13_signal_coverage": {
+        "use_when": [
+            "Audit WELL coverage of canonical 13 human substrate signals",
+            "Check which signals are active, stale, or missing",
+        ],
+        "do_not_use_when": [
+            "Single signal \u2014 use domain-specific tool",
+            "Routine health \u2014 use well_health_check",
+        ],
+        "authority_level": "reflect_only",
+        "side_effect": "read_only",
+        "evidence_required": False,
+        "blast_radius": "low",
+    },
+    "well_assess_homeostasis": {
+        "use_when": [
+            "Assess regulation, stability under change",
+            "Check fatigue/stress/sleep before governed action",
+            "Pre-flight readiness with decision_class gating",
+        ],
+        "do_not_use_when": [
+            "Machine/agent health \u2014 use well_assess_reliability",
+            "Long-term trend \u2014 use well_trace_lineage",
+        ],
+        "authority_level": "reflect_only",
+        "side_effect": "read_only",
+        "evidence_required": False,
+        "blast_radius": "low",
+    },
+    "well_assess_livelihood": {
+        "use_when": [
+            "Assess human wellness, role, dignity, meaning",
+            "Evaluate duty load and purpose alignment",
+        ],
+        "do_not_use_when": [
+            "Immediate physical vitality \u2014 use well_assess_homeostasis",
+            "Pure machine \u2014 use well_assess_reliability",
+        ],
+        "authority_level": "reflect_only",
+        "side_effect": "read_only",
+        "evidence_required": False,
+        "blast_radius": "low",
+    },
+    "well_assess_metabolism": {
+        "use_when": [
+            "Assess metabolism and throughput across substrates",
+            "Check coupled human-machine metabolic state",
+        ],
+        "do_not_use_when": [
+            "Machine-only reliability \u2014 use well_assess_reliability",
+            "Human-only readiness \u2014 use well_validate_vitality",
+        ],
+        "authority_level": "reflect_only",
+        "side_effect": "read_only",
+        "evidence_required": False,
+        "blast_radius": "low",
+    },
+    "well_assess_reliability": {
+        "use_when": [
+            "Assess machine, tool, institution reliability",
+            "Check system health, uptime, error rates",
+        ],
+        "do_not_use_when": [
+            "Human state \u2014 use well_validate_vitality",
+            "Substrate classification \u2014 use well_classify_substrate",
+        ],
+        "authority_level": "reflect_only",
+        "side_effect": "read_only",
+        "evidence_required": False,
+        "blast_radius": "low",
+    },
+    "well_assess_sovereign_entropy": {
+        "use_when": [
+            "Measure sovereign resistance to behavioral modeling",
+            "Check operator remains unmodelable/unextractable",
+        ],
+        "do_not_use_when": [
+            "Dignity check \u2014 use well_guard_dignity",
+            "Routine vitality \u2014 use well_validate_vitality",
+        ],
+        "authority_level": "reflect_only",
+        "side_effect": "read_only",
+        "evidence_required": False,
+        "blast_radius": "low",
+    },
+    "well_attest_to_kernel": {
+        "use_when": [
+            "WELL \u2192 arifOS organ attestation",
+            "Verify WELL identity and boundary compliance to kernel",
+        ],
+        "do_not_use_when": [
+            "Internal WELL checks \u2014 use well_health_check",
+            "Non-attestation cross-organ communication",
+        ],
+        "authority_level": "reflect_only",
+        "side_effect": "read_only",
+        "evidence_required": False,
+        "blast_radius": "low",
+    },
+    "well_check_repair": {
+        "use_when": [
+            "Check repair, recovery, resilience, forge cycle integrity",
+            "Post-action recovery verification",
+        ],
+        "do_not_use_when": [
+            "First-time readiness \u2014 use well_validate_vitality",
+            "Routine health \u2014 use well_health_check",
+        ],
+        "authority_level": "reflect_only",
+        "side_effect": "read_only",
+        "evidence_required": False,
+        "blast_radius": "low",
+    },
+    "well_classify_state": {
+        "use_when": [
+            "Human state classification via Polyvagal + SDT + contradiction",
+            "Structured state classification",
+        ],
+        "do_not_use_when": [
+            "Simple color \u2014 use well_readiness",
+            "Single metric \u2014 use well_assess_homeostasis",
+        ],
+        "authority_level": "reflect_only",
+        "side_effect": "read_only",
+        "evidence_required": False,
+        "blast_radius": "low",
+    },
+    "well_classify_substrate": {
+        "use_when": [
+            "Determine if a subject/substrate is human, machine, or coupled",
+            "Classify evaluation target before routing to correct assessment",
+        ],
+        "do_not_use_when": [
+            "Already know substrate \u2014 use domain-specific tool directly",
+            "Assessing vitality \u2014 use well_validate_vitality",
+        ],
+        "authority_level": "reflect_only",
+        "side_effect": "read_only",
+        "evidence_required": False,
+        "blast_radius": "low",
+    },
+    "well_compute_metabolic_flux": {
+        "use_when": [
+            "Compute unified entropy rate (cognitive + machine)",
+            "Check reallocation trigger at flux >= 0.65",
+        ],
+        "do_not_use_when": [
+            "Single-substrate \u2014 use well_assess_metabolism",
+            "Quick readiness \u2014 use well_readiness",
+        ],
+        "authority_level": "reflect_only",
+        "side_effect": "read_only",
+        "evidence_required": False,
+        "blast_radius": "low",
+    },
+    "well_detect_boundary": {
+        "use_when": [
+            "Detect boundaries across membrane, body, machine, or federation",
+            "Check if signal crosses constitutional or substrate boundaries",
+        ],
+        "do_not_use_when": [
+            "Standard classification \u2014 use well_classify_substrate",
+            "Specific vitality \u2014 use well_assess_homeostasis",
+        ],
+        "authority_level": "reflect_only",
+        "side_effect": "read_only",
+        "evidence_required": False,
+        "blast_radius": "low",
+    },
+    "well_guard_dignity": {
+        "use_when": [
+            "Guard personhood, meaning, symbolic boundaries",
+            "Consent verification before irreversible action",
+        ],
+        "do_not_use_when": [
+            "Physical health \u2014 use well_assess_homeostasis",
+            "Machine reliability \u2014 use well_assess_reliability",
+        ],
+        "authority_level": "reflect_only",
+        "side_effect": "read_only",
+        "evidence_required": False,
+        "blast_radius": "low",
+    },
+    "well_handoff_dignity_to_arifos": {
+        "use_when": [
+            "Hand off dignity verdict to arifOS 888_JUDGE",
+            "Escalate dignity violation needing constitutional judgment",
+        ],
+        "do_not_use_when": [
+            "Routine dignity check \u2014 use well_guard_dignity",
+            "Non-dignity matters \u2014 route to appropriate organ",
+        ],
+        "authority_level": "reflect_only",
+        "side_effect": "read_only",
+        "evidence_required": False,
+        "blast_radius": "low",
+    },
+    "well_handoff_livelihood_to_wealth": {
+        "use_when": [
+            "Hand off livelihood impact to WEALTH organ",
+            "Escalate economic signals needing capital intelligence",
+        ],
+        "do_not_use_when": [
+            "Routine assessment \u2014 use well_assess_livelihood",
+            "Non-economic matters \u2014 keep in WELL",
+        ],
+        "authority_level": "reflect_only",
+        "side_effect": "read_only",
+        "evidence_required": False,
+        "blast_radius": "low",
+    },
+    "well_health_check": {
+        "use_when": [
+            "Quick federation health check \u2014 verify WELL organ is alive",
+            "Before any WELL assessment to confirm service readiness",
+        ],
+        "do_not_use_when": [
+            "Detailed reliability audit \u2014 use well_assess_reliability",
+            "Human vitality assessment \u2014 use well_validate_vitality",
+        ],
+        "authority_level": "reflect_only",
+        "side_effect": "read_only",
+        "evidence_required": False,
+        "blast_radius": "low",
+    },
+    "well_measure_gradient": {
+        "use_when": [
+            "Measure chemical, energy, pressure, attention, or compute gradients",
+            "Detect directional change in substrate signals",
+        ],
+        "do_not_use_when": [
+            "Single-point check \u2014 use well_assess_homeostasis",
+            "Binary boundary check \u2014 use well_detect_boundary",
+        ],
+        "authority_level": "reflect_only",
+        "side_effect": "read_only",
+        "evidence_required": False,
+        "blast_radius": "low",
+    },
+    "well_medical_boundary": {
+        "use_when": [
+            "Explicit non-diagnosis guard \u2014 redirect to professional care",
+            "Medical symptoms mentioned \u2014 WELL does not diagnose",
+        ],
+        "do_not_use_when": [
+            "Readiness assessment \u2014 use well_validate_vitality",
+            "Actual medical need \u2014 redirect to human professional",
+        ],
+        "authority_level": "reflect_only",
+        "side_effect": "read_only",
+        "evidence_required": False,
+        "blast_radius": "low",
+    },
+    "well_readiness": {
+        "use_when": [
+            "Quick single-readiness verdict: GREEN/YELLOW/RED/STALE",
+            "Fast pre-action check for color + score + TTL",
+        ],
+        "do_not_use_when": [
+            "Detailed vitality \u2014 use well_validate_vitality",
+            "Historical analysis \u2014 use well_trace_lineage",
+        ],
+        "authority_level": "reflect_only",
+        "side_effect": "read_only",
+        "evidence_required": False,
+        "blast_radius": "low",
+    },
+    "well_registry_status": {
+        "use_when": [
+            "Inspect WELL tool registry \u2014 intended vs registered vs callable",
+            "Detect phantom tools, alias conflicts, registry drift",
+        ],
+        "do_not_use_when": [
+            "Normal tool usage \u2014 use domain-specific tool",
+            "Federation-wide audit \u2014 use forge_surface_audit",
+        ],
+        "authority_level": "reflect_only",
+        "side_effect": "read_only",
+        "evidence_required": False,
+        "blast_radius": "low",
+    },
+    "well_trace_lineage": {
+        "use_when": [
+            "Recall past WELL state, trends, or vault chain history",
+            "Audit trail of previous assessments",
+        ],
+        "do_not_use_when": [
+            "Current state only \u2014 use well_readiness or well_health_check",
+            "First-time assessment with no history",
+        ],
+        "authority_level": "reflect_only",
+        "side_effect": "read_only",
+        "evidence_required": False,
+        "blast_radius": "low",
+    },
+    "well_validate_vitality": {
+        "use_when": [
+            "Validate vitality, readiness, NIAT before governed action",
+            "Comprehensive pre-forge readiness check with decision_class",
+        ],
+        "do_not_use_when": [
+            "Quick color \u2014 use well_readiness",
+            "After action in progress \u2014 use well_check_repair",
+        ],
+        "authority_level": "reflect_only",
+        "side_effect": "read_only",
+        "evidence_required": False,
+        "blast_radius": "low",
     },
 }
 
@@ -15500,7 +15808,8 @@ _WELL_SOMATIC_MANIFEST: list[dict[str, object]] = [
     # Capability Spine Repair 2026-06-26: All tools below have @mcp.tool decorators
     # verified at runtime. well_system_registry_status and well_registry_status
     # are callable (handlers exist) and now exposed in the somatic surface.
-    {"name": "well_health_check", "axis": "identity", "expose": True},
+    {"name": "well_registry", "axis": "identity", "expose": True},
+    {"name": "well_health_check", "axis": "identity", "expose": False, "note": "ZEN: use well_registry mode=health"},
     # "mcp_health_check" removed 2026-06-28 — legacy alias, use well_health_check
     {"name": "well_classify_substrate", "axis": "identity", "expose": True},
     {"name": "well_trace_lineage", "axis": "trace", "expose": True},
@@ -15515,15 +15824,15 @@ _WELL_SOMATIC_MANIFEST: list[dict[str, object]] = [
     {"name": "well_compute_metabolic_flux", "axis": "vitality", "expose": True},
     {"name": "well_assess_sovereign_entropy", "axis": "vitality", "expose": True},
     {"name": "well_guard_dignity", "axis": "critique", "expose": True},
-    {"name": "well_medical_boundary", "axis": "boundary", "expose": True},
+    {"name": "well_medical_boundary", "axis": "boundary", "expose": False, "note": "ZEN: disclaimer policy, not a tool"},
     {
         "name": "well_system_registry_status",
         "axis": "identity",
         "expose": False,
         "note": "DEPRECATED — use well_registry_status",
     },
-    {"name": "well_registry_status", "axis": "identity", "expose": True},
-    {"name": "well_signal_coverage", "axis": "reflect", "expose": True},
+    {"name": "well_registry_status", "axis": "identity", "expose": False, "note": "ZEN: use well_registry mode=registry"},
+    {"name": "well_signal_coverage", "axis": "reflect", "expose": False, "note": "ZEN: use well_registry mode=coverage"},
     {"name": "well_readiness", "axis": "judge", "expose": True},
     {"name": "well_handoff_dignity_to_arifos", "axis": "bridge", "expose": True},
     {"name": "well_handoff_livelihood_to_wealth", "axis": "bridge", "expose": True},
@@ -16112,7 +16421,7 @@ if __name__ == "__main__":
     # Without this, the model sees docstrings without trigger context.
     # ═══════════════════════════════════════════════════════════════════════════════
     _WELL_TRIGGERS = {
-        "well_health_check": "Use when: checking WELL organ status, schema version, or federation health.",
+        "well_registry": "Use when: checking WELL health, tool registry, or signal coverage (mode=health|registry|coverage).",
         "well_medical_boundary": "Use when: the user mentions medical symptoms — WELL is not a doctor, redirects to professional care.",
         "well_readiness": "Use when: quick single-readiness verdict needed (GREEN/YELLOW/RED score).",
         "well_signal_coverage": "Use when: auditing which canonical human substrate signals WELL is currently seeing.",
@@ -16160,7 +16469,6 @@ if __name__ == "__main__":
     except Exception as e:
         logger.warning(f"WELL_ENRICH: skipped — {e}")
         import sys
-
 
     logger.info("WELL MCP server starting on %s:%d", host, port)
     uvicorn.run(
