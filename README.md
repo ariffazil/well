@@ -1,5 +1,5 @@
 <!-- SOT-MANIFEST
-federation_release: v2026.07.05-WELL-ABC-TRINITY
+federation_release: v2026.07.12-CONSOLIDATION-EPOCH
 last_verified: 2026-07-10T04:50Z
 live_commit: 9eb8951
 port: 18083
