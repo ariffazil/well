@@ -4687,22 +4687,13 @@ TTL_STALE = 48  # hours — RED/STALE
 @mcp.tool()
 def well_readiness(ctx: Context | None = None) -> dict[str, Any]:
     """
-    ZEN: Single readiness verdict. One tool, one answer.
+    LEGACY ALIAS (deprecated 2026-07-12) → well_validate_vitality(mode="readiness").
 
-    Returns:
-      - color: GREEN | YELLOW | RED | STALE
-      - score: 0-100
-      - ttl_hours: hours since last data
-      - action: PROCEED | SIMPLIFY | HOLD | INJECT_NEEDED
-      - biometric: key signals (peace2, delta_s, kappa_r, rasa, clarity, sleep)
+    Still callable for federation clients. Prefer the canonical tool for new code.
+    Deprecation epoch: 2026-07-12. Target removal: 2026-09-01 (F13 may extend).
 
-    TTL rules:
-      < 12h  = GREEN (if score OK)
-      12-24h = YELLOW
-      24-48h = RED
-      > 48h  = STALE → INJECT_NEEDED
-
-    Use this for quick federation checks. Use well_validate_vitality for full assessment.
+    Returns zen fields (color/score/action) plus standard readiness_envelope.v1
+    so machine telemetry is never silently labeled as human readiness.
     """
     state = _load_state()
     score = _state_score(state) or 0
@@ -4781,6 +4772,50 @@ def well_readiness(ctx: Context | None = None) -> dict[str, Any]:
     except Exception as _gate_err:  # pragma: no cover — gate is advisory
         gate = {"error": str(_gate_err), "verdict": "UNAVAILABLE"}
 
+    # Standard readiness envelope (Priority 3) — substrates separated
+    envelope: dict[str, Any] = {}
+    try:
+        from loop.readiness_envelope import (
+            build_readiness_envelope,
+            map_gate_to_substrates,
+        )
+
+        subs = map_gate_to_substrates(gate if isinstance(gate, dict) else {}, state)
+        conf = 0.4 if str(state.get("truth_status", "")).upper() in (
+            "OPERATOR_REPORTED",
+            "SELF_REPORT",
+            "",
+        ) else 0.7
+        if color == "STALE":
+            conf = min(conf, 0.2)
+        envelope = build_readiness_envelope(
+            color=color,
+            score=round(score, 1),
+            confidence=conf,
+            action=action,
+            reason=" | ".join(reasons),
+            human=subs["human"],
+            machine=subs["machine"],
+            interaction=subs["interaction"],
+            governance=subs["governance"],
+            measured_at=ts_str,
+            ttl_hours=round(ttl_hours, 1),
+            vitality_gate={
+                "verdict": gate.get("verdict"),
+                "weakest_substrate": gate.get("weakest_substrate"),
+                "peace_condition": gate.get("peace_condition"),
+                "H_WELL": (gate.get("H_WELL") or {}).get("state"),
+                "M_WELL": (gate.get("M_WELL") or {}).get("state"),
+                "G_WELL": (gate.get("G_WELL") or {}).get("state"),
+                "C_WELL": (gate.get("C_WELL") or {}).get("state"),
+            }
+            if gate
+            else None,
+            evidence_quality=conf,
+        )
+    except Exception as _env_err:  # pragma: no cover
+        envelope = {"schema": "well_readiness_envelope.v1", "error": str(_env_err)}
+
     return {
         "ok": True,
         "color": color,
@@ -4788,6 +4823,13 @@ def well_readiness(ctx: Context | None = None) -> dict[str, Any]:
         "ttl_hours": round(ttl_hours, 1),
         "action": action,
         "reason": " | ".join(reasons),
+        "deprecated": True,
+        "replacement": "well_validate_vitality",
+        "replacement_args": {"mode": "readiness"},
+        "deprecation_epoch": "2026-07-12",
+        "removal_date": "2026-09-01",
+        "readiness_envelope": envelope.get("readiness") if isinstance(envelope, dict) else None,
+        "schema": "well_readiness_envelope.v1",
         "biometric": {
             "peace2": bio.get("peace2"),
             "delta_s": bio.get("delta_s"),
@@ -4795,6 +4837,10 @@ def well_readiness(ctx: Context | None = None) -> dict[str, Any]:
             "rasa": bio.get("rasa"),
             "clarity": state.get("metrics", {}).get("cognitive", {}).get("clarity"),
             "sleep_hours": sleep.get("hours"),
+            "evidence_type": "self_report"
+            if str(state.get("truth_status", "")).upper()
+            in ("OPERATOR_REPORTED", "SELF_REPORT")
+            else "unknown",
         },
         "vitality_gate": {
             "verdict": gate.get("verdict"),
@@ -14943,26 +14989,53 @@ def well_registry_status() -> dict[str, Any]:
     # All other tools are considered "internal/alias"
     all_tools_in_code = all_known | registered_in_somatic
 
-    # Categorize
-    canonical_callable = sorted(registered_in_somatic & set(safe_args.keys()))
-    phantom_tools = sorted(registered_in_somatic - all_tools_in_code)
-    deprecated_callable: list[str] = []
-    alias_conflicts: list[str] = []
-
-    # Legacy tools that are deprecated but still registered
-    deprecated_legacy = {
-        "well_get_health",
-        "well_state",
-        "well_readiness",
-        "well_init",
-        "well_machine_state",
-        "well_assess_governance",
+    # ── Canonical public surface (agent-facing) — Measurement Boundary 2026-07-12
+    PUBLIC_CANONICAL = {
+        "well_classify_substrate",
+        "well_validate_vitality",
+        "well_assess_reliability",
+        "well_assess_homeostasis",
+        "well_check_repair",
+        "well_guard_dignity",
+        "well_trace_lineage",
+        "well_registry_status",
     }
-    for name in sorted(deprecated_legacy):
-        if name not in phantom_tools:
-            deprecated_callable.append(name)
-
-    # Well-known aliases that map to canonical
+    # Legacy aliases: still callable, NEVER listed as canonical
+    LEGACY_ALIASES = {
+        "well_readiness": {
+            "replacement": "well_validate_vitality",
+            "replacement_args": {"mode": "readiness"},
+            "deprecation_epoch": "2026-07-12",
+            "removal_date": "2026-09-01",
+        },
+        "well_get_health": {
+            "replacement": "well_health_check",
+            "deprecation_epoch": "2026-06-28",
+            "removal_date": "2026-09-01",
+        },
+        "well_state": {
+            "replacement": "well_validate_vitality",
+            "replacement_args": {"mode": "state"},
+            "deprecation_epoch": "2026-06-01",
+            "removal_date": "2026-09-01",
+        },
+        "well_init": {
+            "replacement": "well_000_init",
+            "deprecation_epoch": "2026-06-01",
+            "removal_date": "2026-09-01",
+        },
+        "well_machine_state": {
+            "replacement": "well_assess_reliability",
+            "deprecation_epoch": "2026-06-01",
+            "removal_date": "2026-09-01",
+        },
+        "well_assess_governance": {
+            "replacement": "well_detect_boundary",
+            "deprecation_epoch": "2026-07-01",
+            "removal_date": "2026-09-01",
+        },
+    }
+    # Ω-stage internal aliases (not public canonical)
     known_aliases = {
         "well_000_ops",
         "well_111_sense",
@@ -14978,13 +15051,32 @@ def well_registry_status() -> dict[str, Any]:
         "well_444_gateway",
         "well_000_init",
     }
-    for name in sorted(known_aliases):
-        if name not in phantom_tools:
-            canonical_callable.append(name)
-    canonical_callable = sorted(set(canonical_callable))
 
-    intended_count = 13  # 13 canonical Ω-WELL tools per blueprint
-    verdict = "REGISTRY_PASS" if len(phantom_tools) == 0 else "REGISTRY_DRIFT"
+    phantom_tools = sorted(registered_in_somatic - all_tools_in_code)
+    # Canonical = public set that is registered/known (never dual-list with deprecated)
+    # Do not require safe_args membership — safe_args is only for dry-call harness.
+    known_names = registered_in_somatic | all_known | set(safe_args.keys())
+    canonical_callable = sorted(PUBLIC_CANONICAL & known_names)
+
+    deprecated_callable = sorted(
+        n
+        for n in LEGACY_ALIASES
+        if n in registered_in_somatic or n in all_known
+    )
+    alias_conflicts: list[str] = []
+    # Conflict = same name in both lists (must be empty)
+    dual = set(canonical_callable) & set(deprecated_callable)
+    if dual:
+        alias_conflicts = sorted(dual)
+        # Prefer deprecated listing for duals — remove from canonical
+        canonical_callable = sorted(set(canonical_callable) - dual)
+
+    intended_count = len(PUBLIC_CANONICAL)
+    verdict = "REGISTRY_PASS" if len(phantom_tools) == 0 and not dual else (
+        "REGISTRY_PASS" if not phantom_tools else "REGISTRY_DRIFT"
+    )
+    if dual:
+        verdict = "REGISTRY_DRIFT"
 
     # Return blueprint canonical format directly — no _to_federation_output wrapping.
     # well_registry_status is a registry diagnostic, not a constitutional judgment tool.
@@ -14993,17 +15085,24 @@ def well_registry_status() -> dict[str, Any]:
         "intended_tools": intended_count,
         "registered_tools": len(somatic_tools),
         "somatic_tools": sorted(somatic_tools),
-        "callable_tools": len(canonical_callable),
+        "callable_tools": len(canonical_callable) + len(deprecated_callable),
         "phantom_tools": phantom_tools,
-        "deprecated_callable": sorted(deprecated_callable),
+        "deprecated_callable": deprecated_callable,
         "canonical_callable": canonical_callable,
+        "legacy_alias_map": LEGACY_ALIASES,
+        "internal_aliases": sorted(known_aliases),
+        "public_canonical_surface": sorted(PUBLIC_CANONICAL),
         "alias_conflicts": alias_conflicts,
         "verdict": verdict,
+        "measurement_boundary": "/root/AAA/docs/MEASUREMENT_BOUNDARY_CONTRACT.md",
         "well_system_registry_status": "DEPRECATED — use well_registry_status",
         "registry_note": (
-            "Static registration check against SOMATIC_TOOLS. "
-            "Use well_registry_status for registry diagnostics."
+            "Canonical ≠ legacy. well_readiness is LEGACY only "
+            "(→ well_validate_vitality mode=readiness). "
+            "See MEASUREMENT_BOUNDARY_CONTRACT.md."
         ),
+        "authority": "ADVISORY_ONLY",
+        "medical_boundary": "NON_DIAGNOSTIC",
         "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
         "boundary_notice": WELL_BOUNDARY_NOTICE,
         "final_authority": "ARIF",
