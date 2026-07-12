@@ -41,6 +41,41 @@ except ImportError:
 # ── Paths (defined before use in fallback import) ───────────────────────────────
 WELL_DIR = Path(__file__).parent
 
+# ── Contracts package pin (arifOS also ships `contracts/` — shadow fix) ─────────
+# PYTHONPATH includes /root/arifOS; importing arifOS modules can bind
+# sys.modules["contracts"] to arifOS first. WELL tools need
+# WELL/contracts/enrich_well.py. Pin WELL contracts before any tool import path.
+import sys as _sys_contracts
+
+_well_root = str(WELL_DIR)
+if _well_root in _sys_contracts.path:
+    _sys_contracts.path.remove(_well_root)
+_sys_contracts.path.insert(0, _well_root)
+for _mod_name in list(_sys_contracts.modules):
+    if _mod_name == "contracts" or _mod_name.startswith("contracts."):
+        _cf = getattr(_sys_contracts.modules[_mod_name], "__file__", "") or ""
+        if "arifOS" in _cf or "/opt/arifos" in _cf:
+            del _sys_contracts.modules[_mod_name]
+try:
+    import contracts as _well_contracts  # noqa: F401
+
+    if not str(getattr(_well_contracts, "__file__", "")).startswith(_well_root):
+        # Last resort: force-load WELL contracts package by path
+        import importlib.util as _ilu
+
+        _init = WELL_DIR / "contracts" / "__init__.py"
+        _spec = _ilu.spec_from_file_location(
+            "contracts",
+            _init,
+            submodule_search_locations=[str(WELL_DIR / "contracts")],
+        )
+        if _spec and _spec.loader:
+            _pkg = _ilu.module_from_spec(_spec)
+            _sys_contracts.modules["contracts"] = _pkg
+            _spec.loader.exec_module(_pkg)
+except Exception:
+    pass
+
 # ── Reality Ledger Bridge ────────────────────────────────────────────────────────
 _WELL_LEDGER_AVAILABLE = True
 try:
@@ -1528,6 +1563,47 @@ def _resolve_readiness(state: dict[str, Any]) -> dict[str, Any]:
 
 
 # ── Server ─────────────────────────────────────────────────────────────────────
+# Public hostnames that reverse proxies (Caddy/Cloudflare) present in Host header.
+# FastMCP 3.4 HostOriginGuard defaults to loopback only → 421 Misdirected Request
+# when clients hit https://well.arif-fazil.com/* without this allowlist.
+WELL_PUBLIC_HOSTS: tuple[str, ...] = (
+    "well.arif-fazil.com",
+    "mcp.arif-fazil.com",
+    "arif-fazil.com",
+)
+WELL_PUBLIC_ORIGINS: tuple[str, ...] = (
+    "https://well.arif-fazil.com",
+    "https://mcp.arif-fazil.com",
+    "https://arif-fazil.com",
+    "https://aaa.arif-fazil.com",
+    "https://chatgpt.com",
+    "https://chat.openai.com",
+)
+
+
+def _apply_public_host_allowlist(app: Any) -> Any:
+    """Extend FastMCP HostOriginGuardMiddleware allowlists for public ingress."""
+    middleware_list = getattr(app, "user_middleware", None) or []
+    for mw in middleware_list:
+        cls = getattr(mw, "cls", None)
+        if cls is None or getattr(cls, "__name__", "") != "HostOriginGuardMiddleware":
+            continue
+        kwargs = getattr(mw, "kwargs", None)
+        if kwargs is None:
+            continue
+        hosts = list(kwargs.get("allowed_hosts") or [])
+        for h in WELL_PUBLIC_HOSTS:
+            if h not in hosts:
+                hosts.append(h)
+        kwargs["allowed_hosts"] = hosts
+        origins = list(kwargs.get("allowed_origins") or [])
+        for o in WELL_PUBLIC_ORIGINS:
+            if o not in origins:
+                origins.append(o)
+        kwargs["allowed_origins"] = origins
+    return app
+
+
 mcp = FastMCP(
     name="WELL",
     version="2026.05.15",
@@ -4679,6 +4755,32 @@ def well_readiness(ctx: Context | None = None) -> dict[str, Any]:
     signals = state.get("signals", {})
     sleep = signals.get("s05_sleep_architecture", {})
 
+    # Four-mirror vitality gate (auto-feeds machine_human_substrate + VPS probe)
+    gate: dict[str, Any] = {}
+    try:
+        from vitality_gate import vitality_gate as _vitality_gate
+
+        gate = _vitality_gate(state=state)
+        g_verdict = str(gate.get("verdict", ""))
+        # Gate can only tighten posture (never invent a greener color)
+        if g_verdict in ("HOLD", "RECOVER") and action in ("PROCEED", "SIMPLIFY"):
+            action = "HOLD" if g_verdict == "HOLD" else "SIMPLIFY"
+            color = "RED" if g_verdict == "HOLD" else "YELLOW"
+            reasons.append(
+                f"gate={g_verdict}/{gate.get('weakest_substrate')} "
+                f"({(gate.get(gate.get('weakest_substrate') or '', {}) or {}).get('state', '?')})"
+            )
+        elif g_verdict == "REDUCE_LOAD" and action == "PROCEED":
+            action = "SIMPLIFY"
+            color = "YELLOW"
+            reasons.append(f"gate=REDUCE_LOAD/{gate.get('weakest_substrate')}")
+        elif g_verdict == "INSUFFICIENT_DATA" and action == "PROCEED":
+            action = "SIMPLIFY"
+            color = "YELLOW"
+            reasons.append("gate=INSUFFICIENT_DATA")
+    except Exception as _gate_err:  # pragma: no cover — gate is advisory
+        gate = {"error": str(_gate_err), "verdict": "UNAVAILABLE"}
+
     return {
         "ok": True,
         "color": color,
@@ -4694,6 +4796,18 @@ def well_readiness(ctx: Context | None = None) -> dict[str, Any]:
             "clarity": state.get("metrics", {}).get("cognitive", {}).get("clarity"),
             "sleep_hours": sleep.get("hours"),
         },
+        "vitality_gate": {
+            "verdict": gate.get("verdict"),
+            "weakest_substrate": gate.get("weakest_substrate"),
+            "peace_condition": gate.get("peace_condition"),
+            "H_WELL": (gate.get("H_WELL") or {}).get("state"),
+            "M_WELL": (gate.get("M_WELL") or {}).get("state"),
+            "G_WELL": (gate.get("G_WELL") or {}).get("state"),
+            "C_WELL": (gate.get("C_WELL") or {}).get("state"),
+            "tool_routing": gate.get("tool_routing"),
+        }
+        if gate
+        else None,
         "freshness": state.get("freshness", "UNKNOWN"),
         "confidence": state.get("confidence", "UNKNOWN"),
         "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
@@ -11380,6 +11494,7 @@ if __name__ == "__main__":
         json_response=True,
         stateless_http=True,
     )
+    app = _apply_public_host_allowlist(app)
 
     async def tools_handler(request):
         """Federation tool discovery — flat tool registry with WELL danger metadata."""
@@ -13527,6 +13642,53 @@ def well_validate_vitality(
         tool_name="well_validate_vitality",
         internal_result=internal,
     )
+    # Attach four-mirror vitality gate (auto machine sensor feed)
+    try:
+        from vitality_gate import vitality_gate as _vitality_gate
+
+        _state = _load_state() if "_load_state" in globals() else None
+        gate = _vitality_gate(state=_state if isinstance(_state, dict) else None)
+        if isinstance(result, dict):
+            result["vitality_gate"] = {
+                "verdict": gate.get("verdict"),
+                "weakest_substrate": gate.get("weakest_substrate"),
+                "peace_condition": gate.get("peace_condition"),
+                "H_WELL": gate.get("H_WELL"),
+                "M_WELL": gate.get("M_WELL"),
+                "G_WELL": gate.get("G_WELL"),
+                "C_WELL": gate.get("C_WELL"),
+                "tool_routing": gate.get("tool_routing"),
+                "gate_rule": gate.get("gate_rule"),
+            }
+            # Surface decision-class interaction: C4/C5 + weak gate → advisory hold
+            dc = (decision_class or "").upper()
+            if dc in ("C4", "C5") and gate.get("verdict") in (
+                "HOLD",
+                "RECOVER",
+                "INSUFFICIENT_DATA",
+                "REDUCE_LOAD",
+            ):
+                result["decision_fitness"] = {
+                    "fit_for_class": False,
+                    "decision_class": dc,
+                    "gate_verdict": gate.get("verdict"),
+                    "advisory": (
+                        "Conditions unsuitable for this decision class now. "
+                        "Preserve work; repair weakest substrate; reassess."
+                    ),
+                }
+            elif dc:
+                result["decision_fitness"] = {
+                    "fit_for_class": gate.get("verdict") in ("PROCEED", "REDUCE_LOAD"),
+                    "decision_class": dc,
+                    "gate_verdict": gate.get("verdict"),
+                }
+    except Exception as _gate_err:  # pragma: no cover
+        if isinstance(result, dict):
+            result["vitality_gate"] = {
+                "verdict": "UNAVAILABLE",
+                "error": str(_gate_err),
+            }
     return _inject_apex(result, "well_validate_vitality")
 
 
@@ -15308,11 +15470,28 @@ def well_sense_substrate() -> dict[str, Any]:
 
     try:
         signals = collect_substrate_signals()
-        return {
+        out: dict[str, Any] = {
             "status": "OK",
             "verdict": "REFLECT_ONLY",
             **signals,
         }
+        # Surface four-mirror gate using this sensor feed (no second collection)
+        try:
+            from vitality_gate import vitality_gate as _vitality_gate
+
+            gate = _vitality_gate(sensor_data=signals)
+            out["vitality_gate"] = {
+                "verdict": gate.get("verdict"),
+                "weakest_substrate": gate.get("weakest_substrate"),
+                "peace_condition": gate.get("peace_condition"),
+                "H_WELL": (gate.get("H_WELL") or {}).get("state"),
+                "M_WELL": (gate.get("M_WELL") or {}).get("state"),
+                "G_WELL": (gate.get("G_WELL") or {}).get("state"),
+                "C_WELL": (gate.get("C_WELL") or {}).get("state"),
+            }
+        except Exception as _ge:
+            out["vitality_gate"] = {"verdict": "UNAVAILABLE", "error": str(_ge)}
+        return out
     except Exception as e:
         return {
             "status": "ERROR",
@@ -15733,13 +15912,17 @@ def _enforce_somatic_boundary(mcp_server: FastMCP) -> None:
         try:
             from federation.tool_manifest import is_tool_somatic as _its
 
-            visible = _its(tool_name)
+            visible = bool(_its(tool_name))
             if visible:
                 print(f"BOUNDARY KEEP (federation): {tool_name}", flush=True)
         except Exception:
-            visible = tool_name in SOMATIC_TOOLS
-            if visible:
-                print(f"BOUNDARY KEEP (somatic): {tool_name}", flush=True)
+            visible = False
+        # Dual keep: federation manifest OR local SOMATIC_TOOLS (prevents
+        # silent drop of tools registered in SOMATIC but missing from global
+        # federation registry — e.g. well_sense_substrate).
+        if not visible and tool_name in SOMATIC_TOOLS:
+            visible = True
+            print(f"BOUNDARY KEEP (somatic): {tool_name}", flush=True)
         if not visible:
             try:
                 mcp_server.remove_tool(tool_name)
@@ -15843,6 +16026,7 @@ if __name__ == "__main__":
         json_response=True,
         stateless_http=True,
     )
+    app = _apply_public_host_allowlist(app)
 
     # ── P6 helpers — domain identity anchors ──────────────────────
     def _compute_domain_law() -> str:

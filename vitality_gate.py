@@ -130,41 +130,98 @@ def assess_h_well(state: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _load_machine_sensor() -> dict[str, Any] | None:
+    """Auto-collect machine_human_substrate signals when not injected."""
+    try:
+        from sensors.machine_human_substrate import collect_substrate_signals
+
+        return collect_substrate_signals()
+    except Exception as exc:  # pragma: no cover — sensor optional at import time
+        return {"_sensor_error": str(exc)}
+
+
+def _probe_vps_machine() -> dict[str, Any] | None:
+    """Optional pure VPS probe (cpu/mem/disk/organs) for M-WELL truth."""
+    try:
+        from vps_compute import probe_machine
+
+        return probe_machine()
+    except Exception:
+        return None
+
+
 def assess_m_well(sensor_data: dict[str, Any] | None = None) -> dict[str, Any]:
     """
-    Assess M-WELL (machine substrate) from sensor data.
-    Uses machine_human_substrate sensor output.
+    Assess M-WELL (machine substrate).
+
+    Primary: machine_human_substrate (session/load/circadian telemetry).
+    Secondary: vps_compute.probe_machine (cpu/mem/disk/organs) when available.
+    Weakest of available signals wins (floor dominance).
     """
-    if not sensor_data:
+    if sensor_data is None:
+        sensor_data = _load_machine_sensor()
+
+    ranks: list[int] = []
+    evidence_parts: list[str] = []
+    sources: list[str] = []
+    uncertainty = 0.9
+
+    if sensor_data and not sensor_data.get("_sensor_error"):
+        readiness = float(sensor_data.get("readiness_score", 0) or 0)
+        fatigue = sensor_data.get("fatigue", {}) or {}
+        sessions = sensor_data.get("sessions", {}) or {}
+        if readiness >= 0.7:
+            s_rank = 4
+        elif readiness >= 0.5:
+            s_rank = 3
+        elif readiness >= 0.3:
+            s_rank = 2
+        else:
+            s_rank = 1
+        ranks.append(s_rank)
+        evidence_parts.append(
+            f"substrate_readiness={readiness}, fatigue={fatigue.get('level', '?')}, "
+            f"human_sessions={sessions.get('human', 0)}"
+        )
+        sources.append("machine_human_substrate")
+        uncertainty = min(uncertainty, 0.25)
+
+    vps = _probe_vps_machine()
+    if vps:
+        v_state = str(vps.get("state", "UNKNOWN"))
+        v_rank = _rank(v_state) if v_state in _RANK_MAP else 0
+        if v_rank:
+            ranks.append(v_rank)
+        signals = vps.get("signals", {}) or {}
+        evidence_parts.append(
+            f"vps_state={v_state}, score={vps.get('score')}, "
+            f"cpu={signals.get('cpu_pct')}, mem={signals.get('memory_pct')}, "
+            f"organs={signals.get('organs_up')}"
+        )
+        sources.append("vps_compute.probe_machine")
+        uncertainty = min(uncertainty, 0.2)
+
+    if not ranks:
+        err = (sensor_data or {}).get("_sensor_error")
         return {
             "state": "UNKNOWN",
             "rank": 0,
-            "evidence": "no_sensor_data",
+            "evidence": f"no_sensor_data{': ' + err if err else ''}",
             "uncertainty": 0.9,
             "source": "none",
         }
 
-    readiness = sensor_data.get("readiness_score", 0)
-    fatigue = sensor_data.get("fatigue", {})
-    sessions = sensor_data.get("sessions", {})
-
-    # Machine state from readiness score
-    if readiness >= 0.7:
-        m_state = "STABLE"
-    elif readiness >= 0.5:
-        m_state = "STRAINED"
-    elif readiness >= 0.3:
-        m_state = "DEGRADED"
-    else:
-        m_state = "CRITICAL"
+    # Floor dominance: weakest available machine signal determines state
+    min_rank = min(ranks)
+    inv = {4: "STABLE", 3: "STRAINED", 2: "DEGRADED", 1: "CRITICAL", 0: "UNKNOWN"}
+    m_state = inv.get(min_rank, "UNKNOWN")
 
     return {
         "state": m_state,
-        "rank": _rank(m_state),
-        "evidence": f"readiness={readiness}, fatigue={fatigue.get('level', '?')}, "
-        f"human_sessions={sessions.get('human', 0)}",
-        "uncertainty": 0.2,
-        "source": "machine_human_substrate",
+        "rank": min_rank,
+        "evidence": "; ".join(evidence_parts),
+        "uncertainty": uncertainty,
+        "source": "+".join(sources),
     }
 
 
@@ -255,6 +312,10 @@ def vitality_gate(
         else:
             state = {}
     _state: dict[str, Any] = state  # ensure non-None for type checker
+
+    # Auto-feed machine_human_substrate when caller does not inject sensor_data
+    if sensor_data is None:
+        sensor_data = _load_machine_sensor()
 
     # Assess all four mirrors
     h = assess_h_well(_state)
