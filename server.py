@@ -15258,10 +15258,72 @@ SOMATIC_TOOLS = {
     # Forged 2026-06-25. Deterministic rule-based Polyvagal + SDT + contradiction.
     "well_classify_state",  # State Classifier → federation surface
     "well_readiness",  # ZEN: single verdict — color/score/TTL/action
+    "well_sense_substrate",  # automated machine-to-human substrate sensor
 }
 # NOTE: well_registry_status is the canonical blueprint format tool.
 # well_system_registry_status is deprecated (internal only, no MCP registration).
 # diagnostic tools (no @mcp.tool decorator). Not part of public MCP surface.
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Automated Substrate Sensor — Machine-to-Human Mapping
+# ═══════════════════════════════════════════════════════════════════════════════
+
+try:
+    from sensors.machine_human_substrate import collect_substrate_signals
+    _SUBSTRATE_SENSOR_AVAILABLE = True
+except ImportError:
+    _SUBSTRATE_SENSOR_AVAILABLE = False
+
+
+@mcp.tool()
+def well_sense_substrate() -> dict[str, Any]:
+    """Automated machine-to-human substrate sensing.
+
+    Infers human state from machine telemetry — no biometric devices needed.
+    The VPS IS the sensor. Measures:
+      - Human SSH sessions vs agent CLI processes vs machine services
+      - Circadian phase (UTC+8 timezone-aware)
+      - Sleep detection (activity gaps > 4 hours)
+      - Fatigue assessment (circadian mismatch, session overload)
+      - Machine autonomy ratio (how much runs without human)
+      - Command velocity and agent launch patterns
+
+    Returns: structured substrate state with readiness_score (0-1) and
+    readiness_band (GREEN/YELLOW/RED).
+
+    REFLECT_ONLY: This reads machine state. It does not judge or decide.
+    Arif remains final authority on his own state.
+    """
+    if not _SUBSTRATE_SENSOR_AVAILABLE:
+        return {
+            "status": "UNAVAILABLE",
+            "reason": "sensors.machine_human_substrate not importable",
+            "honesty": {
+                "source_type": "ERROR",
+                "is_sensor_verified": False,
+                "banner": "Sensor module not available",
+            },
+        }
+
+    try:
+        signals = collect_substrate_signals()
+        return {
+            "status": "OK",
+            "verdict": "REFLECT_ONLY",
+            **signals,
+        }
+    except Exception as e:
+        return {
+            "status": "ERROR",
+            "reason": str(e),
+            "honesty": {
+                "source_type": "ERROR",
+                "is_sensor_verified": False,
+                "banner": f"Sensor error: {e}",
+            },
+        }
+
 
 # MCP Spec 2025-11-25 tool annotations (SEP-1862/1913/1984/2417)
 _TOOL_ANNOTATIONS: dict[str, dict[str, Any]] = {
@@ -15529,6 +15591,7 @@ _WELL_SOMATIC_MANIFEST: list[dict[str, object]] = [
     {"name": "well_handoff_livelihood_to_wealth", "axis": "bridge", "expose": True},
     {"name": "well_attest_to_kernel", "axis": "attest", "expose": True},
     {"name": "well_classify_state", "axis": "observe", "expose": True},
+    {"name": "well_sense_substrate", "axis": "observe", "expose": True},
 ]
 
 _WELL_AUTONOMIC_TOOLS: list[dict[str, object]] = [
