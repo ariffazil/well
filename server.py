@@ -13374,7 +13374,7 @@ def well_validate_vitality(
         ctx=ctx,
     )
     import sys as _sys_we
-    _sys_we.path.insert(0, "/root/WELL")
+    _sys_we.path.insert(0, str(WELL_DIR))
     from contracts.enrich_well import build_metabolic_output
 
     result = build_metabolic_output(
@@ -13642,7 +13642,7 @@ def well_assess_reliability(
         }
     internal = well_000_ops(mode=mode, ctx=ctx)
     import sys as _sys_we
-    _sys_we.path.insert(0, "/root/WELL")
+    _sys_we.path.insert(0, str(WELL_DIR))
     from contracts.enrich_well import build_metabolic_output
 
     return build_metabolic_output(
@@ -13989,7 +13989,7 @@ def well_reflect_intelligence(
         ctx=ctx,
     )
     import sys as _sys_we
-    _sys_we.path.insert(0, "/root/WELL")
+    _sys_we.path.insert(0, str(WELL_DIR))
     from contracts.enrich_well import build_metabolic_output
 
     return build_metabolic_output(
