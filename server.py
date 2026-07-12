@@ -15124,6 +15124,66 @@ def well_classify_state(
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# Automated Substrate Sensor — Machine-to-Human Mapping
+# ═══════════════════════════════════════════════════════════════════════════════
+
+try:
+    from sensors.machine_human_substrate import collect_substrate_signals
+    _SUBSTRATE_SENSOR_AVAILABLE = True
+except ImportError:
+    _SUBSTRATE_SENSOR_AVAILABLE = False
+
+
+@mcp.tool()
+def well_sense_substrate() -> dict[str, Any]:
+    """Automated machine-to-human substrate sensing.
+
+    Infers human state from machine telemetry — no biometric devices needed.
+    The VPS IS the sensor. Measures:
+      - Human SSH sessions vs agent CLI processes vs machine services
+      - Circadian phase (UTC+8 timezone-aware)
+      - Sleep detection (activity gaps > 4 hours)
+      - Fatigue assessment (circadian mismatch, session overload)
+      - Machine autonomy ratio (how much runs without human)
+      - Command velocity and agent launch patterns
+
+    Returns: structured substrate state with readiness_score (0-1) and
+    readiness_band (GREEN/YELLOW/RED).
+
+    REFLECT_ONLY: This reads machine state. It does not judge or decide.
+    Arif remains final authority on his own state.
+    """
+    if not _SUBSTRATE_SENSOR_AVAILABLE:
+        return {
+            "status": "UNAVAILABLE",
+            "reason": "sensors.machine_human_substrate not importable",
+            "honesty": {
+                "source_type": "ERROR",
+                "is_sensor_verified": False,
+                "banner": "Sensor module not available",
+            },
+        }
+
+    try:
+        signals = collect_substrate_signals()
+        return {
+            "status": "OK",
+            "verdict": "REFLECT_ONLY",
+            **signals,
+        }
+    except Exception as e:
+        return {
+            "status": "ERROR",
+            "reason": str(e),
+            "honesty": {
+                "source_type": "ERROR",
+                "is_sensor_verified": False,
+                "banner": f"Sensor error: {e}",
+            },
+        }
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # Universal wisdom injection — monkey-patch all registered tool functions
 # ═══════════════════════════════════════════════════════════════════════════════
 
