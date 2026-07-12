@@ -11,7 +11,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-well_dir = Path(__file__).parent
+well_dir = Path(__file__).parent.parent
 test_dir = Path(tempfile.mkdtemp(prefix="afwell-test-"))
 os.environ["WELL_STATE_PATH"] = str(test_dir / "state.json")
 os.environ["WELL_EVENTS_PATH"] = str(test_dir / "events.jsonl")

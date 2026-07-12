@@ -1,102 +1,285 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-ring="VITALITY">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WELL — Human Readiness Organ | arifOS Federation</title>
-<meta name="description" content="WELL is the human readiness organ of the arifOS federation. Vitality, fatigue, dignity, homeostasis. Reflect, never diagnose.">
-<link rel="canonical" href="https://well.arif-fazil.com/">
-<link rel="mcp" href="https://mcp.arif-fazil.com/mcp" type="application/json" title="Canonical MCP Gateway">
-<style>
-:root{--bg:#0d0c0b;--surface:#121110;--border:#2a2826;--text:#d4d2ce;--muted:#9b9995;--faint:#706e6b;--primary:#3a9ea8;--gold:#d4a853;--success:#5a9e38;--error:#b83060}
-*{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Satoshi','Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100dvh;display:flex;align-items:center;justify-content:center;line-height:1.6}
-.shell{max-width:640px;padding:2rem 1.5rem;text-align:center}
-.icon{font-size:3rem;margin-bottom:1rem}
-h1{font-family:'Cabinet Grotesk','Helvetica Neue',sans-serif;font-size:2rem;font-weight:800;letter-spacing:-0.03em;margin-bottom:0.25rem}
-.subtitle{font-family:'JetBrains Mono',monospace;font-size:0.8rem;color:var(--muted);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:1.5rem}
-.desc{color:var(--muted);font-size:0.95rem;margin-bottom:2rem;max-width:50ch;margin-inline:auto}
-.stats{display:flex;justify-content:center;gap:2rem;margin-bottom:2rem;flex-wrap:wrap}
-.stat{text-align:center}
-.stat-num{font-family:'JetBrains Mono',monospace;font-size:1.5rem;font-weight:700;color:var(--primary)}
-.stat-label{font-size:0.7rem;color:var(--faint);text-transform:uppercase;letter-spacing:0.05em}
-.caps{display:flex;flex-direction:column;gap:0.5rem;margin-bottom:2rem;text-align:left;max-width:400px;margin-inline:auto}
-.cap{display:flex;align-items:center;gap:0.5rem;font-size:0.85rem;color:var(--muted)}
-.cap-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
-.cap-live{background:var(--success);box-shadow:0 0 5px var(--success)}
-.cap-plan{background:var(--gold);box-shadow:0 0 5px var(--gold)}
-.links{display:flex;flex-wrap:wrap;justify-content:center;gap:0.75rem;margin-bottom:2rem}
-a.btn{display:inline-flex;align-items:center;gap:0.4rem;padding:0.5rem 1rem;border-radius:6px;font-size:0.8rem;font-weight:600;text-decoration:none;transition:all 0.15s}
-.btn-primary{background:var(--primary);color:var(--bg)}
-.btn-primary:hover{background:#1e8a96}
-.btn-outline{background:transparent;border:1px solid var(--border);color:var(--muted)}
-.btn-outline:hover{border-color:var(--primary);color:var(--primary)}
-.warn{background:rgba(184,48,96,0.08);border:1px solid rgba(184,48,96,0.25);border-radius:6px;padding:0.75rem 1rem;font-size:0.8rem;color:var(--error);margin-bottom:1.5rem}
-.footer{font-family:'JetBrains Mono',monospace;font-size:0.7rem;color:var(--faint);margin-top:2rem;letter-spacing:0.05em}
-.badge{display:inline-block;padding:2px 8px;border-radius:3px;font-size:0.65rem;font-family:'JetBrains Mono',monospace;font-weight:700;text-transform:uppercase;letter-spacing:0.06em}
-.badge-reflect{background:rgba(58,158,168,0.12);color:var(--primary);border:1px solid rgba(58,158,168,0.25)}
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WELL · Substrate Vitality · arifOS Federation</title>
+  <meta name="description" content="WELL is the biological substrate monitor of the arifOS federation. Operator cognitive pressure, thermodynamic vitality, metabolic flux. REFLECT_ONLY — no automated execution." />
+  <meta name="robots" content="index, follow" />
+  <link rel="canonical" href="https://well.arif-fazil.com/" />
+  <meta property="og:title" content="WELL · Substrate Vitality" />
+  <meta property="og:description" content="Biological substrate monitor. Operator cognitive pressure, vitality, dignity. REFLECT_ONLY." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://well.arif-fazil.com" />
+  <link rel="mcp" href="https://well.arif-fazil.com/mcp" type="application/json" />
+  <link rel="stylesheet" href="/_shared/design-system/tokens.css" />
+  <link rel="preconnect" href="https://api.fontshare.com" crossorigin />
+  <link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700&f[]=cabinet-grotesk@400,700,800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0a0908;
+      --surface: #111110;
+      --border: #2a2826;
+      --text: #d4d2ce;
+      --dim: #807e7b;
+      --gold: #d4a853;
+      --green: #5a9e38;
+      --orange: #d4824a;
+      --red: #b83060;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Satoshi', system-ui, sans-serif;
+      line-height: 1.6;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    .container {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 4rem 2rem;
+      flex: 1;
+    }
+    header {
+      border-bottom: 1px solid var(--border);
+      padding: 2rem 0;
+      margin-bottom: 4rem;
+    }
+    .badge {
+      display: inline-block;
+      font-family: monospace;
+      font-size: 0.7rem;
+      padding: 3px 10px;
+      border-radius: 2px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 1rem;
+    }
+    .badge--vitality { background: rgba(212,168,83,0.15); color: var(--gold); border: 1px solid rgba(212,168,83,0.3); }
+    .badge--reflect { background: rgba(90,158,56,0.15); color: var(--green); border: 1px solid rgba(90,158,56,0.3); }
+    h1 {
+      font-family: 'Cabinet Grotesk', sans-serif;
+      font-size: 3rem;
+      font-weight: 800;
+      line-height: 1;
+      letter-spacing: -0.02em;
+      margin-bottom: 1rem;
+    }
+    h2 {
+      font-family: 'Cabinet Grotesk', sans-serif;
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin: 2.5rem 0 1rem;
+      color: var(--gold);
+    }
+    h3 { font-size: 1rem; font-weight: 600; margin: 1.5rem 0 0.5rem; }
+    p { color: var(--dim); margin-bottom: 1rem; max-width: 60ch; }
+    code {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-size: 0.875em;
+      color: var(--orange);
+    }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1.5rem;
+      margin: 1.5rem 0;
+    }
+    .card p { margin-bottom: 0; }
+    .status-row {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      margin: 1.5rem 0;
+    }
+    .status-chip {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      font-size: 0.8rem;
+      font-family: monospace;
+    }
+    .dot { width: 8px; height: 8px; border-radius: 50%; }
+    .dot--green { background: var(--green); }
+    .dot--gold { background: var(--gold); }
+    .dot--orange { background: var(--orange); }
+    .dot--red { background: var(--red); }
+    table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.875rem; }
+    th { text-align: left; padding: 0.6rem 1rem; border-bottom: 1px solid var(--border); color: var(--dim); font-weight: 600; text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.1em; }
+    td { padding: 0.6rem 1rem; border-bottom: 1px solid var(--border); }
+    td code { background: transparent; border: none; padding: 0; color: var(--orange); }
+    a { color: var(--gold); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .nav-links { display: flex; gap: 2rem; flex-wrap: wrap; margin-top: 2rem; }
+    .nav-links a { font-family: monospace; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.1em; }
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 2rem 0;
+      margin-top: 4rem;
+      font-size: 0.75rem;
+      color: var(--dim);
+      font-family: monospace;
+    }
+    .cite {
+      font-style: italic;
+      color: var(--dim);
+      border-left: 2px solid var(--gold);
+      padding-left: 1rem;
+      margin: 1.5rem 0;
+    }
+  </style>
 </head>
 <body>
-<div class="shell">
-  <div class="icon">🫀</div>
-  <h1>WELL</h1>
-  <div class="subtitle">Human Readiness Organ · arifOS Federation</div>
-  <div class="desc">Vitality, fatigue, dignity, homeostasis. WELL reflects the operator's biological and cognitive state. It never diagnoses. It never decides. It holds the mirror.</div>
+  <div class="container">
 
-  <div class="stats">
-    <div class="stat"><div class="stat-num" id="tools">—</div><div class="stat-label">Tools</div></div>
-    <div class="stat"><div class="stat-num" id="status">—</div><div class="stat-label">Status</div></div>
-    <div class="stat"><div class="stat-num">18083</div><div class="stat-label">Port</div></div>
+    <header>
+      <div class="badge badge--vitality">Ψ Organ · Biological Substrate</div>
+      <h1>WELL</h1>
+      <p>Substrate vitality monitor. Biological witness to the operator's thermodynamic state, cognitive pressure, and dignity preservation.</p>
+      <div class="nav-links">
+        <a href="https://arif-fazil.com/">← arif-fazil.com</a>
+        <a href="https://arifos.arif-fazil.com/">Observatory</a>
+        <a href="https://aaa.arif-fazil.com/">AAA Cockpit</a>
+        <a href="https://well.arif-fazil.com/health">/health</a>
+        <a href="https://well.arif-fazil.com/mcp">/mcp</a>
+      </div>
+    </header>
+
+    <section>
+      <h2>What WELL Is</h2>
+      <p>WELL is the biological substrate organ of the arifOS federation. It does not judge, execute, or advise. It reflects the operator's vitality state so that other organs — and the sovereign human — have an honest read on what the substrate can carry.</p>
+
+      <div class="status-row">
+        <div class="status-chip">
+          <span class="dot dot--reflect"></span>
+          REFLECT_ONLY
+        </div>
+        <div class="status-chip">
+          <span class="dot dot--green"></span>
+          port 18083
+        </div>
+        <div class="status-chip">
+          <span class="dot dot--gold"></span>
+          FastMCP · ~22 tools
+        </div>
+        <div class="status-chip">
+          <span class="dot dot--green"></span>
+          systemd · bare-metal
+        </div>
+      </div>
+
+      <div class="cite">
+        "Technology must protect operator dignity, not bypass it. WELL surfaces what is — cognitive pressure, metabolic flux, vitality — so decisions are made with the body's vote counted."
+      </div>
+    </section>
+
+    <section>
+      <h2>Substrates</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Substrate</th>
+            <th>Scope</th>
+            <th>Boundary</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>H-WELL</strong></td>
+            <td>Human wellness, role vitality, meaning, dignity</td>
+            <td>Local-only biometrics (F6 MARUAH)</td>
+          </tr>
+          <tr>
+            <td><strong>M-WELL</strong></td>
+            <td>Machine reliability, entropy rate, metabolic flux</td>
+            <td>Full substrate</td>
+          </tr>
+          <tr>
+            <td><strong>C-WELL</strong></td>
+            <td>Coupled human-machine state regulation</td>
+            <td>Full substrate</td>
+          </tr>
+          <tr>
+            <td><strong>G-WELL</strong></td>
+            <td>Governance gradient sensing, boundary detection</td>
+            <td>Full substrate</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>Organ Role in Federation</h2>
+      <div class="card">
+        <h3>Federation Position</h3>
+        <p>WELL sits between the biological substrate and the constitutional kernel. It is the <em>witness</em> to operator vitality — it does not vote, it does not veto.</p>
+        <p style="font-family: monospace; font-size: 0.8rem; color: var(--gold); margin-top: 1rem;">
+          arifOS (Ω Law) → WELL (Vitality) → AAA (Routing) → arifOS 888_JUDGE (Verdict) → A-FORGE (Execution) → VAULT999 (Seal)
+        </p>
+      </div>
+    </section>
+
+    <section>
+      <h2>Endpoints</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Path</th>
+            <th>Destination</th>
+            <th>Note</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>/health</code></td>
+            <td>WELL FastMCP server</td>
+            <td>Live vitality status</td>
+          </tr>
+          <tr>
+            <td><code>/mcp</code></td>
+            <td>WELL FastMCP server (JSON-RPC)</td>
+            <td>22 somatic tools · REFLECT_ONLY</td>
+          </tr>
+          <tr>
+            <td><code>/ready</code></td>
+            <td>WELL FastMCP server</td>
+            <td>Alias for /health</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>Design Principles</h2>
+      <div class="card">
+        <h3>REFLECT_ONLY — No Automated Execution</h3>
+        <p>WELL surfaces readings. It does not trigger actions based on biological state. The operator — and the sovereign — decide what to do with the information. This boundary is enforced at the gate layer.</p>
+      </div>
+      <div class="card">
+        <h3>Local-Only Biometrics (F6 MARUAH)</h3>
+        <p>Biometric data stays on local disk. No cloud persistence. No external telemetry of biological state. Human dignity is not a data product.</p>
+      </div>
+    </section>
+
+    <footer>
+      WELL · arifOS Federation · Substrate Vitality Organ<br />
+      <a href="https://arif-fazil.com/999/">/999</a> ·
+      <a href="https://arifos.arif-fazil.com/">Observatory</a> ·
+      <a href="https://aaa.arif-fazil.com/">AAA Cockpit</a> ·
+      DITEMPA BUKAN DIBERI
+    </footer>
+
   </div>
-
-  <div class="warn">
-    ⚠️ WELL is a <strong>reflect-only</strong> organ. MCP tool execution routes through the <a href="https://mcp.arif-fazil.com/" style="color:var(--gold)">canonical MCP gateway</a>. This page is a landing surface only.
-  </div>
-
-  <div class="caps">
-    <div class="cap"><span class="cap-dot cap-live"></span>Operator cognitive pressure monitoring</div>
-    <div class="cap"><span class="cap-dot cap-live"></span>Sleep, fatigue, and homeostasis tracking</div>
-    <div class="cap"><span class="cap-dot cap-live"></span>Dignity preservation guard</div>
-    <div class="cap"><span class="cap-dot cap-plan"></span>Thermodynamic metabolic flux</div>
-    <div class="cap"><span class="cap-dot cap-plan"></span>Sovereign entropy protection</div>
-  </div>
-
-  <div class="links">
-    <a class="btn btn-primary" href="https://arifos.arif-fazil.com/">🔭 Observatory</a>
-    <a class="btn btn-outline" href="https://arifos.arif-fazil.com/federation.html">📊 Federation Map</a>
-    <a class="btn btn-outline" href="https://mcp.arif-fazil.com/">🔌 MCP Gateway</a>
-    <a class="btn btn-outline" href="https://arif-fazil.com/canon/">📐 Canon</a>
-  </div>
-
-  <div class="badge badge-reflect">WELL holds a mirror, not a veto</div>
-
-  <div class="footer">
-    arifOS Federation · DITEMPA BUKAN DIBERI<br>
-    WELL does not decide worth. WELL identifies substrate, validates evidence,<br>
-    detects vitality/degradation, protects dignity, and returns judgment to Arif.
-  </div>
-</div>
-
-<script>
-(async function() {
-  try {
-    const res = await fetch('https://arifos.arif-fazil.com/api/federation-probe');
-    const d = await res.json();
-    const well = d.probed && d.probed.well;
-    if (well) {
-      document.getElementById('status').textContent = well.health === 'healthy' ? '🟢' : well.health === 'degraded' ? '🟡' : '🔴';
-      document.getElementById('status').title = well.health;
-    }
-  } catch(e) {}
-  try {
-    const res = await fetch('https://arifos.arif-fazil.com/api/status');
-    const d = await res.json();
-    const h = d.health || {};
-    // WELL tools count from capability map or known
-    document.getElementById('tools').textContent = '21+';
-  } catch(e) { document.getElementById('tools').textContent = '21+'; }
-})();
-</script>
 </body>
 </html>

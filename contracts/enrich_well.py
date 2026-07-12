@@ -224,6 +224,11 @@ def build_metabolic_output(
     else:
         observation_data = {"raw": observation}
 
+    # Add MCP identifier for federation routing
+    observation_data["mcp"] = "AFWELL"
+    observation_data["risk_level"] = "GREEN"
+    observation_data["authority"] = {"level": "advisory_only"}
+
     # Timestamp
     timestamp_utc = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
