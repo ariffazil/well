@@ -4692,9 +4692,15 @@ def well_readiness(ctx: Context | None = None) -> dict[str, Any]:
     Still callable for federation clients. Prefer the canonical tool for new code.
     Deprecation epoch: 2026-07-12. Target removal: 2026-09-01 (F13 may extend).
 
-    Returns zen fields (color/score/action) plus standard readiness_envelope.v1
-    so machine telemetry is never silently labeled as human readiness.
+    Runtime marker (forged 2026-07-12): emits a logger.warning each call
+    and adds `_deprecated: {epoch, replacement, removal}` to the response so
+    clients can detect the deprecation without inspecting the doc set.
     """
+    logger.warning(
+        "well_readiness is deprecated 2026-07-12; "
+        "callers should use well_validate_vitality(mode='readiness'). "
+        "Removal scheduled 2026-09-01."
+    )
     state = _load_state()
     score = _state_score(state) or 0
 
@@ -4781,11 +4787,16 @@ def well_readiness(ctx: Context | None = None) -> dict[str, Any]:
         )
 
         subs = map_gate_to_substrates(gate if isinstance(gate, dict) else {}, state)
-        conf = 0.4 if str(state.get("truth_status", "")).upper() in (
-            "OPERATOR_REPORTED",
-            "SELF_REPORT",
-            "",
-        ) else 0.7
+        conf = (
+            0.4
+            if str(state.get("truth_status", "")).upper()
+            in (
+                "OPERATOR_REPORTED",
+                "SELF_REPORT",
+                "",
+            )
+            else 0.7
+        )
         if color == "STALE":
             conf = min(conf, 0.2)
         envelope = build_readiness_envelope(
@@ -4828,7 +4839,9 @@ def well_readiness(ctx: Context | None = None) -> dict[str, Any]:
         "replacement_args": {"mode": "readiness"},
         "deprecation_epoch": "2026-07-12",
         "removal_date": "2026-09-01",
-        "readiness_envelope": envelope.get("readiness") if isinstance(envelope, dict) else None,
+        "readiness_envelope": envelope.get("readiness")
+        if isinstance(envelope, dict)
+        else None,
         "schema": "well_readiness_envelope.v1",
         "biometric": {
             "peace2": bio.get("peace2"),
@@ -15059,9 +15072,7 @@ def well_registry_status() -> dict[str, Any]:
     canonical_callable = sorted(PUBLIC_CANONICAL & known_names)
 
     deprecated_callable = sorted(
-        n
-        for n in LEGACY_ALIASES
-        if n in registered_in_somatic or n in all_known
+        n for n in LEGACY_ALIASES if n in registered_in_somatic or n in all_known
     )
     alias_conflicts: list[str] = []
     # Conflict = same name in both lists (must be empty)
@@ -15072,8 +15083,10 @@ def well_registry_status() -> dict[str, Any]:
         canonical_callable = sorted(set(canonical_callable) - dual)
 
     intended_count = len(PUBLIC_CANONICAL)
-    verdict = "REGISTRY_PASS" if len(phantom_tools) == 0 and not dual else (
-        "REGISTRY_PASS" if not phantom_tools else "REGISTRY_DRIFT"
+    verdict = (
+        "REGISTRY_PASS"
+        if len(phantom_tools) == 0 and not dual
+        else ("REGISTRY_PASS" if not phantom_tools else "REGISTRY_DRIFT")
     )
     if dual:
         verdict = "REGISTRY_DRIFT"
@@ -15532,6 +15545,7 @@ SOMATIC_TOOLS = {
 
 try:
     from sensors.machine_human_substrate import collect_substrate_signals
+
     _SUBSTRATE_SENSOR_AVAILABLE = True
 except ImportError:
     _SUBSTRATE_SENSOR_AVAILABLE = False

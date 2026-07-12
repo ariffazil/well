@@ -10,20 +10,20 @@
 
 **Production endpoint:** `https://well.arif-fazil.com/mcp`
 **Transport:** `streamable-http` (MCP protocol)
-**Live tool count:** 22 somatic
+**Live tool count:** 22 (21 canonical + 1 deprecated public alias)
 **Health endpoint:** `https://well.arif-fazil.com/health`
 
 ### Invariant
 
 ```
-/health tool_count (22) = canonical WELL somatic set (22)
+/health tool_count (22) = canonical WELL somatic set (21) + deprecated_public_aliases (1)
 ```
 
-This invariant is enforced at startup by `_enforce_somatic_boundary()` in `server.py`. Any `@mcp.tool` not in the canonical somatic set is removed before the server begins accepting connections.
+This invariant is enforced at startup by `_enforce_somatic_boundary()` in `server.py`. Any `@mcp.tool` not in the canonical or deprecated_public_aliases set is removed before the server begins accepting connections.
 
 ---
 
-## Canonical SOMATIC_TOOLS Set (22)
+## Canonical SOMATIC_TOOLS Set (21 canonical + 1 deprecated compat)
 
 | # | Tool | Class | Note |
 |---|------|-------|------|
@@ -48,13 +48,13 @@ This invariant is enforced at startup by `_enforce_somatic_boundary()` in `serve
 | 19 | `well_handoff_livelihood_to_wealth` | `CANONICAL_PUBLIC` | S13 → WEALTH livelihood handoff. |
 | 20 | `well_attest_to_kernel` | `CANONICAL_PUBLIC` | WELL → arifOS organ attest. |
 | 21 | `well_classify_state` | `CANONICAL_PUBLIC` | Human state classifier (Phase 1 + Phase 3). |
-| 22 | `well_readiness` | `CANONICAL_PUBLIC` | ZEN single verdict — color/score/TTL/action. |
+| 22 | `well_readiness` | `DEPRECATED_PUBLIC` | ZEN single verdict (legacy). Use `well_validate_vitality(mode='readiness')` instead. Removal 2026-08-01. |
 
 ---
 
-## Public MCP Surface (22)
+## Public MCP Surface (22: 21 canonical + 1 deprecated compat)
 
-All 22 tools in the canonical somatic set are exposed on the public MCP surface. No diagnostics are stripped at runtime.
+21 canonical tools + 1 deprecated compat alias (`well_readiness`, removal 2026-08-01) are exposed on the public MCP surface. No diagnostics are stripped at runtime.
 
 ---
 
@@ -62,6 +62,7 @@ All 22 tools in the canonical somatic set are exposed on the public MCP surface.
 
 - `mcp_health_check` — removed 2026-06-28. Use `well_health_check` or `well_assess_reliability(mode="health")` directly.
 - `well_system_registry_status` — deprecated. Use `well_registry_status` (blueprint canonical format).
+- `well_readiness` — deprecated 2026-07-12. Use `well_validate_vitality(mode='readiness')` instead. Removal date 2026-08-01. (Audit 2026-07-12: was previously listed in both deprecated_callable and canonical_callable registry buckets; class now `DEPRECATED_PUBLIC`.)
 - No stage aliases (`well_NNN_*`) on the public MCP surface — stripped at startup.
 - `well_reflect_intelligence` and `well_anchor_evidence` were removed from the public surface per orthogonal MCP alignment (2026-05-14).
 
@@ -72,8 +73,9 @@ All 22 tools in the canonical somatic set are exposed on the public MCP surface.
 | Metric | Count |
 |--------|-------|
 | Total `@mcp.tool` decorators in source | 72 |
-| Canonical somatic set | 22 |
-| Public MCP surface (boundary enforced) | 22 |
+| Canonical somatic set | 21 |
+| Deprecated public aliases | 1 (`well_readiness`, removal 2026-08-01) |
+| Public MCP surface (boundary enforced) | 22 (21 + 1 deprecated alias) |
 | Internal / autonomic helpers and aliases | 50 |
 
 ---
@@ -95,6 +97,7 @@ The following remain internal-only (no public exposure):
 | `well_contrast_report` | `well_state(include="trend")` | ✅ 2026-05-26 |
 | `well_fatigue_accumulator(mode="check")` | `well_assess_homeostasis(mode="fatigue")` | ✅ 2026-05-26 |
 | `mcp_health_check` | `well_health_check` / `well_assess_reliability(mode="health")` | ✅ 2026-06-28 |
+| `well_readiness` | `well_validate_vitality(mode='readiness')` | 🟡 2026-07-12 (removal 2026-08-01) |
 
 ---
 

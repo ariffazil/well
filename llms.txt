@@ -63,7 +63,7 @@ well_handoff_dignity_to_arifos    — S12 → arifOS 888_JUDGE dignity handoff
 well_handoff_livelihood_to_wealth — S13 → WEALTH livelihood handoff
 well_attest_to_kernel             — WELL → arifOS organ attest
 well_classify_state               — Human state classifier
-well_readiness                    — ZEN single verdict
+well_readiness                    — DEPRECATED 2026-07-12. Use well_validate_vitality(mode='readiness'). Removal 2026-08-01.
 well_registry_status              — Blueprint-format drift report
 
 ## Boundaries (NEVER)

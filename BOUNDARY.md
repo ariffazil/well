@@ -26,7 +26,7 @@ epistemic_status: SOURCE_OF_TRUTH
 
 ## Required Health Checks
 
-- `curl http://localhost:18083/health` must return `200` with `tool_count: 22`
+- `curl http://localhost:18083/health` must return `200` with `tool_count: 22` (21 canonical + 1 deprecated public alias `well_readiness`; removal 2026-08-01)
 - `python -m pytest tests/ -q --tb=short` must pass before any deployment
 - `python test_well.py` must pass (legacy audit suite)
 
@@ -49,7 +49,9 @@ These files must change together:
 | M-WELL | `well_assess_reliability`, `well_check_repair`, `well_health_check` | Machine health, entropy rate, repair |
 | C-WELL | `well_assess_metabolism`, `well_compute_metabolic_flux`, `well_trace_lineage`, `well_measure_gradient` | Coupled state regulation |
 | G-WELL | `well_classify_substrate`, `well_detect_boundary` | Governance gradient sensing |
-| F-Ω / ZEN / Diagnostic | `well_handoff_dignity_to_arifos`, `well_handoff_livelihood_to_wealth`, `well_attest_to_kernel`, `well_classify_state`, `well_readiness`, `well_13_signal_coverage`, `well_registry_status` | Federation handoff, ZEN verdict, diagnostics |
+| F-Ω / ZEN / Diagnostic | `well_handoff_dignity_to_arifos`, `well_handoff_livelihood_to_wealth`, `well_attest_to_kernel`, `well_classify_state`, `well_13_signal_coverage`, `well_registry_status` | Federation handoff, ZEN verdict, diagnostics |
+
+| (deprecated) | `well_readiness` | DEPRECATED 2026-07-12. Use `well_validate_vitality(mode='readiness')`. Removal 2026-08-01. Audit 2026-07-12: was listed in both deprecated_callable and canonical_callable registry buckets — now resolved. |
 
 ## Forbidden Stale Assumptions
 

@@ -37,7 +37,21 @@
     "well_handoff_dignity_to_arifos",
     "well_handoff_livelihood_to_wealth",
     "well_attest_to_kernel",
-    "well_classify_state",
-    "well_readiness"
-  ]
+    "well_classify_state"
+  ],
+  "deprecated_aliases": [
+    {
+      "name": "well_readiness",
+      "replacement": "well_validate_vitality(mode='readiness')",
+      "deprecated_on": "2026-07-12",
+      "removal_on": "2026-08-01",
+      "reason": "Audit 2026-07-12: was listed in both deprecated_callable and canonical_callable registry buckets; class now explicit DEPRECATED_PUBLIC. Replacement canonical tool covers ZEN single-verdict use case via mode='readiness'."
+    }
+  ],
+  "deprecation_policy": {
+    "epoch_field": "deprecated_on",
+    "removal_field": "removal_on",
+    "replacement_field": "replacement",
+    "rule": "Every deprecated tool must declare replacement + removal date in well-known/mcp/server.json; clients must check deprecated_aliases before resolving a tool name."
+  }
 }
