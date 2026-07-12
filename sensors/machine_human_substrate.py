@@ -64,7 +64,9 @@ def _parse_loginctl_sessions() -> list[dict[str, Any]]:
 def _parse_auth_log(hours: int = 24) -> list[dict[str, Any]]:
     """Parse journalctl for session open/close events."""
     events = []
-    raw = _run(f'journalctl --since "{hours} hours ago" --no-pager -q 2>/dev/null')
+    raw = _run(
+        f'journalctl --since "{hours} hours ago" --output=short-iso --no-pager -q 2>/dev/null'
+    )
     if not raw:
         return events
 
