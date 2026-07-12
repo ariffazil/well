@@ -166,12 +166,46 @@ def build_metabolic_output(
     plus the federation ``observation``, ``uncertainty``, ``constraints``,
     and ``boundary_notice`` at the top level for backward compatibility.
     """
-    # Import here to avoid circular import at runtime
+    # Import here to avoid circular import at runtime.
+    # HARDEN-C P0: import_module("server") can resolve arifOS server via PYTHONPATH.
+    # Prefer WELL's server module by path, then name if WELL is first on sys.path.
     import importlib
+    import importlib.util
+    import sys
+    from pathlib import Path
 
-    _to_federation_output = getattr(
-        importlib.import_module("server"), "_to_federation_output"
-    )
+    _to_federation_output = None
+    _well_root = Path(__file__).resolve().parents[1]
+    _server_py = _well_root / "server.py"
+    if _server_py.is_file():
+        # If already loaded as WELL server with the helper, use it
+        mod = sys.modules.get("server")
+        if mod is not None and hasattr(mod, "_to_federation_output"):
+            # Confirm it's WELL (has well_readiness or SOMATIC_TOOLS)
+            if hasattr(mod, "SOMATIC_TOOLS") or hasattr(mod, "well_readiness"):
+                _to_federation_output = mod._to_federation_output
+        if _to_federation_output is None:
+            # Load WELL server under a private name to avoid arifOS shadow
+            _spec = importlib.util.spec_from_file_location(
+                "well_server_for_enrich", _server_py
+            )
+            if _spec and _spec.loader:
+                _wmod = importlib.util.module_from_spec(_spec)
+                # May be heavy; fall back to inline if fails
+                try:
+                    _spec.loader.exec_module(_wmod)
+                    _to_federation_output = getattr(_wmod, "_to_federation_output", None)
+                except Exception:
+                    _to_federation_output = None
+    if _to_federation_output is None:
+        # Last resort: identity wrap so tool does not crash
+        def _to_federation_output(internal_result, tool_name=None):  # type: ignore
+            out = dict(internal_result) if isinstance(internal_result, dict) else {
+                "result": internal_result
+            }
+            out.setdefault("tool", tool_name or "well")
+            out.setdefault("authority", "ADVISORY_ONLY")
+            return out
 
     # Wrap internal result in federation format
     federation_output: dict[str, Any] = _to_federation_output(
