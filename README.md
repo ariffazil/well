@@ -31,7 +31,7 @@ machine_sot: /root/A-FORGE/forge_work/2026-07-09/MACHINE-SOT-2026-07-09.json
 
 > **WELL is the constitutional wellness parliament of the arifOS federation.**
 > Three organs (H-WELL, M-WELL, C-WELL). Qualitative, quantitative, and quantum diagnostics.
-> Sovereignty entropy protection. Boundary-Sense perception. REFLECT-ONLY authority.
+> Behavioural-model dependence / profiling-exposure protection. Boundary-Sense perception. REFLECT-ONLY authority.
 >
 > 22 canonical somatic MCP tools. Integrated public frontdoor: `https://mcp.arif-fazil.com/mcp`
 
@@ -53,7 +53,7 @@ scope: /root/WELL
 
 ## APEX STACK Bridge
 
-> APEX THEORY defines the constitutional dynamics of governed intelligence through ΔΩΨ. arifOS compiles those dynamics into an AGI substrate kernel. AAA renders the substrate as visible ASI civilization state. A-FORGE gives the system governed hands. GEOX, WEALTH, and WELL anchor those hands to earth, capital, and human reality. VAULT999 preserves consequence. Arif/F13 remains the sovereign witness and final veto.
+> APEX is the admissibility framework for decisions under uncertainty (ΔΩΨ). arifOS compiles those dynamics into a constitutional orchestration substrate. AAA renders federation-state and coordination (display layer — not ASI-civilisation claims). A-FORGE gives the system governed hands. GEOX, WEALTH, and WELL anchor those hands to earth, capital, and human reality. VAULT999 preserves consequence. Arif/F13 remains the sovereign witness and final veto.
 
 **WELL must never:** diagnose medical conditions, decide for the operator, or override human sovereignty over biological state.
 
@@ -100,7 +100,7 @@ Each agent runs three layers of diagnostics:
 cat /root/forge_work/2026-07-05/well-abc-trinity-test/TRINITY-SYNTHESIS.md
 ```
 
-> APEX THEORY defines the constitutional dynamics of governed intelligence through ΔΩΨ. arifOS compiles those dynamics into an AGI substrate kernel. AAA renders the substrate as visible ASI civilization state. A-FORGE gives the system governed hands. GEOX, WEALTH, and WELL anchor those hands to earth, capital, and human reality. VAULT999 preserves consequence. Arif/F13 remains the sovereign witness and final veto.
+> APEX is the admissibility framework for decisions under uncertainty (ΔΩΨ). arifOS compiles those dynamics into a constitutional orchestration substrate. AAA renders federation-state and coordination (display layer — not ASI-civilisation claims). A-FORGE gives the system governed hands. GEOX, WEALTH, and WELL anchor those hands to earth, capital, and human reality. VAULT999 preserves consequence. Arif/F13 remains the sovereign witness and final veto.
 
 **WELL must never:** diagnose medical conditions, decide for the operator, or override human sovereignty over biological state.
 
@@ -172,7 +172,7 @@ Skill: `skill(name="boundary-sense-engine")`
 | **A dignity sentinel** | Detects coercion signals, reductionism risk, consent erosion |
 | **A readiness signal** | Produces well_score, delta_s, peace2, kappa_r — signals for arifOS |
 | **A boundary guard** | Detects when the human substrate is being objectified, extracted, or over-optimised |
-| **A sovereignty entropy protector** | Measures and protects the human's *unpredictability* — the thing that makes extraction impossible |
+| **A profiling-resistance / behavioural-model-dependence protector** | Measures and protects the human's *unpredictability* — the thing that makes extraction impossible |
 | **A boundary-sense organ** | Classifies substrates, detects boundaries, measures coupling, reads drift |
 | **REFLECT-ONLY** | WELL observes and reports. It never judges fitness, never makes medical claims |
 
