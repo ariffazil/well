@@ -102,10 +102,19 @@ def memory_sealed(source: str = None) -> MemoryStatus:
 
 
 class EpistemicLayer(str, Enum):
-    OBSERVED = "OBS"  # Directly observed
-    DERIVED = "DER"  # Computed or derived
-    INTERPRETED = "INT"  # Interpreted by agent/human
-    SPECULATIVE = "SPEC"  # Speculative, low confidence
+    """Epistemic layer for claims.
+
+    CANONICAL SOURCE: /root/arifOS/arifosmcp/schemas/federation_enums.py
+    Full-name aliases are OBSERVED/DERIVED/INTERPRETED/SPECULATED.
+    Short codes kept for backward compatibility.
+
+    USE FULL NAMES for cross-organ communication.
+    """
+
+    OBSERVED = "OBS"  # Directly observed (canonical: OBSERVED)
+    DERIVED = "DER"  # Computed or derived (canonical: DERIVED)
+    INTERPRETED = "INT"  # Interpreted by agent/human (canonical: INTERPRETED)
+    SPECULATIVE = "SPEC"  # Speculative, low confidence (canonical: SPECULATED)
 
 
 class EpistemicSignal:

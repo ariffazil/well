@@ -105,6 +105,9 @@ class ConfidenceLevel(str, Enum):
     """
     Shared confidence language across all organs.
 
+    CANONICAL SOURCE: /root/arifOS/arifosmcp/schemas/federation_enums.py
+    VALUES MUST MATCH federation_enums.ConfidenceLevel exactly.
+
     Eureka 10 §7: One shared confidence policy.
     """
 
@@ -117,7 +120,11 @@ class ConfidenceLevel(str, Enum):
 
 
 class WitnessStatus(str, Enum):
-    """Lifecycle stage of a witness through the metabolic pipeline."""
+    """Lifecycle stage of a witness through the metabolic pipeline.
+
+    CANONICAL SOURCE: /root/arifOS/arifosmcp/schemas/federation_enums.py
+    VALUES MUST MATCH federation_enums.WitnessStatus exactly.
+    """
 
     RAW = "RAW"
     DECODED = "DECODED"

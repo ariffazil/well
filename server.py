@@ -93,13 +93,49 @@ except ImportError:
     from internal.organ_governance import check_governance
 
 
+# ── Epistemic Envelope Injection (Federation Standard) ─────────────────────
+def _inject_epistemic(
+    result: dict[str, Any],
+    output_class: str = "DOMAIN_COMPUTATION",
+    ai_involvement: str = "NONE",
+    authority_claim: str = "ADVISORY",
+    evidence_source: str = "COMPUTED",
+) -> dict[str, Any]:
+    """Inject federation-standard _epistemic envelope into any WELL tool result.
+
+    CANONICAL SCHEMA: /root/arifOS/arifosmcp/schemas/epistemic_tag.py
+    CANONICAL ENUMS:  /root/arifOS/arifosmcp/schemas/federation_enums.py
+
+    Every WELL MCP tool MUST return this envelope in its response.
+    """
+    if isinstance(result, dict) and "_epistemic" not in result:
+        try:
+            from datetime import datetime, timezone
+
+            result["_epistemic"] = {
+                "output_class": output_class,
+                "ai_involvement": ai_involvement,
+                "authority_claim": authority_claim,
+                "evidence_source": evidence_source,
+                "tagged_by": "well-mcp",
+                "tagged_at": datetime.now(timezone.utc).isoformat(),
+                "schema_version": "2.0.0",
+            }
+        except Exception:
+            pass
+    return result
+
+
 # ── APEX Injection Helper (APEX-MCP-001) ───────────────────────────────────
 def _inject_apex(
     result: dict[str, Any],
     tool_name: str = "unknown",
     state: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Inject APEX governance envelope into any WELL tool result."""
+    """Inject APEX governance envelope + epistemic envelope into WELL tool result."""
+    # Always inject epistemic envelope first
+    result = _inject_epistemic(result)
+    # Then APEX governance (if available)
     if _APEX_AVAILABLE and isinstance(result, dict):
         try:
             result["apex"] = _build_apex(
@@ -1697,6 +1733,9 @@ def _mcp_health_check_impl() -> dict:
         "transport": "SSE_VALID",
         "auth": "OK",
         "schema_version": "2026.05.15",
+        # FEDERATION HANDSHAKE (canonical: arifOS/arifosmcp/schemas/federation_enums.py)
+        # See: /root/AAA/governance/FEDERATION_HANDSHAKE.md
+        "federation_schema_version": "2.0.0",
         "read_only": True,
         "final_authority": "ARIF",
         "tool_count": 79,
@@ -16776,6 +16815,9 @@ if __name__ == "__main__":
                 ],  # REFLECT_ONLY — never "verdict"
                 "service": "well-mcp",
                 "version": "2026.05.15-ΩWELL+GWELL+FEDERATION",
+                # FEDERATION HANDSHAKE (canonical: arifOS/arifosmcp/schemas/federation_enums.py)
+                # See: /root/AAA/governance/FEDERATION_HANDSHAKE.md
+                "federation_schema_version": "2.0.0",
                 "tool_count": len(SOMATIC_TOOLS),
                 # substrate advisory fields — consumed by arifOS _read_well_substrate() HTTP fallback
                 "well_score": classification["well_score"],
