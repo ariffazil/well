@@ -33,3 +33,4 @@ See folder listing. Prefer:
 - Seals: `../999_vault/archive/`
 
 **DITEMPA BUKAN DIBERI**
+| [WELL_TOOL_SURFACE.md](./WELL_TOOL_SURFACE.md) | 27-tool agent intake |
