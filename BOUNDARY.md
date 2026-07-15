@@ -1,16 +1,22 @@
 <!-- SOT-MANIFEST
 owner: Arif
-last_verified: 2026-07-10
-valid_from: 2026-06-14
-valid_until: 2026-08-09
+last_verified: 2026-07-15
+valid_from: 2026-07-15
+valid_until: 2026-08-15
 confidence: high
 scope: /root/WELL
+domain_law: SUBSTRATE_LAW
+authority: REFLECT_ONLY
+mcp_tools_live: 27
+license: AGPL-3.0
 epistemic_status: SOURCE_OF_TRUTH
+truth_rule: tools/list + /health beat any static count in this file
 -->
 
-# INVARIANTS.md — WELL
+# BOUNDARY.md — WELL
 
-> Human Substrate & Metabolic State — Immutable boundaries for the WELL organ.
+> Human Substrate & Metabolic State — Immutable boundaries for the WELL organ.  
+> **REFLECT_ONLY.** License **AGPL-3.0**. Not medical. Not capital. Not earth.
 
 ## Canonical Branch
 
@@ -20,38 +26,37 @@ epistemic_status: SOURCE_OF_TRUTH
 
 | Endpoint | Port | Status |
 |----------|------|--------|
-| MCP | `http://127.0.0.1:18083/mcp` | ✅ LIVE — `well.service` active |
-| Health (public) | `https://well.arif-fazil.com/health` | ✅ LIVE |
-| Health (local) | `http://127.0.0.1:18083/health` | ✅ LIVE |
+| MCP | `http://127.0.0.1:18083/mcp` | LIVE — `well.service` |
+| Health (public) | `https://well.arif-fazil.com/health` | LIVE |
+| Health (local) | `http://127.0.0.1:18083/health` | LIVE · expect `tool_count: 27` |
 
 ## Required Health Checks
 
-- `curl http://localhost:18083/health` must return `200` with `tool_count: 22` (21 canonical + 1 deprecated public alias `well_readiness`; removal 2026-08-01)
-- `python -m pytest tests/ -q --tb=short` must pass before any deployment
-- `python test_well.py` must pass (legacy audit suite)
+- `curl -s :18083/health` → `tool_count: **27**` (SOT: live tools/list — not 22, not 72)
+- `python -m pytest tests/ -q --tb=short` before deploy
+- Biometric inject required if `freshness` STALE/EXPIRED (operational RED ≠ code fail)
 
 ## Change Coupling
 
-These files must change together:
-
-- `server.py` — canonical FastMCP server (~15,755 lines, 72 `@mcp.tool` decorated helpers)
-- `gate/well_gate.py` — pre-JUDGE biological readiness mirror
-- `gate/dignity_shadow.py` — dignity shadow scoring
-- `test_well.py` — plain-Python audit suite
+- `server.py` — FastMCP membrane (public **27** tools; internal helpers may exist)
+- `well_mcp/tools/__init__.py` — name registry (must match tools/list)
+- `gate/` — constitutional mirror (dignity, dark geometry, rasa)
+- `engines/` · `sensors/` — compute / ingress
+- `docs/WELL_TOOL_SURFACE.md` — agent intake catalog
 
 ## Canonical Tool Surface
 
-**22 somatic MCP tools** across 4 substrate types plus federation/ZEN/diagnostic helpers:
+**27 public MCP tools** — full list: `docs/WELL_TOOL_SURFACE.md` + `well_mcp/tools/__init__.py`.
 
-| Substrate | Tools | Purpose |
-|-----------|-------|---------|
-| H-WELL | `well_assess_livelihood`, `well_guard_dignity`, `well_medical_boundary`, `well_assess_sovereign_entropy`, `well_validate_vitality`, `well_assess_homeostasis` | Human wellness, role, meaning, dignity |
-| M-WELL | `well_assess_reliability`, `well_check_repair`, `well_health_check` | Machine health, entropy rate, repair |
-| C-WELL | `well_assess_metabolism`, `well_compute_metabolic_flux`, `well_trace_lineage`, `well_measure_gradient` | Coupled state regulation |
-| G-WELL | `well_classify_substrate`, `well_detect_boundary` | Governance gradient sensing |
-| F-Ω / ZEN / Diagnostic | `well_handoff_dignity_to_arifos`, `well_handoff_livelihood_to_wealth`, `well_attest_to_kernel`, `well_classify_state`, `well_13_signal_coverage`, `well_registry_status` | Federation handoff, ZEN verdict, diagnostics |
+| Substrate | Role |
+|-----------|------|
+| H-WELL | Human readiness, dignity, vitality |
+| M-WELL | Machine reliability / repair |
+| C-WELL | Coupled metabolism / flux |
+| G-WELL | Boundary / substrate class |
+| Federation | handoff_dignity · handoff_livelihood · attest_to_kernel · medical_boundary |
 
-| (deprecated) | `well_readiness` | DEPRECATED 2026-07-12. Use `well_validate_vitality(mode='readiness')`. Removal 2026-08-01. Audit 2026-07-12: was listed in both deprecated_callable and canonical_callable registry buckets — now resolved. |
+Do not invent tool counts from decorator totals.
 
 ## Forbidden Stale Assumptions
 
