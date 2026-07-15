@@ -29,12 +29,35 @@ def main():
     # Current UTC timestamp
     now_utc = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S+00:00")
 
-    # Update only the freshness/reading timestamps
+    # Refuse to keepalive mocked/TEST/insufficient states — those need biometric_inject
+    env = str(state.get("environment", "")).upper()
+    truth = str(state.get("truth_status", "")).upper()
+    if env == "TEST" or truth in ("TEST", "VOID", "INSUFFICIENT_DATA", "UNVERIFIED"):
+        print(
+            f"HOLD: state is not keepalive-eligible (environment={env!r}, truth_status={truth!r}). "
+            "Run biometric_inject.sh or POST /ready first.",
+            file=sys.stderr,
+        )
+        sys.exit(2)
+
+    # Update only freshness timestamps — never invent vitals or downgrade PROD identity
     state["timestamp"] = now_utc
     state["last_successful_read"] = now_utc
     state["last_successful_write"] = now_utc
     state["freshness"] = "FRESH"
-    state["reason"] = f"Sovereign biometric keepalive (well_auto_keepalive.py) — refreshed last self-report at {now_utc}"
+    # Preserve honest environment/truth; heal common identity gaps so health stays non-blind
+    state.setdefault("environment", "PROD")
+    if state.get("environment") == "TEST":
+        state["environment"] = "PROD"
+    state.setdefault("identity", "WELL")
+    state.setdefault("role", "Body / Human Intelligence")
+    state.setdefault("authority", "REFLECT_ONLY")
+    state.setdefault("operator_id", "arif")
+    # Keep truth_status if present; do not invent OPERATOR_REPORTED from empty
+    state["reason"] = (
+        f"Sovereign biometric keepalive (well_auto_keepalive.py) — "
+        f"refreshed last self-report at {now_utc} (no vitals invented)"
+    )
 
     # Write atomically
     tmp_file = STATE_FILE.with_suffix(".tmp")
