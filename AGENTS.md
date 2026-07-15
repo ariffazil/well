@@ -1,11 +1,14 @@
 <!-- SOT-MANIFEST
 owner: Arif
-last_verified: 2026-06-25
-valid_from: 2026-06-14
-valid_until: 2026-07-25
+last_verified: 2026-07-10
+valid_from: 2026-07-05
+valid_until: 2026-08-09
 confidence: high
 scope: /root/WELL
 epistemic_status: SOURCE_OF_TRUTH
+abc_trinity_verdict: GREEN (10/10)
+boundary_sense: ACTIVE
+critical_fixes: coupled_metabolism, sovereign_entropy, decision_class
 -->
 
 # AGENTS.md — WELL | arifOS Federation
@@ -25,8 +28,9 @@ Arif. This is the **WELL** organ of the arifOS federation — Substrate Vitality
 
 The human-system readiness mirror. WELL assesses biological metabolism, homeostasis, repair cycles, vitality, livelihood, and dignity across human, machine, and coupled substrates.
 
-**17 somatic MCP tools** (canonical). FastMCP server (~13,839 lines, 51 decorated helpers).
+**Somatic MCP tools** (canonical). FastMCP server (~15,755 lines, 72 decorated helpers).
 Running at `https://well.arif-fazil.com/mcp` via bare-metal systemd.
+Tool count is a runtime fact — verify with `tools/list`.
 
 | Substrate | Tools | Purpose |
 |-----------|-------|---------|
@@ -70,7 +74,7 @@ python test_well.py
 
 | File | Purpose |
 |------|---------|
-| `server.py` | FastMCP server (~14,072 lines, 17 somatic tools) |
+| `server.py` | FastMCP server (~15,755 lines, 24 tools exposed live (tools/list 2026-07-12); docs previously said 22) |
 | `vault_bridge.py` | VAULT999 append-only ledger client |
 | `gate/well_gate.py` | Pre-JUDGE biological readiness mirror |
 | `gate/dignity_shadow.py` | Dignity shadow scoring |
@@ -84,6 +88,23 @@ python test_well.py
 
 WELL remains local-only for biometrics data isolation (F6 MARUAH / REFLECT_ONLY boundary). It does not use `supabase-py` and does not persist to the cloud. All metrics reside strictly on local disk within `state.json` and `events.jsonl`. For details, see [ADR_WELL_PERSISTENCE_LOCAL_20260621.md](file:///root/arifOS/adr/ADR_WELL_PERSISTENCE_LOCAL_20260621.md).
 
+## 🎭 Pain Detection Beneath Humour (FORGED 2026-07-01)
+
+> **Canonical skill:** `agent-humour-doctrine` (Hermes)
+
+WELL detects distress signals that may be disguised as humour:
+
+- Self-directed jokes ("I'm so stupid") may indicate low self-worth
+- "Aku nak campak laptop ni" may carry real frustration
+- Repeated dark humour may signal burnout or depression
+- "Just joking" after vulnerable statements may be emotional withdrawal
+
+Use `well_guard_dignity` when humour patterns suggest distress. Use `well_assess_homeostasis` to check fatigue/stress state when dark humour appears.
+
+**The rule:** Answer the pain, not the joke.
+
+---
+
 ## Federation Position
 
 ```
@@ -96,7 +117,33 @@ WELL is a **biological witness**, not a judge. It reports readiness scores, meta
 
 *DITEMPA BUKAN DIBERI — 999 SEAL ALIVE*
 
+
 ---
+
+## 🧠 CI ARCHITECTURE — Dual-Lane Agentic CI (FORGED 2026-07-01)
+
+> **DITEMPA BUKAN DIBERI** — CI is forged, not given.
+> **Architecture receipt:** `forge_work/AGENTIC-CI-FORGE-2026-07-01.md`
+
+Every push to `main` triggers **two lanes**:
+
+| Lane | Name | What It Does | Verdict |
+|------|------|-------------|---------|
+| **Lane 1** | Standard CI | Lint (Ruff) → Type check (MyPy) → Test (Pytest) → Build check | Pass/Fail |
+| **Lane 2** | BIJAKSANA (Agentic CI) | ΔS (entropy) → Φ (clarity) → Ψ (truth/manifest) → Ω (governance) | SEAL_READY / SABAR / HOLD |
+
+**The Report:** Both lanes feed into an `Agentic CI Report` — a structured JSON artifact posted as a GitHub Check Run with label `Agentic CI`. Federation cron picks up Check Run → `arif_judge` → AAA register → VAULT999 seal.
+
+**Workflow file:** `.github/workflows/agentic-ci.yml`
+
+**The Loop:**
+```
+git push → Lane 1 (Standard) + Lane 2 (BIJAKSANA)
+       → Agentic CI Report (JSON + Check Run)
+       → Federation cron → arif_judge → AAA → VAULT999
+```
+
+**Cross-organ:** This architecture is deployed identically across all 6 federation organs (arifOS, A-FORGE, AAA, GEOX, WEALTH, WELL). Each organ's `AGENTS.md` carries this section.
 
 ## 🛡️ STEEL SECURITY LAYER — Permanent Federation Context
 

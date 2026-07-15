@@ -21,6 +21,11 @@ DITEMPA BUKAN DIBERI — Human readiness is reflected, not decided.
 
 from __future__ import annotations
 
+# MCP primitive imports — resource embedding for prompts (Binding #23-26, 2026-07-10)
+from mcp.types import EmbeddedResource, TextResourceContents
+from fastmcp.prompts.base import Message
+from pydantic import AnyUrl
+
 
 # ══════════════════════════════════════════════════════════════════════════════
 # WELL_SENSE — Vitality Observation
@@ -241,10 +246,34 @@ The mirror does not decide. The mirror reflects.
 
 
 def register_prompts(mcp) -> list:
-    """Register the 3 WELL Human Readiness prompts."""
+    """Register the 3 WELL Human Readiness prompts.
+
+    v2026.07.10: Converted from lambda→function with args + messages[] return
+    with embedded resource context (MCP Bindings #23–26). FastMCP infers
+    PromptArgument[] from function signature; docstring Args: drives completion API.
+    """
+
+    # ── Prompt helper: text message (Binding #23) ──
+    def _msg_text(text: str, role: str = "user") -> Message:
+        return Message(text, role=role)
+
+    # ── Prompt helper: embedded resource message (Binding #23) ──
+    def _msg_resource(uri: str, text: str, mime: str = "text/plain") -> Message:
+        return Message(
+            EmbeddedResource(
+                type="resource",
+                resource=TextResourceContents(
+                    uri=AnyUrl(uri),
+                    mimeType=mime,
+                    text=text,
+                ),
+            ),
+            role="user",
+        )
+
     registered = []
 
-    mcp.prompt(
+    @mcp.prompt(
         name="well_sense",
         description=(
             "WELL_SENSE — Vitality observation discipline. "
@@ -254,10 +283,28 @@ def register_prompts(mcp) -> list:
             "Assessment: OBSERVED | DEGRADED | UNRELIABLE. "
             "The body reflects. The sovereign decides what the reflections mean."
         ),
-    )(lambda: WELL_SENSE_PROMPT)
+    )
+    def well_sense(
+        subject_id: str = "arif", biometric_source: str = ""
+    ) -> list[Message]:
+        """Vitality observation: sleep, stress, homeostasis, metrics.
+
+        Args:
+            subject_id: The subject being observed (default "arif")
+            biometric_source: Source of biometric data (e.g. state.json, manual)
+        """
+        return [
+            _msg_text(WELL_SENSE_PROMPT),
+            _msg_resource(
+                "well://state/current",
+                f"Subject: {subject_id}\nSource: {biometric_source}",
+                "application/json",
+            ),
+        ]
+
     registered.append("well_sense")
 
-    mcp.prompt(
+    @mcp.prompt(
         name="well_qc",
         description=(
             "WELL_QC — Substrate verification discipline. "
@@ -266,10 +313,27 @@ def register_prompts(mcp) -> list:
             "Assessment: VERIFIED | DEGRADED | CRITICAL. "
             "The substrate reflects its state. The QC detects anomalies. The sovereign decides."
         ),
-    )(lambda: WELL_QC_PROMPT)
+    )
+    def well_qc(
+        substrate_class: str = "human", flux_threshold: str = "0.65"
+    ) -> list[Message]:
+        """Substrate verification: metabolic flux, boundary, classification.
+
+        Args:
+            substrate_class: "human" / "machine" / "institution"
+            flux_threshold: Metabolic flux threshold for reallocation signal (default 0.65)
+        """
+        return [
+            _msg_text(WELL_QC_PROMPT),
+            _msg_resource(
+                "well://substrate/qc",
+                f"Class: {substrate_class}\nFlux threshold: {flux_threshold}",
+            ),
+        ]
+
     registered.append("well_qc")
 
-    mcp.prompt(
+    @mcp.prompt(
         name="well_interpret",
         description=(
             "WELL_INTERPRET — Readiness synthesis discipline. "
@@ -278,7 +342,25 @@ def register_prompts(mcp) -> list:
             "Assessment: READY | DEGRADED | CRITICAL. "
             "The mirror reflects. The sovereign looks in the mirror and decides."
         ),
-    )(lambda: WELL_INTERPRET_PROMPT)
+    )
+    def well_interpret(
+        decision_class: str = "C3", task_context: str = ""
+    ) -> list[Message]:
+        """Readiness synthesis: fatigue guard, dignity, livelihood.
+
+        Args:
+            decision_class: C1-C5 decision class threshold (default C3)
+            task_context: Description of the task being evaluated
+        """
+        return [
+            _msg_text(WELL_INTERPRET_PROMPT),
+            _msg_resource(
+                "well://readiness/context",
+                f"Decision class: {decision_class}\nTask: {task_context}",
+                "application/json",
+            ),
+        ]
+
     registered.append("well_interpret")
 
     return registered

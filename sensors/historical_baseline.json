@@ -1,0 +1,10 @@
+{
+  "generated_at": "2026-07-12T03:56:13.543906+00:00",
+  "period": "7 days",
+  "auth_events_total": 0,
+  "human_sessions_by_day": {},
+  "bash_history_total": 743,
+  "unique_commands": 197,
+  "agent_launches": 431,
+  "note": "Historical baseline for WELL sensor calibration"
+}

@@ -21,6 +21,10 @@ quarantine/
 *.bak*
 *.backup*
 
+# Runtime state & session memory (local only)
+state/
+memory/
+
 # Runtime data
 data/
 telemetry/
@@ -37,3 +41,10 @@ well_autosleeper.py
 # Scratch
 scratch/
 
+
+# GitHub Copilot workspace — not VPS-aware, do not commit
+Copilot/
+
+# recovery receipts (ledger local)
+loop/receipts/
+!loop/receipts/.gitkeep

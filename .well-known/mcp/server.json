@@ -1,33 +1,57 @@
 {
-  "mcpVersion": "2025-11-25",
-  "protocolVersion": "2024-11-05",
-  "name": "AFWELL",
-  "version": "2026.05.12-ΩWELL+GWELL+FEDERATION",
-  "description": "WELL — Universal Substrate Vitality Mirror for arifOS. Reflects biological, cognitive, machine, and governance state. W0 Sovereignty: WELL holds a mirror, not a veto. DITEMPA BUKAN DIBERI.",
-  "vendor": {
-    "name": "Muhammad Arif bin Fazil",
-    "url": "https://arif-fazil.com"
+  "schema": "mcp",
+  "version": "2026.06.30",
+  "protocolVersion": "2025-11-25",
+  "name": "WELL MCP",
+  "description": "Human readiness — 22 somatic tools. Substrate vitality mirror. W0 Sovereignty: WELL holds a mirror, not a veto.",
+  "tools": 22,
+  "endpoint": "https://well.arif-fazil.com/mcp",
+  "identity": {
+    "canonical_name": "WELL",
+    "service_id": "well-mcp",
+    "authority": "REFLECT_ONLY",
+    "port": 18083
   },
-  "homepage": "https://github.com/ariffazil/well",
-  "capabilities": {
-    "tools": true,
-    "resources": false,
-    "prompts": false,
-    "streaming": true
+  "governance": {
+    "floors": ["F1", "F2", "F6", "F9", "F13"],
+    "authority_boundary": "REFLECT_ONLY"
   },
-  "serverUrl": "https://well.arif-fazil.com",
-  "tools": [
-    { "name": "mcp_health_check" },
-    { "name": "well_classify_substrate" },
-    { "name": "well_trace_lineage" },
-    { "name": "well_detect_boundary" },
-    { "name": "well_measure_gradient" },
-    { "name": "well_assess_metabolism" },
-    { "name": "well_assess_homeostasis" },
-    { "name": "well_check_repair" },
-    { "name": "well_validate_vitality" },
-    { "name": "well_assess_livelihood" },
-    { "name": "well_assess_reliability" },
-    { "name": "well_compute_metabolic_flux" }
-  ]
+  "tool_surface": [
+    "well_health_check",
+    "well_classify_substrate",
+    "well_trace_lineage",
+    "well_detect_boundary",
+    "well_measure_gradient",
+    "well_assess_metabolism",
+    "well_assess_homeostasis",
+    "well_check_repair",
+    "well_validate_vitality",
+    "well_assess_livelihood",
+    "well_assess_reliability",
+    "well_compute_metabolic_flux",
+    "well_assess_sovereign_entropy",
+    "well_guard_dignity",
+    "well_medical_boundary",
+    "well_13_signal_coverage",
+    "well_registry_status",
+    "well_handoff_dignity_to_arifos",
+    "well_handoff_livelihood_to_wealth",
+    "well_attest_to_kernel",
+    "well_classify_state"
+  ],
+  "deprecated_aliases": [
+    {
+      "name": "well_readiness",
+      "replacement": "well_validate_vitality(mode='readiness')",
+      "deprecated_on": "2026-07-12",
+      "removal_on": "2026-08-01",
+      "reason": "Audit 2026-07-12: was listed in both deprecated_callable and canonical_callable registry buckets; class now explicit DEPRECATED_PUBLIC. Replacement canonical tool covers ZEN single-verdict use case via mode='readiness'."
+    }
+  ],
+  "deprecation_policy": {
+    "epoch_field": "deprecated_on",
+    "removal_field": "removal_on",
+    "replacement_field": "replacement",
+    "rule": "Every deprecated tool must declare replacement + removal date in well-known/mcp/server.json; clients must check deprecated_aliases before resolving a tool name."
+  }
 }

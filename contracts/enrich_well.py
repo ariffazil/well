@@ -126,6 +126,19 @@ def _requires_888_judge(tool_name: str, verdict: str | None) -> bool:
 # ── Main builder ───────────────────────────────────────────────────────────────
 
 
+def _compute_substrate_manifest_hash() -> str:
+    """SHA-256 of WELL substrate manifest — identity anchor."""
+    try:
+        from pathlib import Path
+
+        manifest_path = Path("/root/WELL/GENESIS/012_SUBSTRATE_MANIFEST.md")
+        if manifest_path.exists():
+            return f"sha256:{hashlib.sha256(manifest_path.read_bytes()).hexdigest()}"
+    except Exception:
+        pass
+    return "sha256:missing"
+
+
 def build_metabolic_output(
     tool_name: str,
     internal_result: dict[str, Any],
@@ -153,12 +166,46 @@ def build_metabolic_output(
     plus the federation ``observation``, ``uncertainty``, ``constraints``,
     and ``boundary_notice`` at the top level for backward compatibility.
     """
-    # Import here to avoid circular import at runtime
+    # Import here to avoid circular import at runtime.
+    # HARDEN-C P0: import_module("server") can resolve arifOS server via PYTHONPATH.
+    # Prefer WELL's server module by path, then name if WELL is first on sys.path.
     import importlib
+    import importlib.util
+    import sys
+    from pathlib import Path
 
-    _to_federation_output = getattr(
-        importlib.import_module("server"), "_to_federation_output"
-    )
+    _to_federation_output = None
+    _well_root = Path(__file__).resolve().parents[1]
+    _server_py = _well_root / "server.py"
+    if _server_py.is_file():
+        # If already loaded as WELL server with the helper, use it
+        mod = sys.modules.get("server")
+        if mod is not None and hasattr(mod, "_to_federation_output"):
+            # Confirm it's WELL (has well_readiness or SOMATIC_TOOLS)
+            if hasattr(mod, "SOMATIC_TOOLS") or hasattr(mod, "well_readiness"):
+                _to_federation_output = mod._to_federation_output
+        if _to_federation_output is None:
+            # Load WELL server under a private name to avoid arifOS shadow
+            _spec = importlib.util.spec_from_file_location(
+                "well_server_for_enrich", _server_py
+            )
+            if _spec and _spec.loader:
+                _wmod = importlib.util.module_from_spec(_spec)
+                # May be heavy; fall back to inline if fails
+                try:
+                    _spec.loader.exec_module(_wmod)
+                    _to_federation_output = getattr(_wmod, "_to_federation_output", None)
+                except Exception:
+                    _to_federation_output = None
+    if _to_federation_output is None:
+        # Last resort: identity wrap so tool does not crash
+        def _to_federation_output(internal_result, tool_name=None):  # type: ignore
+            out = dict(internal_result) if isinstance(internal_result, dict) else {
+                "result": internal_result
+            }
+            out.setdefault("tool", tool_name or "well")
+            out.setdefault("authority", "ADVISORY_ONLY")
+            return out
 
     # Wrap internal result in federation format
     federation_output: dict[str, Any] = _to_federation_output(
@@ -192,8 +239,29 @@ def build_metabolic_output(
             for k, v in observation.items()
             if k not in ("ok", "Ω", "arifos", "aaa", "w0", "verdict", "error")
         }
+        # P1 HARDENING (2026-06-28): If underlying tool returned UNKNOWN_TELEMETRY
+        # or status=UNKNOWN, preserve that. Don't let enrichment inject OPTIMAL
+        # labels when the substrate has no verified biometric data.
+        _domain = observation.get("domain_verdict", "")
+        _status = observation.get("status", "")
+        _readiness = observation.get("readiness", {})
+        if isinstance(_readiness, dict):
+            _human = _readiness.get("human", "")
+            # If human readiness claims OPTIMAL but domain says UNKNOWN_TELEMETRY,
+            # the readiness is unverified. Downgrade to UNKNOWN.
+            if _human == "OPTIMAL" and (
+                "UNKNOWN_TELEMETRY" in str(_domain) or _status == "UNKNOWN"
+            ):
+                _readiness["human"] = "UNKNOWN"
+                _readiness["_note"] = "downgraded_from_OPTIMAL_no_verified_telemetry"
+                observation_data["readiness"] = _readiness
     else:
         observation_data = {"raw": observation}
+
+    # Add MCP identifier for federation routing
+    observation_data["mcp"] = "AFWELL"
+    observation_data["risk_level"] = "GREEN"
+    observation_data["authority"] = {"level": "advisory_only"}
 
     # Timestamp
     timestamp_utc = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
@@ -245,7 +313,8 @@ def build_metabolic_output(
         "timestamp_utc": timestamp_utc,
         "constitution_hash": constitution_hash,  # DEPRECATED — backward compat
         "domain_law": domain_law,
-        "substrate_manifest_hash": substrate_manifest_hash,
+        "substrate_manifest_hash": substrate_manifest_hash
+        or _compute_substrate_manifest_hash(),
         # Contract metadata
         "schema_name": SCHEMA_NAME,
         "schema_version": SCHEMA_VERSION,

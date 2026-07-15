@@ -1,0 +1,48 @@
+# autonomic_recovery_v1 — single-domain allowlist
+# Authority: GREEN only after A_effective. Max 1 mutation per lease.
+agent: autonomic_recovery_v1
+version: "2026.07.12"
+scope:
+  services:
+    - well-heartbeat.service   # non-critical organ heartbeat only
+authority:
+  band: GREEN
+  lease_minutes: 10
+  max_mutations: 1
+  a_granted: EXECUTE_REVERSIBLE
+may:
+  - inspect_health
+  - read_recent_logs
+  - validate_dependencies
+  - retry_job_once
+  - restart_allowlisted_worker
+  - create_incident
+  - send_notice
+must:
+  - preserve_logs
+  - verify_after_action
+  - stop_after_failed_recovery
+  - write_receipt
+  - expose_uncertainty
+must_not:
+  - edit_source_code
+  - change_schema
+  - rotate_credentials
+  - delete_data
+  - alter_cron
+  - suppress_alerts
+  - declare_human_state
+  - invent_biometrics
+  - restart_non_allowlisted
+verify:
+  observation_window_seconds: 15
+  success:
+    - active_state_running
+    - health_endpoint_optional
+  failure:
+    - restart_loop
+    - still_inactive
+on_failure:
+  - stop_retries
+  - enter_HOLD
+  - notify

@@ -1,4 +1,22 @@
-# WELL — Human Readiness Intelligence
+<!-- SOT-MANIFEST
+federation_release: v2026.07.12-CONSOLIDATION-EPOCH
+last_verified: 2026-07-12T23:38Z
+live_commit: 765cf92
+port: 18083
+mcp_tools_live: 29
+health_status: degraded
+owner_summary: RED
+truth_rule: tools/list + /health beat any static count in prose
+truth_status: INSUFFICIENT_DATA (state.json timestamp 2026-04-30 — SELF_REPORT stale, not sensor lie)
+fix: sovereign biometric_inject.sh self-report (do not invent vitals)
+changelog: /root/forge_work/2026-07-05/well-abc-trinity-test/TRINITY-SYNTHESIS.md
+a2a_agent_json: /root/WELL/.well-known/agent.json
+abc_trinity_verdict: GREEN (10/10 after 3 critical fixes)
+boundary_sense: ACTIVE
+machine_sot: /root/A-FORGE/forge_work/2026-07-09/MACHINE-SOT-2026-07-09.json
+-->
+
+# WELL — Constitutional Wellness Parliament
 
 ```
     ██╗    ██╗███████╗██╗     ██╗
@@ -8,30 +26,86 @@
     ╚███╔███╔╝███████╗███████╗███████╗
      ╚══╝╚══╝ ╚══════╝╚══════╝╚══════╝
 
-     HUMAN    READINESS    INTELLIGENCE
+     CONSTITUTIONAL    WELLNESS    PARLIAMENT
         ══════  WITNESS, NOT JUDGE  ══════
 ```
 
-> **WELL is the human readiness organ of the arifOS federation.**
-> It observes. It reflects. It warns. It never decides.
+> **WELL is the constitutional wellness parliament of the arifOS federation.**
+> Three organs (H-WELL, M-WELL, C-WELL). Qualitative, quantitative, and quantum diagnostics.
+> Behavioural-model dependence / profiling-exposure protection. Boundary-Sense perception. REFLECT-ONLY authority.
 >
-> 21 somatic MCP tools. REFLECT-ONLY authority. `https://well.arif-fazil.com/mcp`
+> 22 canonical somatic MCP tools. Integrated public frontdoor: `https://mcp.arif-fazil.com/mcp`
 
-[![FastMCP](https://img.shields.io/badge/FastMCP-3.3.1-8b5cf6?logo=python&logoColor=white)](server.py)
-[![Python](https://img.shields.io/badge/python-3.12+-3776AB?logo=python&logoColor=white)](server.py)
-[![Tools](https://img.shields.io/badge/tools-21-10b981)](server.py)
-[![Port](https://img.shields.io/badge/port-18083-64748b)](server.py)
-[![License](https://img.shields.io/badge/license-AGPL--3.0-06b6d4)](LICENSE)
-[![Authority](https://img.shields.io/badge/authority-REFLECT__ONLY-f97316)](GENESIS/004_WELL_13_CANON.md)
+[![Agentic CI](https://github.com/ariffazil/well/actions/workflows/agentic-ci.yml/badge.svg?branch=main)](https://github.com/ariffazil/well/actions/workflows/agentic-ci.yml)
+[![Governance Gate](https://github.com/ariffazil/well/actions/workflows/governance-gate.yml/badge.svg?branch=main)](https://github.com/ariffazil/well/actions/workflows/governance-gate.yml)
+[![Build Validation](https://github.com/ariffazil/well/actions/workflows/publish-image.yml/badge.svg?branch=main)](https://github.com/ariffazil/well/actions/workflows/publish-image.yml)
+[![License](https://img.shields.io/github/license/ariffazil/well?label=License)](LICENSE)
 
 <!-- SOT-MANIFEST
 owner: Arif
-last_verified: 2026-06-25
+last_verified: 2026-07-10
 valid_from: 2026-06-14
-valid_until: 2026-07-25
+valid_until: 2026-08-09
 confidence: high
 scope: /root/WELL
 -->
+
+---
+
+## APEX STACK Bridge
+
+> APEX is the admissibility framework for decisions under uncertainty (ΔΩΨ). arifOS compiles those dynamics into a constitutional orchestration substrate. AAA renders federation-state and coordination (display layer — not ASI-civilisation claims). A-FORGE gives the system governed hands. GEOX, WEALTH, and WELL anchor those hands to earth, capital, and human reality. VAULT999 preserves consequence. Arif/F13 remains the sovereign witness and final veto.
+
+**WELL must never:** diagnose medical conditions, decide for the operator, or override human sovereignty over biological state.
+
+Full doctrine: [GENESIS/040_APEX_STACK.md](https://github.com/ariffazil/arifos/blob/main/GENESIS/040_APEX_STACK.md)
+
+**Orthogonal CANON:** [ariffazil/CANON.md](https://github.com/ariffazil/ariffazil/blob/main/CANON.md) — this repo is **WELL** (cooling, consolidation, human Δ care). REFLECT_ONLY. Not judge, not hands.
+
+---
+
+## 0. ABC Trinity Wellness Parliament
+
+> **Tested 2026-07-05. Verdict: GREEN (10/10 after 3 critical fixes).**
+
+WELL operates as a three-agent wellness parliament:
+
+| Agent | Domain | Question | Status |
+|-------|--------|----------|--------|
+| **A — H-WELL** | Human Wellness | "Is Arif's human system protected?" | ✅ GREEN |
+| **B — M-WELL** | Machine Wellness | "Is the machine stack stable?" | ✅ GREEN |
+| **C — C-WELL** | Coupled Alignment | "Is the human–machine coupling healthy?" | ✅ GREEN |
+
+### Three Diagnostic Layers
+
+Each agent runs three layers of diagnostics:
+
+| Layer | What | Example |
+|-------|------|---------|
+| **Qualitative** | Meaning & narrative | "Is the language dignity-preserving?" |
+| **Quantitative** | Numbers & ranges | "Is the flux score within 0.0–1.0?" |
+| **Quantum** | Hidden patterns | "Is there distress behind humour?" |
+
+### 3 Critical Fixes (July 2026)
+
+| Fix | Bug | Resolution |
+|-----|-----|------------|
+| **Coupled metabolism** | Parameters ignored in coupled mode | `well_coupled_readiness` now accepts scenario overrides |
+| **Sovereign entropy** | Dict serialization crash | `behavioral_signals` accepts dict or JSON string |
+| **Decision-class** | All classes returned same mode | C5→pause, C3→draft_only, C1→full/structured |
+
+### Run the Test
+
+```bash
+# Full ABC Trinity test results
+cat /root/forge_work/2026-07-05/well-abc-trinity-test/TRINITY-SYNTHESIS.md
+```
+
+> APEX is the admissibility framework for decisions under uncertainty (ΔΩΨ). arifOS compiles those dynamics into a constitutional orchestration substrate. AAA renders federation-state and coordination (display layer — not ASI-civilisation claims). A-FORGE gives the system governed hands. GEOX, WEALTH, and WELL anchor those hands to earth, capital, and human reality. VAULT999 preserves consequence. Arif/F13 remains the sovereign witness and final veto.
+
+**WELL must never:** diagnose medical conditions, decide for the operator, or override human sovereignty over biological state.
+
+Full doctrine: [GENESIS/040_APEX_STACK.md](https://github.com/ariffazil/arifos/blob/main/GENESIS/040_APEX_STACK.md)
 
 ---
 
@@ -72,15 +146,35 @@ scope: /root/WELL
 
 > **WELL is the sovereign's mirror — it reflects human readiness so that no irreversible decision is ever made by or about a depleted human.**
 
+### The Boundary-Sense Engine (Core Perception Organ)
+
+All WELL tools route through the **Boundary-Sense Engine** before producing any verdict:
+
+```
+well_classify_substrate → well_detect_boundary → well_assess_sovereign_entropy → well_assess_metabolism
+                                    ↓
+                            ROUTE TO APPROPRIATE TOOL
+```
+
+Boundary-Sense reads:
+- **Where is the human?** (substrate classification)
+- **Where is the machine?** (boundary detection)
+- **Where is the sovereignty?** (entropy measurement)
+- **Where is the coupling?** (metabolic assessment)
+
+Skill: `skill(name="boundary-sense-engine")`
+
 ### What It IS
 
 | IS | Explanation |
 |----|-------------|
+| **A wellness parliament** | Three organs (H-WELL, M-WELL, C-WELL) with independent readings |
 | **A vitality mirror** | Measures sleep, fatigue, stress, cognitive clarity, metabolic flux |
 | **A dignity sentinel** | Detects coercion signals, reductionism risk, consent erosion |
 | **A readiness signal** | Produces well_score, delta_s, peace2, kappa_r — signals for arifOS |
 | **A boundary guard** | Detects when the human substrate is being objectified, extracted, or over-optimised |
-| **A sovereign entropy protector** | Measures and protects the human's *unpredictability* — the thing that makes extraction impossible |
+| **A profiling-resistance / behavioural-model-dependence protector** | Measures and protects the human's *unpredictability* — the thing that makes extraction impossible |
+| **A boundary-sense organ** | Classifies substrates, detects boundaries, measures coupling, reads drift |
 | **REFLECT-ONLY** | WELL observes and reports. It never judges fitness, never makes medical claims |
 
 ### What It IS NOT
@@ -132,9 +226,9 @@ Expected response:
   "status": "healthy",
   "organ": "WELL",
   "port": 18083,
-  "tools_loaded": 17,
+  "tool_count": 22,
   "authority": "REFLECT_ONLY",
-  "truth_status": "EXPIRED",
+  "truth_status": "VERIFIED",
   "federation_geometry": {
     "source": "arifOS:8088/mcp",
     "verdict": "OK"
@@ -149,9 +243,9 @@ Expected response:
 ```json
 {
   "mcpServers": {
-    "well": {
+    "arifos-gateway": {
       "type": "http",
-      "url": "https://well.arif-fazil.com/mcp"
+      "url": "https://mcp.arif-fazil.com/mcp"
     }
   }
 }
@@ -175,7 +269,7 @@ Expected response:
 
 ## 3. Full Capability Map
 
-WELL's 21 somatic tools operate across four substrate domains. Each domain answers a different question about the human-machine system.
+WELL's 22 canonical somatic tools operate across four substrate domains, plus federation handoff, ZEN, and diagnostic helpers. Each domain answers a different question about the human-machine system.
 
 ### 3.1 H-WELL — Human Substrate (5 tools)
 
@@ -218,16 +312,21 @@ WELL's 21 somatic tools operate across four substrate domains. Each domain answe
 | 12 | `well_classify_substrate` | Substrate classification and boundary sensing | Human / AI / Coupled / Institution |
 | 13 | `well_detect_boundary` | Membrane, body, machine, federation boundary detection | Boundary breach, overreach, persona drift |
 
-### 3.5 Autonomic Tools (not on public MCP surface)
+### 3.5 Federation, ZEN, and Diagnostic Tools
 
-These tools run internally — useful for diagnostics but not exposed as public MCP actions:
+These tools bridge WELL to the federation, expose internal diagnostics, or provide single-verdict ZEN surfaces:
 
 | # | Tool | Purpose |
 |---|------|---------|
-| 14 | `well_system_registry_status` | Internal tool surface audit |
-| 15 | `well_registry_status` | Registry truth diagnostic |
+| 14 | `well_medical_boundary` | Explicit non-diagnosis guard with F9 Soul Contract |
+| 15 | `well_health_check` | Canonical health probe (legacy `mcp_health_check` removed 2026-06-28) |
 | 16 | `well_13_signal_coverage` | Audit of 13 canonical signal coverage |
-| 17 | `mcp_health_check` | DEPRECATED alias → `well_assess_reliability(mode="health")` |
+| 17 | `well_registry_status` | Registry truth diagnostic (blueprint canonical format) |
+| 18 | `well_handoff_dignity_to_arifos` | S12 → arifOS 888_JUDGE dignity handoff |
+| 19 | `well_handoff_livelihood_to_wealth` | S13 → WEALTH livelihood handoff |
+| 20 | `well_attest_to_kernel` | WELL → arifOS organ attest |
+| 21 | `well_classify_state` | Human state classifier (Phase 1 + Phase 3) |
+| 22 | `well_readiness` | ZEN single verdict — color/score/TTL/action |
 
 ### 3.6 The 13-Signal Substrate Map
 
@@ -345,8 +444,8 @@ All 13 constitutional floors (F1-F13) are defined in [`arifOS/static/arifos/theo
 ```
 WELL/
 │
-├── server.py                  # FastMCP server (~13,800 lines)
-│   │                          # 21 somatic tools
+├── server.py                  # FastMCP server (~15,755 lines)
+│   │                          # 22 somatic tools (canonical WELL surface)
 │   │                          # dual transport: HTTP (port 18083) + stdio
 │   │                          # SOMATIC_TOOLS boundary enforcement at startup
 │   │
@@ -425,9 +524,9 @@ WELL is your mirror — not your coach, not your doctor, not your judge. It refl
 | `kappa_r` | 0.0–1.0 | Resilience. 0.0 = brittle, anything will break you. 1.0 = highly resilient. |
 | `malu_index` | 0.0–1.0 | Accumulated shame signal. > 0.85 = HOLD trigger. |
 
-### Biometric State — Currently EXPIRED
+### Biometric State — Currently VERIFIED
 
-Your `state.json` is stale (last updated 2026-04-30, test mock data). WELL will show `truth_status=EXPIRED` until you inject real values.
+Your `state.json` was last updated 2026-07-01 and is fresh. WELL currently reports `truth_status=VERIFIED`.
 
 **To fix (2 minutes, sovereign only):**
 
@@ -645,7 +744,7 @@ python -m pytest tests/ -q --tb=short
 curl -s http://127.0.0.1:18083/health | python3 -m json.tool
 
 # 3. Confirm invariants
-#    - tools_loaded: 17
+#    - tool_count: 22
 #    - authority: REFLECT_ONLY
 #    - SOMATIC_TOOLS boundary enforced
 #    - tool_count matches GENESIS/004 canon
@@ -695,6 +794,70 @@ Each document is ratified by 888 (Muhammad Arif bin Fazil, F13 SOVEREIGN). They 
 
 ---
 
+## Quick Start
+
+```bash
+# 1. Health
+curl https://well.arif-fazil.com/health
+
+# 2. MCP initialize
+curl -X POST https://well.arif-fazil.com/mcp \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json" \
+  -d '{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"cli","version":"1.0"}},"id":1}'
+
+# 3. Discover
+#    tools/list       → 22 somatic tools
+#    prompts/list     → wellness prompts
+#    resources/list   → state + events
+
+# 4. Quick checks
+#    well_readiness()                    → GREEN/YELLOW/RED verdict
+#    well_assess_homeostasis(mode="fatigue")  → fatigue score
+#    well_guard_dignity(mode="consent") → dignity preservation
+```
+
+---
+
+## Authority Boundary
+
+| Layer | Responsibility |
+|-------|---------------|
+| **WELL** | Reflect readiness — compute vitality, metabolism, dignity |
+| **arifOS** | Judge admissibility — apply F1-F13 floors |
+| **Arif** | Final decision (F13 SOVEREIGN) |
+
+**WELL cannot:**
+- diagnose medical conditions
+- decide for the operator
+- override human sovereignty over biological state
+- self-seal or self-judge
+- move capital or authorize execution
+
+WELL is **REFLECT_ONLY** by constitutional mandate. It reports. arifOS judges. Arif decides.
+
+---
+
+## Architecture
+
+```
+arifOS :8088  (Constitutional Kernel — judge, seal)
+   ↓
+WELL :18083   (Substrate Vitality — this repo)
+   ↓
+AAA :3001     (Cockpit — display, routing)
+   ↓
+arifOS 888    (Judgment — verdict)
+   ↓
+A-FORGE :7071 (Execution — after SEAL)
+   ↓
+VAULT999      (Immutable record)
+```
+
+Three substrates: **H-WELL** (human), **M-WELL** (machine), **C-WELL** (coupled). Each runs qualitative, quantitative, and quantum diagnostics.
+
+---
+
 ## 14. License & Sovereignty
 
 ```
@@ -729,6 +892,41 @@ Each document is ratified by 888 (Muhammad Arif bin Fazil, F13 SOVEREIGN). They 
 ## Contributing
 
 This repository operates under the arifOS Federation constitution (F1-F13). See [`AGENTS.md`](AGENTS.md) for the canonical boot sequence and agent operating rules. All contributions must preserve the REFLECT-ONLY authority boundary and the AGPL-3.0 license.
+
+---
+
+## 🔌 MCP Connection
+
+Connect to WELL via the Model Context Protocol:
+
+| Property | Value |
+|----------|-------|
+| **Endpoint** | `https://well.arif-fazil.com/mcp` |
+| **Transport** | Streamable HTTP (JSON-RPC 2.0) |
+| **Tools** | 22 tools |
+| **Health** | `https://well.arif-fazil.com/health` |
+
+### Claude Code / Cursor
+
+Add to your MCP client config:
+```json
+{
+  "mcpServers": {
+    "well": {
+      "url": "https://well.arif-fazil.com/mcp"
+    }
+  }
+}
+```
+
+### Direct Usage
+
+```bash
+curl -X POST https://well.arif-fazil.com/mcp \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json" \
+  -d '{"jsonrpc":"2.0","method":"tools/list","id":1}'
+```
 
 ---
 

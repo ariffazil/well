@@ -1,8 +1,8 @@
 <!-- SOT-MANIFEST
 owner: Arif
-last_verified: 2026-06-25
+last_verified: 2026-07-10
 valid_from: 2026-06-14
-valid_until: 2026-07-25
+valid_until: 2026-08-09
 confidence: high
 scope: /root/WELL
 epistemic_status: SOURCE_OF_TRUTH
@@ -26,7 +26,7 @@ epistemic_status: SOURCE_OF_TRUTH
 
 ## Required Health Checks
 
-- `curl http://localhost:18083/health` must return `200` with `tool_count: 17`
+- `curl http://localhost:18083/health` must return `200` with `tool_count: 22` (21 canonical + 1 deprecated public alias `well_readiness`; removal 2026-08-01)
 - `python -m pytest tests/ -q --tb=short` must pass before any deployment
 - `python test_well.py` must pass (legacy audit suite)
 
@@ -34,28 +34,31 @@ epistemic_status: SOURCE_OF_TRUTH
 
 These files must change together:
 
-- `server.py` — canonical FastMCP server (~13,839 lines, 51 `@mcp.tool` decorated helpers)
+- `server.py` — canonical FastMCP server (~15,755 lines, 72 `@mcp.tool` decorated helpers)
 - `gate/well_gate.py` — pre-JUDGE biological readiness mirror
 - `gate/dignity_shadow.py` — dignity shadow scoring
 - `test_well.py` — plain-Python audit suite
 
 ## Canonical Tool Surface
 
-**17 somatic MCP tools** across 4 substrate types:
+**22 somatic MCP tools** across 4 substrate types plus federation/ZEN/diagnostic helpers:
 
 | Substrate | Tools | Purpose |
 |-----------|-------|---------|
-| H-WELL | `well_assess_livelihood`, `well_guard_dignity` | Human wellness, role, meaning |
-| M-WELL | `well_assess_reliability`, `well_compute_metabolic_flux` | Machine health, entropy rate |
-| C-WELL | `well_assess_metabolism`, `well_assess_homeostasis` | Coupled state regulation |
+| H-WELL | `well_assess_livelihood`, `well_guard_dignity`, `well_medical_boundary`, `well_assess_sovereign_entropy`, `well_validate_vitality`, `well_assess_homeostasis` | Human wellness, role, meaning, dignity |
+| M-WELL | `well_assess_reliability`, `well_check_repair`, `well_health_check` | Machine health, entropy rate, repair |
+| C-WELL | `well_assess_metabolism`, `well_compute_metabolic_flux`, `well_trace_lineage`, `well_measure_gradient` | Coupled state regulation |
 | G-WELL | `well_classify_substrate`, `well_detect_boundary` | Governance gradient sensing |
+| F-Ω / ZEN / Diagnostic | `well_handoff_dignity_to_arifos`, `well_handoff_livelihood_to_wealth`, `well_attest_to_kernel`, `well_classify_state`, `well_13_signal_coverage`, `well_registry_status` | Federation handoff, ZEN verdict, diagnostics |
+
+| (deprecated) | `well_readiness` | DEPRECATED 2026-07-12. Use `well_validate_vitality(mode='readiness')`. Removal 2026-08-01. Audit 2026-07-12: was listed in both deprecated_callable and canonical_callable registry buckets — now resolved. |
 
 ## Forbidden Stale Assumptions
 
 - ❌ WELL is NOT "not deployed" — it is live on bare-metal systemd (port 18083)
 - ❌ Port 8083 is a legacy/stale port — canonical WELL port is 18083
 - ❌ Tool count is NOT 13 — it is 17 (INVARIANTS.md once said 13; corrected 2026-06-14)
-- ❌ Line count is NOT 11,243 — server.py is ~13,839 lines
+- ❌ Line count is NOT 11,243 — server.py is ~15,755 lines
 - ✅ `pytest tests/` is the primary test runner; `test_well.py` is a legacy plain-Python audit suite
 
 ## Verification
