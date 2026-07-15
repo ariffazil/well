@@ -1,0 +1,19 @@
+# WELL — Human Readiness | arifOS Federation
+# https://well.arif-fazil.com
+
+User-agent: *
+Allow: /
+Allow: /health
+Allow: /ready
+Allow: /.well-known/
+
+# Agent discovery
+Allow: /llms.txt
+
+# MCP surface (API-only, not crawlable)
+Disallow: /mcp
+
+# Federation context for AI agents
+# Canonical index: https://arif-fazil.com/.well-known/arifos-federation.json
+# MCP gateway: https://mcp.arif-fazil.com/mcp
+# Sovereign: did:web:arif-fazil.com

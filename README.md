@@ -1,54 +1,155 @@
 <!-- SOT-MANIFEST
-federation_release: v2026.07.12-CONSOLIDATION-EPOCH
-last_verified: 2026-07-12T23:38Z
-live_commit: 765cf92
+federation_release: v2026.07.15-DOMAIN-CONTRAST
+last_verified: 2026-07-15T04:45Z
 port: 18083
-mcp_tools_live: 29
+domain_law: SUBSTRATE_LAW
+mcp_tools_live: 27
+authority: REFLECT_ONLY
 health_status: degraded
 owner_summary: RED
 truth_rule: tools/list + /health beat any static count in prose
-truth_status: INSUFFICIENT_DATA (state.json timestamp 2026-04-30 — SELF_REPORT stale, not sensor lie)
+truth_status: INSUFFICIENT_DATA (biometric state stale — human injection required; not a domain-law collapse)
 fix: sovereign biometric_inject.sh self-report (do not invent vitals)
-changelog: /root/forge_work/2026-07-05/well-abc-trinity-test/TRINITY-SYNTHESIS.md
+domain_contrast: /root/AAA/docs/DOMAIN_ORGAN_CONTRAST.md
 a2a_agent_json: /root/WELL/.well-known/agent.json
 abc_trinity_verdict: GREEN (10/10 after 3 critical fixes)
 boundary_sense: ACTIVE
-machine_sot: /root/A-FORGE/forge_work/2026-07-09/MACHINE-SOT-2026-07-09.json
 -->
 
-# WELL — Constitutional Wellness Parliament
+# WELL — Human Readiness Mirror
+
+> **DITEMPA BUKAN DIBERI.** It **reflects**. It does **not** diagnose.
+
+## Identity
+
+| Field | Value |
+|-------|-------|
+| **Domain** | Human — vitality, dignity, coupling, readiness |
+| **Port** | `:18083` · `https://well.arif-fazil.com` |
+| **MCP Tools (public)** | **27** — SOT: live `tools/list` / health `tool_count` |
+| **Primary Physics** | Homeostasis · metabolic flux · substrate entropy (not medicine) |
+| **Epistemic Labels** | OBSERVED / REFLECTED / SIGNAL · STALE honesty required |
+| **License** | **AGPL-3.0** |
+| **Authority** | **`REFLECT_ONLY`** |
+| **Final Authority** | ARIF (F13 SOVEREIGN) |
+| **Soul** | [`SOUL.md`](./SOUL.md) · Peers: [`FEDERATION_CONTRACT.md`](./FEDERATION_CONTRACT.md) · Docs: [`docs/index.md`](./docs/index.md) |
+
+## Federation Position
 
 ```
-    ██╗    ██╗███████╗██╗     ██╗
-    ██║    ██║██╔════╝██║     ██║
-    ██║ █╗ ██║█████╗  ██║     ██║
-    ██║███╗██║██╔══╝  ██║     ██║
-    ╚███╔███╔╝███████╗███████╗███████╗
-     ╚══╝╚══╝ ╚══════╝╚══════╝╚══════╝
-
-     CONSTITUTIONAL    WELLNESS    PARLIAMENT
-        ══════  WITNESS, NOT JUDGE  ══════
+ARIF (F13) → arifOS KERNEL :8088 → WELL :18083 (this organ)
+                                      ├→ arifOS (dignity / readiness handoff)
+                                      └→ WEALTH (livelihood frame S13 — not capital math)
 ```
 
-> **WELL is the constitutional wellness parliament of the arifOS federation.**
-> Three organs (H-WELL, M-WELL, C-WELL). Qualitative, quantitative, and quantum diagnostics.
-> Behavioural-model dependence / profiling-exposure protection. Boundary-Sense perception. REFLECT-ONLY authority.
->
-> 22 canonical somatic MCP tools. Integrated public frontdoor: `https://mcp.arif-fazil.com/mcp`
+H-WELL · M-WELL · C-WELL · G-WELL parliament. **Witness, not judge.**
 
-[![Agentic CI](https://github.com/ariffazil/well/actions/workflows/agentic-ci.yml/badge.svg?branch=main)](https://github.com/ariffazil/well/actions/workflows/agentic-ci.yml)
-[![Governance Gate](https://github.com/ariffazil/well/actions/workflows/governance-gate.yml/badge.svg?branch=main)](https://github.com/ariffazil/well/actions/workflows/governance-gate.yml)
-[![Build Validation](https://github.com/ariffazil/well/actions/workflows/publish-image.yml/badge.svg?branch=main)](https://github.com/ariffazil/well/actions/workflows/publish-image.yml)
+## What WELL Owns
+
+- Readiness / vitality / homeostasis / dignity signals  
+- Boundary-Sense · sovereign entropy · metabolic flux  
+- REFLECT_ONLY envelopes for arifOS  
+
+## What WELL Refuses (Hard)
+
+| Refusal | Who owns it instead |
+|---------|---------------------|
+| Diagnose / prescribe | Licensed human care |
+| SEAL / HOLD / VOID law | arifOS |
+| Capital allocation | WEALTH |
+| Earth / well-log geology | GEOX (`geox.welllog` ≠ this organ) |
+| Override F13 | never |
+
+## Connect
+
+```json
+{ "mcpServers": { "well": { "url": "https://well.arif-fazil.com/mcp" } } }
+```
+
+SOT RULE: `tools/list` wins. Stale biometrics ⇒ do not treat score as GREEN.
+
 [![License](https://img.shields.io/github/license/ariffazil/well?label=License)](LICENSE)
 
 <!-- SOT-MANIFEST
 owner: Arif
-last_verified: 2026-07-10
-valid_from: 2026-06-14
-valid_until: 2026-08-09
+last_verified: 2026-07-15
+valid_from: 2026-07-15
+valid_until: 2026-08-15
 confidence: high
 scope: /root/WELL
+tool_count_live: 27
+domain_law: SUBSTRATE_LAW
+status: degraded (WELL_HOLD — stale biometrics)
+federation_release: v2026.07.15-DOMAIN-CONTRAST
 -->
+
+---
+
+## Domain contrast — GEOX · WEALTH · WELL (federation MCP)
+
+> Full architecture seal: [ARIFOS_MCP_ARCHITECTURE_v2026.07.15](https://github.com/ariffazil/AAA/blob/main/docs/ARIFOS_MCP_ARCHITECTURE_v2026.07.15.md) · Contrast: [DOMAIN_ORGAN_CONTRAST](https://github.com/ariffazil/AAA/blob/main/docs/DOMAIN_ORGAN_CONTRAST.md) · Organ map: [FEDERATION_ORGAN](https://github.com/ariffazil/AAA/blob/main/docs/FEDERATION_ORGAN.md)  
+> **This organ answers to `SUBSTRATE_LAW` with authority `REFLECT_ONLY`.** Not natural law. Not capital law. Not constitutional law.
+
+Three domain MCP servers share one governance spine (arifOS) and three **orthogonal laws of truth**. Collapsing them is a constitutional error.
+
+| Axis | GEOX | WEALTH | **WELL (this repo)** |
+|------|------|--------|----------------------|
+| Port / MCP | `:8081` · geox.arif-fazil.com/mcp | `:18082` · wealth.arif-fazil.com/mcp | **`:18083`** · [well.arif-fazil.com/mcp](https://well.arif-fazil.com/mcp) |
+| GitHub | [ariffazil/GEOX](https://github.com/ariffazil/GEOX) | [ariffazil/WEALTH](https://github.com/ariffazil/WEALTH) | [ariffazil/WELL](https://github.com/ariffazil/WELL) |
+| `domain_law` | `NATURAL_LAW` | `CAPITAL_LAW` | **`SUBSTRATE_LAW`** |
+| Primary axis | Earth / material substrate | Capital / scarcity / allocation geometry | **Vitality / readiness / dignity** |
+| Live tools (2026-07-15) | **15** | **12** | **27** |
+| Authority | Evidence only | Compute only (advisory) | **`REFLECT_ONLY`** |
+| May claim | OBS / DER / INT earth facts | Risk envelopes, advisory size | **Readiness signals, dignity flags, coupling health** |
+| Must never | Drill · allocate · seal law | Move money · claim earth truth | **Diagnose · decide fitness · override human · self-seal** |
+
+### Knowledge grammars (Math · Physics · Code)
+
+| Grammar | GEOX | WEALTH | **WELL** |
+|---------|------|--------|----------|
+| **Physics** | Primary — Physics9 rock bounds | Mapped — capital as conserved flow | **Homeostatic** — metabolic flux, fatigue gradients, repair (organism thermodynamics, **not** diagnosis) |
+| **Math** | Transforms, P10/P50/P90 | Primary — NPV/IRR/Kelly/VaR | **Scores, flux thresholds, entropy, QQQ diagnostic layers** |
+| **Code / MCP** | FastMCP `geox_*` | FastMCP `wealth_*` | **FastMCP `well_*` + Boundary-Sense route** |
+
+### MCP architecture (this server)
+
+WELL is a **standalone MCP server**, not a plugin inside arifOS.
+
+| Primitive | Role on WELL |
+|-----------|----------------|
+| **Tools** | Substrate reflect (`well_*`) — public contract = live `tools/list` / health `tool_count` |
+| **Resources** | State, doctrine, events (freshness is part of truth status) |
+| **Prompts** | Wellness / boundary / dignity discipline loops |
+| **Transport** | Streamable HTTP (`:18083/mcp`) + stdio |
+| **Public door** | Caddy → `https://well.arif-fazil.com/mcp` (also federation frontdoor routing) |
+| **Does not own** | Medical diagnosis, F1–F13 judgment, SEAL, capital allocation, earth truth |
+
+**Boundary-Sense before any verdict:**  
+`well_classify_substrate` → `well_detect_boundary` → `well_assess_sovereign_entropy` → `well_assess_metabolism` → route to H/M/C/G tools.
+
+**Agentic flow:** intent → arifOS classify/route → **WELL tools** (readiness evidence) → optional WEALTH (livelihood) / GEOX (field) → `well_handoff_dignity_to_arifos` / `well_attest_to_kernel` → `arif_judge` → SEAL/HOLD/VOID → A-FORGE (intensity adapt) → VAULT999.
+
+```
+Arif (F13) → AAA/Hermes/OpenClaw → arifOS :8088
+                                      │
+                    ┌─────────────────┼─────────────────┐
+                    ▼                 ▼                 ▼
+                 GEOX :8081      WEALTH :18082     WELL :18083
+                 NATURAL_LAW     CAPITAL_LAW       SUBSTRATE_LAW
+                 earth evidence  capital compute   vitality reflect
+                    │                 │                 │
+                    └─────────────────┼─────────────────┘
+                                      ▼
+                              arifOS 888 JUDGE → A-FORGE → VAULT999
+```
+
+| Peer | WELL relationship |
+|------|-------------------|
+| **arifOS** | Governor — WELL reflects; 888 adjudicates |
+| **GEOX** | Field operations may need readiness mirror; WELL does not invent geology |
+| **WEALTH** | Livelihood handoff (`well_handoff_livelihood_to_wealth`); WELL does not allocate capital |
+| **A-FORGE** | May adapt execution intensity to readiness signals — never treat WELL as veto of F13 |
+| **VAULT999** | Immutable record of readiness-gated decisions after SEAL |
 
 ---
 
@@ -111,33 +212,14 @@ Full doctrine: [GENESIS/040_APEX_STACK.md](https://github.com/ariffazil/arifos/b
 
 ## 0. Federation Position
 
+See **[Domain contrast](#domain-contrast--geox--wealth--well-federation-mcp)** above for the full three-organ table, knowledge grammars, and MCP flow.
+
+Canon: [DOMAIN_ORGAN_CONTRAST.md](https://github.com/ariffazil/AAA/blob/main/docs/DOMAIN_ORGAN_CONTRAST.md) · Peer edges: [`FEDERATION_CONTRACT.md`](./FEDERATION_CONTRACT.md) · Peers: [GEOX](https://github.com/ariffazil/GEOX) · [WEALTH](https://github.com/ariffazil/WEALTH)
+
 ```
-                         ┌─────────────────────────────────────┐
-                         │          ARIF (F13 SOVEREIGN)       │
-                         │      Human veto. Final authority.   │
-                         └───────────────┬─────────────────────┘
-                                         │ ratifies
-                                         ▼
-                         ┌─────────────────────────────────────┐
-                         │    arifOS — Constitutional Kernel   │
-                         │   F1-F13 floors · 888 JUDGE · VAULT │
-                         │            Port 8088                │
-                         └───┬─────┬─────┬─────┬─────┬─────┬───┘
-                             │     │     │     │     │     │
-         ┌───────────────────▼──┐ ┌▼────┐ ┌▼────┐ ┌▼──────┐ ┌▼──────────┐
-         │  A-FORGE             │ │ AAA │ │GEO X│ │ WEALTH│ │   WELL    │
-         │  Execution Shell     │ │Ctrl │ │Earth│ │Capital│ │  Human    │
-         │  Port 7071           │ │3001 │ │8081 │ │ 18082 │ │ Readiness │
-         │  + MIND :51001       │ └─────┘ └─────┘ └───────┘ │  18083    │
-         │  + MEMORY :51002     │                              └───────────┘
-         └──────────────────────┘
-
-         APEX (port 3002) is a legacy health probe only.
-         888 JUDGE deliberation now lives in the AAA a2a-server.
-
-        WELL is a biological witness. arifOS is the judge.
-        WELL signals. 888 adjudicates. A-FORGE executes.
-        This hierarchy is invariant. DITEMPA BUKAN DIBERI.
+WELL is a biological witness. arifOS is the judge.
+WELL signals. 888 adjudicates. A-FORGE executes.
+This hierarchy is invariant. DITEMPA BUKAN DIBERI.
 ```
 
 ---
@@ -226,7 +308,7 @@ Expected response:
   "status": "healthy",
   "organ": "WELL",
   "port": 18083,
-  "tool_count": 22,
+  "tool_count": 27,
   "authority": "REFLECT_ONLY",
   "truth_status": "VERIFIED",
   "federation_geometry": {
@@ -269,7 +351,7 @@ Expected response:
 
 ## 3. Full Capability Map
 
-WELL's 22 canonical somatic tools operate across four substrate domains, plus federation handoff, ZEN, and diagnostic helpers. Each domain answers a different question about the human-machine system.
+WELL's 27 canonical somatic tools operate across four substrate domains, plus federation handoff, ZEN, and diagnostic helpers. Each domain answers a different question about the human-machine system.
 
 ### 3.1 H-WELL — Human Substrate (5 tools)
 
@@ -445,7 +527,7 @@ All 13 constitutional floors (F1-F13) are defined in [`arifOS/static/arifos/theo
 WELL/
 │
 ├── server.py                  # FastMCP server (~15,755 lines)
-│   │                          # 22 somatic tools (canonical WELL surface)
+│   │                          # 27 somatic tools (canonical WELL surface)
 │   │                          # dual transport: HTTP (port 18083) + stdio
 │   │                          # SOMATIC_TOOLS boundary enforcement at startup
 │   │
@@ -807,7 +889,7 @@ curl -X POST https://well.arif-fazil.com/mcp \
   -d '{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"cli","version":"1.0"}},"id":1}'
 
 # 3. Discover
-#    tools/list       → 22 somatic tools
+#    tools/list       → 27 somatic tools
 #    prompts/list     → wellness prompts
 #    resources/list   → state + events
 
@@ -903,7 +985,7 @@ Connect to WELL via the Model Context Protocol:
 |----------|-------|
 | **Endpoint** | `https://well.arif-fazil.com/mcp` |
 | **Transport** | Streamable HTTP (JSON-RPC 2.0) |
-| **Tools** | 22 tools |
+| **Tools** | 27 tools |
 | **Health** | `https://well.arif-fazil.com/health` |
 
 ### Claude Code / Cursor

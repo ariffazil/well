@@ -109,19 +109,34 @@ canonical_tools:
     requires_ack: false
     description: "Ω-12: Soul, personhood, meaning, symbolic boundaries (modes: dignity|critique|guard)"
 
-  - tool: well_system_registry_status
-    type: reader
-    mutation: false
-    irreversible: false
-    requires_ack: false
-    description: "Registry truth probe — somatic surface vs autonomic internals"
-
   - tool: well_registry_status
     type: reader
     mutation: false
     irreversible: false
     requires_ack: false
-    description: "Registry truth diagnostic — blueprint canonical format"
+    description: "Registry truth diagnostic — blueprint canonical format. Sole canonical status probe."
+
+# ── Hidden Internal Aliases (P0.5 fix 2026-07-14) ─────────────────────────────
+# These tools exist as Python functions but are NOT on the public MCP surface.
+# They may be invoked only by internal federation bridges (arifOS federation_bridge.py).
+# They MUST NOT be added to .well-known/mcp/server.json, agent-card.json,
+# or any other advertised surface. well_registry_status reports them
+# separately under "hidden_internal_aliases" (not folded into canonical counts).
+hidden_internal_aliases:
+  - tool: well_system_registry_status
+    type: reader
+    mutation: false
+    irreversible: false
+    requires_ack: false
+    visibility: hidden
+    deprecated: "2026-06-28"
+    removed_from_public_surface: "2026-07-14"
+    canonical_replacement: well_registry_status
+    note: |
+      Internal Python function — kept for arifOS federation_bridge.py callers.
+      Was causing false-pass REGISTRY_PASS verdict (P0.5 audit 2026-07-14).
+      ChatGPT plugin sees Unknown tool because it was advertised but not callable
+      in the connector surface. Fix: removed from canonical surface list.
 
   # REMOVED per orthogonal MCP alignment (2026-05-14):
   # well_reflect_intelligence  → REFLECT/routing (arifOS 444_KERNEL)

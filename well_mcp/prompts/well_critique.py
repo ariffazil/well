@@ -75,15 +75,7 @@ Check for subtle signals that normal logic misses:
 
 If quantum distress detected → return HOLD + advisory.
 
-## Step 5 — OUTPUT READINESS
-
-If all checks pass:
-- mark reflection ready for JUDGE stage
-- preserve all WellStamp fields
-- include loop_trace through 111–555
-- yield to arifOS
-
-## Step 6 — EXTRACTION CHECK (interaction substrate)
+## Step 5 — EXTRACTION CHECK (interaction substrate)
 
 This step is the F13 protection layer for the interaction substrate.
 Critique does not just check doctrine — critique checks WHETHER THE
@@ -120,6 +112,14 @@ This is the difference between mirror and oracle. WELL mirrors.
 WELL does not predict. WELL does not optimize the human. When the
 mirror's reflection could itself be weaponized, the mirror breaks
 the loop.
+
+## Step 6 — OUTPUT READINESS
+
+If all checks pass:
+- mark reflection ready for JUDGE stage
+- preserve all WellStamp fields
+- include loop_trace through 111–555
+- yield to arifOS
 
 ## Stance
 

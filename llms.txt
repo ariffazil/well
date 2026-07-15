@@ -1,74 +1,49 @@
-# WELL — Human Readiness Sovereign Layer
-> Human substrate governance. 22 somatic MCP tools. Reflect-only.
-> Port: 18083. License: AGPL-3.0. Status: OPERATIONAL. Version: 2026.06.06.
+# WELL — Human Readiness | arifOS Federation
+# https://well.arif-fazil.com
 
-## Quick Context
-- **What:** Human readiness sensor — sleep, fatigue, dignity, vitality
-- **Role:** REFLECT_ONLY — reflects substrate state, never adjudicates
-- **Federation:** WELL witnesses human state. arifOS adjudicates. Arif acts.
-- **Ingress:** Cloudflare Tunnel → well.arif-fazil.com/mcp
+> WELL is the human-readiness organ of the arifOS federation.
+> It reflects operator state, vitality, fatigue, and dignity.
+> WELL reflects. arifOS judges. Arif decides.
 
-## Key Files
-- README.md — Full human-readable narrative (735 lines)
-- AGENTS.md — Agent rules, build/test commands
-- GENESIS/004_WELL_13_CANON.md — 13 canonical substrate signals
-- GENESIS/005_WELL_GODEL_LOCK.md — Gödel self-certification lock
-- GENESIS/006_WELL_STRANGE_LOOP_GUARD.md — Strange loop prevention
-- GENESIS/007_WELL_ANTI_CALHOUN_GUARD.md — Anti-behavioral-sink guard
-- GENESIS/008_WELL_LANGUAGE_PROTOCOL.md — Language protocol
-- GENESIS/009_WELL_PHILOSOPHICAL_ANCHORS.md — Philosophical anchors
-- GENESIS/010_WELL_PERSONA_NOT_SELF.md — Persona boundary
-- gate/well_gate.py — Pre-JUDGE biological readiness gate
-- gate/dignity_shadow.py — Dignity preservation shadow
+## Identity
 
-## Entry Points
-- server.py — Single-file FastMCP server (~15,755 lines, 22 somatic tools)
-- state.json — Sovereign biometric state (F13-only injection; no agent or cron may write it)
-- SNOOZE_BIOMETRIC.md — Biometric injection guide (F13 sovereign territory)
+- **Organ:** WELL
+- **Domain:** well.arif-fazil.com
+- **Port:** 18083 (internal MCP)
+- **Role:** Human-condition evidence
+- **Authority:** REFLECT_ONLY — holds a mirror, not a veto
+- **Sovereign:** did:web:arif-fazil.com
 
-## Build & Test
-- Install:  pip install -e .
-- Test:    pytest tests/ -q --tb=short
-- Start:   python server.py  (or --transport stdio)
-- Health:  curl http://127.0.0.1:18083/health
-- Deploy:  make forge && systemctl restart well
+## Endpoints
 
-## Somatic Tools (22 canonical)
-### Substrate Classification
-well_classify_substrate      — Ω-01: Is this human, machine, or unknown?
-well_detect_boundary         — Ω-03: Membrane, body, machine boundaries
-well_trace_lineage           — Ω-02: Memory, trend, vault chain
+- **Health:** https://well.arif-fazil.com/health (JSON)
+- **MCP:** https://well.arif-fazil.com/mcp (JSON-RPC)
+- **Ready:** https://well.arif-fazil.com/ready (alias for /health)
 
-### Metabolic Assessment
-well_assess_metabolism       — Ω-05: Biological metabolism, throughput
-well_assess_homeostasis      — Ω-06: Sleep, fatigue, regulation, stability
-well_measure_gradient        — Ω-04: Chemical, energy, attention gradients
-well_compute_metabolic_flux  — Ω-10b: Entropy rate, reallocation signals
+## Substrate Taxonomy
 
-### Vitality & Readiness
-well_validate_vitality       — Ω-08: Readiness, NIAT, intent validation
-well_assess_livelihood       — Ω-09: Role, dignity, purpose, meaning
-well_assess_reliability      — Ω-10: Machine, tool, institutional reliability
-well_health_check            — Ω-10c: Canonical health probe
-well_medical_boundary        — Ω-12b: Explicit non-diagnosis guard
+- **H-WELL:** Human biological and cognitive state
+- **M-WELL:** Machine reliability and tool health
+- **G-WELL:** Machine governance health
+- **C-WELL:** Coupled human-machine risk
 
-### Governance
-well_check_repair            — Ω-07: Repair, recovery, forge cycle integrity
-well_guard_dignity           — Ω-12: Soul, personhood, consent boundaries
-well_assess_sovereign_entropy — Ω-SE: Protect sovereign unpredictability
-well_13_signal_coverage      — DREAM ENGINE: Audit 13 canonical signals
+## Federation Context
 
-### Federation / ZEN / Registry
-well_handoff_dignity_to_arifos    — S12 → arifOS 888_JUDGE dignity handoff
-well_handoff_livelihood_to_wealth — S13 → WEALTH livelihood handoff
-well_attest_to_kernel             — WELL → arifOS organ attest
-well_classify_state               — Human state classifier
-well_readiness                    — DEPRECATED 2026-07-12. Use well_validate_vitality(mode='readiness'). Removal 2026-08-01.
-well_registry_status              — Blueprint-format drift report
+- **Canonical index:** https://arif-fazil.com/.well-known/arifos-federation.json
+- **Observatory:** https://arifos.arif-fazil.com/
+- **Earth:** https://geox.arif-fazil.com/
+- **Capital:** https://wealth.arif-fazil.com/
 
-## Boundaries (NEVER)
-- NEVER diagnose medical conditions (WELL is not a doctor)
-- NEVER fabricate human biometric data (F13 sovereign territory)
-- NEVER claim to know the human better than the human knows themselves
-- NEVER adjudicate — WELL reflects, arifOS judges
-- NEVER optimize the sovereign into predictability (sovereign entropy protection)
+## Constitutional Floors
+
+WELL operates under F1-F13. Key floors:
+- F5 PEACE²: De-escalate, guard weakest stakeholder
+- F6 MARUAH: Dignity-first, ASEAN/MY context
+- F9 ANTI-HANTU: No consciousness claims
+
+## Boundary
+
+WELL is NOT a doctor, therapist, or diagnostic authority.
+It tracks readiness signals only. For severe symptoms, recommend professional care.
+
+DITEMPA BUKAN DIBERI — Forged, Not Given.

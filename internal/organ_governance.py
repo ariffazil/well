@@ -9,9 +9,7 @@ import os
 import httpx
 from typing import Optional, Tuple
 
-ARIFOS_KERNEL_URL = os.environ.get(
-    "ARIFOS_KERNEL_URL", "http://arifosmcp:8088"
-)
+ARIFOS_KERNEL_URL = os.environ.get("ARIFOS_KERNEL_URL", "http://arifosmcp:8088")
 
 # Risk classification for WELL tools
 WELL_RISK_TIERS = {
@@ -29,7 +27,7 @@ WELL_RISK_TIERS = {
     "well_compute_metabolic_flux": "c1",
     # READONLY — execute directly
     "well_trace_lineage": "readonly",
-    "well_system_registry_status": "readonly",
+    "well_registry_status": "readonly",
     "mcp_health_check": "readonly",
     # Well tools
     "well_log_state": "c1",
@@ -40,16 +38,21 @@ WELL_RISK_TIERS = {
 }
 
 
-def _call_arifOS_judge(tool_name: str, arguments: dict, actor_id: str) -> Tuple[str, Optional[dict]]:
+def _call_arifOS_judge(
+    tool_name: str, arguments: dict, actor_id: str
+) -> Tuple[str, Optional[dict]]:
     """Call arifOS kernel arif_judge_deliberate."""
     import json
 
-    candidate = json.dumps({
-        "action": f"WELL_ORGAN:{tool_name}",
-        "description": f"WELL organ tool: {tool_name}",
-        "tool": tool_name,
-        "arguments": arguments,
-    }, separators=(",", ":"))
+    candidate = json.dumps(
+        {
+            "action": f"WELL_ORGAN:{tool_name}",
+            "description": f"WELL organ tool: {tool_name}",
+            "tool": tool_name,
+            "arguments": arguments,
+        },
+        separators=(",", ":"),
+    )
 
     payload = {
         "jsonrpc": "2.0",
@@ -70,7 +73,10 @@ def _call_arifOS_judge(tool_name: str, arguments: dict, actor_id: str) -> Tuple[
             response = client.post(
                 f"{ARIFOS_KERNEL_URL}/mcp",
                 json=payload,
-                headers={"Content-Type": "application/json", "Accept": "application/json"},
+                headers={
+                    "Content-Type": "application/json",
+                    "Accept": "application/json",
+                },
             )
             data = response.json()
 
@@ -102,6 +108,7 @@ def check_governance(
 
     # Pytest / Test Env bypass: mock SEAL for C2 risks, otherwise PASS
     import sys
+
     if "pytest" in sys.modules or os.environ.get("PYTEST_CURRENT_TEST"):
         if risk == "c2":
             return "SEAL", None

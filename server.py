@@ -11927,83 +11927,12 @@ if __name__ == "__main__":
     app.add_route("/api/build-info", build_info_handler, methods=["GET"])
     app.add_route("/tools", tools_handler, methods=["GET"])
 
-    # ── A2A Agent Card (Federation Discovery) ────────────────────────────
-    # FORGE 2026-06-28: /.well-known/agent.json for AAA A2A mesh discovery.
-
-    _WELL_AGENT_CARD = {
-        "schema_version": "0.2",
-        "organ_id": "well",
-        "name": "WELL — Human Substrate Vitality",
-        "role": "human",
-        "description": (
-            "Universal substrate vitality mirror for arifOS federation. "
-            "Assesses biological metabolism, homeostasis, repair cycles, vitality, "
-            "livelihood, and dignity. Reflect-only — does not judge or decide."
-        ),
-        "version": "2026.06.05",
-        "url": "https://well.arif-fazil.com",
-        "a2a_endpoint": "http://127.0.0.1:18083/a2a",
-        "agent_card_url": "http://127.0.0.1:18083/.well-known/agent-card.json",
-        "endpoints": {
-            "mcp": "https://well.arif-fazil.com/mcp",
-            "health": "https://well.arif-fazil.com/health",
-            "tools": "https://well.arif-fazil.com/tools",
-        },
-        "authority_class": "evidence",
-        "allowed_action_classes": ["OBSERVE"],
-        "max_risk_tier": "T1",
-        "auth": {"type": "none"},
-        "federation": {
-            "protocol": "A2A",
-            "peer_coordinator": "https://aaa.arif-fazil.com",
-            "constitutional_kernel": "https://arifos.arif-fazil.com",
-        },
-        "owned_mcp": [
-            "well_assess_homeostasis",
-            "well_assess_livelihood",
-            "well_assess_metabolism",
-            "well_assess_reliability",
-            "well_assess_sovereign_entropy",
-            "well_check_repair",
-            "well_classify_substrate",
-            "well_compute_metabolic_flux",
-            "well_detect_boundary",
-            "well_guard_dignity",
-            "well_measure_gradient",
-            "well_registry_status",
-            "well_trace_lineage",
-            "well_validate_vitality",
-            "well_medical_boundary",
-            "well_handoff_dignity_to_arifos",
-            "well_handoff_livelihood_to_wealth",
-        ],
-        "judge_skills": [],
-        "skills": [
-            {
-                "id": "substrate.classify",
-                "name": "Substrate Classification",
-                "tags": ["h-well", "m-well", "g-well"],
-            },
-            {
-                "id": "vitality.assess",
-                "name": "Vitality Assessment",
-                "tags": ["metabolism", "homeostasis", "repair"],
-            },
-            {
-                "id": "dignity.guard",
-                "name": "Dignity Guard",
-                "tags": ["dignity", "sovereignty", "boundary"],
-            },
-        ],
-    }
-
-    async def _well_agent_card_handler(request):
-        return JSONResponse(_WELL_AGENT_CARD)
-
-    app.add_route("/.well-known/agent.json", _well_agent_card_handler, methods=["GET"])
-    app.add_route(
-        "/.well-known/agent-card.json", _well_agent_card_handler, methods=["GET"]
-    )
+    # NOTE (A2A consolidation 2026-07-15): Local A2A agent-card route removed.
+    # Canonical A2A card surfaces are owned by AAA at
+    # `/.well-known/agent.json` and `/.well-known/agent-card.json`
+    # (see /root/AAA/docs/AGENT_IDENTITY.md and /root/AAA/UNIFIED_AGENT.md).
+    # WELL keeps only MCP manifests (.well-known/mcp/server.json) and the
+    # health/ready/tools/build-info surfaces. Caddy fronts the public ingress.
 
     # Server start moved to end of file so canonical tools are registered before uvicorn blocks
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -15452,6 +15381,18 @@ def well_registry_status(
     deprecated_callable = sorted(
         n for n in LEGACY_ALIASES if n in registered_in_somatic or n in all_known
     )
+    exported_surface = sorted(
+        n
+        for n in registered_in_somatic
+        if n in PUBLIC_CANONICAL and n not in known_aliases and n not in LEGACY_ALIASES
+    )
+    missing_public_tools = sorted(PUBLIC_CANONICAL - set(exported_surface))
+    unexpected_public_tools = sorted(set(exported_surface) - PUBLIC_CANONICAL)
+    # P0.5 fix 2026-07-14: well_system_registry_status is removed from public surface.
+    # It remains as internal Python function (hidden alias) — not in registered_in_somatic.
+    deprecated_exported = sorted(
+        n for n in ("well_system_registry_status",) if n in registered_in_somatic
+    )
     alias_conflicts: list[str] = []
     # Conflict = same name in both lists (must be empty)
     dual = set(canonical_callable) & set(deprecated_callable)
@@ -15461,13 +15402,127 @@ def well_registry_status(
         canonical_callable = sorted(set(canonical_callable) - dual)
 
     intended_count = len(PUBLIC_CANONICAL)
-    verdict = (
-        "REGISTRY_PASS"
-        if len(phantom_tools) == 0 and not dual
-        else ("REGISTRY_PASS" if not phantom_tools else "REGISTRY_DRIFT")
+
+    # ── P0.5 fix: per-tool classification (visibility, registered, exported, callable, reason_hidden)
+    # Every known tool must be classified into exactly ONE visibility bucket:
+    #   public      — advertised in spec manifests + on public MCP surface
+    #   internal    — callable but NOT advertised (e.g. legacy alias)
+    #   autonomic   — internal federation bridge only, never callable by external agents
+    #   deprecated  — kept callable, NOT advertised as canonical
+    #   phantom     — advertised but not registered/callable
+    #
+    # REGISTRY_PASS requires: for every PUBLIC_CANONICAL tool,
+    #   advertised (in spec) == registered (in SOMATIC) == safely_callable (registered + safe_args).
+    # Aliases and autonomic functions are reported separately and NOT folded into count.
+    classification: list[dict] = []
+    hidden_tools: list[dict] = []
+    all_known_names = registered_in_somatic | all_known | set(safe_args.keys())
+    for name in sorted(all_known_names):
+        advertised_public = name in PUBLIC_CANONICAL
+        advertised_deprecated = name in LEGACY_ALIASES
+        advertised_alias = name in known_aliases
+        registered = name in registered_in_somatic
+        has_safe_args = name in set(safe_args.keys())
+        in_code = name in all_tools_in_code
+
+        if name in ("well_system_registry_status",):
+            # P0.5 fix: hidden internal alias — never advertised, never on public surface
+            hidden_tools.append(
+                {
+                    "name": name,
+                    "visibility": "hidden",
+                    "registered": False,
+                    "exported": False,
+                    "callable": False,  # callable as Python function but NOT on MCP surface
+                    "advertised_public": False,
+                    "reason_hidden": (
+                        "Removed from public MCP surface 2026-07-14 (P0.5). "
+                        "Internal Python function only — used by arifOS federation_bridge.py. "
+                        "Use well_registry_status (canonical)."
+                    ),
+                    "canonical_replacement": "well_registry_status",
+                }
+            )
+            continue
+
+        if advertised_public and registered and has_safe_args:
+            visibility = "public"
+            reason_hidden = None
+        elif advertised_public and not registered:
+            visibility = "phantom"
+            reason_hidden = (
+                "advertised in PUBLIC_CANONICAL but NOT registered with MCP server"
+            )
+        elif advertised_public and not has_safe_args:
+            visibility = "phantom"
+            reason_hidden = "registered but no safe_args — would fail callable dry-call"
+        elif advertised_deprecated and registered:
+            visibility = "deprecated"
+            reason_hidden = None
+        elif advertised_alias and registered:
+            visibility = "internal"
+            reason_hidden = "Ω-stage alias — internal routing only"
+        elif name in LEGACY_ALIASES and registered:
+            visibility = "deprecated"
+            reason_hidden = None
+        elif (
+            registered
+            and not advertised_public
+            and not advertised_deprecated
+            and not advertised_alias
+        ):
+            visibility = "internal"
+            reason_hidden = "registered on SOMATIC but not in any spec manifest — undocumented export"
+        elif in_code and not registered:
+            visibility = "autonomic"
+            reason_hidden = "Python function exists but not registered with MCP server"
+        else:
+            visibility = "unknown"
+            reason_hidden = "unclassified — needs review"
+
+        classification.append(
+            {
+                "name": name,
+                "visibility": visibility,
+                "registered": registered,
+                "exported": name in set(exported_surface),
+                "callable": registered and has_safe_args,
+                "advertised_public": advertised_public,
+                "reason_hidden": reason_hidden,
+            }
+        )
+
+    public_classified = [c for c in classification if c["visibility"] == "public"]
+    public_drift = [
+        c
+        for c in public_classified
+        if not (c["registered"] and c["exported"] and c["callable"])
+    ]
+    public_drift_names = sorted(c["name"] for c in public_drift)
+    phantom_count = sum(1 for c in classification if c["visibility"] == "phantom")
+    internal_count = sum(1 for c in classification if c["visibility"] == "internal")
+    deprecated_visible_count = sum(
+        1 for c in classification if c["visibility"] == "deprecated"
     )
-    if dual:
-        verdict = "REGISTRY_DRIFT"
+    autonomic_count = sum(1 for c in classification if c["visibility"] == "autonomic")
+    hidden_count = len(hidden_tools)
+
+    # REGISTRY_PASS invariant:
+    #   For every PUBLIC_CANONICAL tool: advertised == registered == safely_callable
+    #   No phantom tools (advertised but not callable)
+    #   No deprecated exported (e.g. well_system_registry_status leaked to surface)
+    #   No dual-listing (same name in canonical + deprecated buckets)
+    #   Aliases/autonomic reported separately — NOT folded into count
+    surface_aligned = (
+        len(phantom_tools) == 0
+        and not dual
+        and not missing_public_tools
+        and not unexpected_public_tools
+        and not deprecated_exported
+        and not public_drift
+        and phantom_count == 0
+    )
+    verdict = "REGISTRY_PASS" if surface_aligned else "REGISTRY_DRIFT"
 
     # Return blueprint canonical format directly — no _to_federation_output wrapping.
     # well_registry_status is a registry diagnostic, not a constitutional judgment tool.
@@ -15477,20 +15532,45 @@ def well_registry_status(
         "intended_tools": intended_count,
         "registered_tools": len(somatic_tools),
         "somatic_tools": sorted(somatic_tools),
-        "callable_tools": len(canonical_callable) + len(deprecated_callable),
+        "exported_tools": len(exported_surface),
+        "exported_surface": exported_surface,
+        # P0.5 fix: callable_tools counts PUBLIC canonical only.
+        # Legacy aliases / autonomic / hidden are reported in their own buckets.
+        "callable_tools": len(canonical_callable),
         "phantom_tools": phantom_tools,
         "deprecated_callable": deprecated_callable,
+        "deprecated_exported": deprecated_exported,
         "canonical_callable": canonical_callable,
         "legacy_alias_map": LEGACY_ALIASES,
         "internal_aliases": sorted(known_aliases),
         "public_canonical_surface": sorted(PUBLIC_CANONICAL),
+        "missing_public_tools": missing_public_tools,
+        "unexpected_public_tools": unexpected_public_tools,
         "alias_conflicts": alias_conflicts,
+        # P0.5 fix: per-tool classification (visibility / registered / exported / callable / reason_hidden)
+        "classification": classification,
+        "hidden_internal_aliases": hidden_tools,
+        "public_drift": public_drift_names,
+        "counts_by_visibility": {
+            "public": len(public_classified),
+            "deprecated_visible": deprecated_visible_count,
+            "internal": internal_count,
+            "autonomic": autonomic_count,
+            "hidden": hidden_count,
+            "phantom": phantom_count,
+        },
         "verdict": verdict,
+        "verdict_rule": (
+            "REGISTRY_PASS requires: every PUBLIC_CANONICAL tool is registered AND exported AND safely_callable; "
+            "no phantom tools; no deprecated_exported (e.g. well_system_registry_status); no dual-listing. "
+            "Aliases/autonomic/hidden are reported separately and NOT folded into callable_tools."
+        ),
         "measurement_boundary": "/root/AAA/docs/MEASUREMENT_BOUNDARY_CONTRACT.md",
-        "well_system_registry_status": "DEPRECATED — use well_registry_status",
+        "well_system_registry_status": "DEPRECATED — use well_registry_status (P0.5 fix 2026-07-14: removed from public surface)",
         "registry_note": (
             "Canonical ≠ legacy. well_readiness is LEGACY only "
             "(→ well_validate_vitality mode=readiness). "
+            "well_system_registry_status is HIDDEN — internal Python function only. "
             "See MEASUREMENT_BOUNDARY_CONTRACT.md."
         ),
         "authority": "ADVISORY_ONLY",
@@ -15500,14 +15580,20 @@ def well_registry_status(
         "final_authority": "ARIF",
     }
     if mode == "status":
-        # Compact: counts + verdict only (no full name lists)
+        # Compact: keep the blueprint-required lists that external probes rely on,
+        # while avoiding the full alias/replacement payload.
         return {
             "ok": payload["ok"],
             "mode": "status",
             "intended_tools": payload["intended_tools"],
             "registered_tools": payload["registered_tools"],
+            "exported_tools": payload["exported_tools"],
             "callable_tools": payload["callable_tools"],
+            "phantom_tools": payload["phantom_tools"],
             "phantom_tools_count": len(payload["phantom_tools"]),
+            "canonical_callable": payload["canonical_callable"],
+            "missing_public_tools_count": len(payload["missing_public_tools"]),
+            "unexpected_public_tools_count": len(payload["unexpected_public_tools"]),
             "alias_conflicts_count": len(payload["alias_conflicts"]),
             "verdict": payload["verdict"],
             "authority": "ADVISORY_ONLY",
@@ -15915,7 +16001,6 @@ SOMATIC_TOOLS = {
     "well_dark_geometry_mirror",
     "well_guard_dignity",
     "well_medical_boundary",
-    "well_13_signal_coverage",
     "well_registry_status",
     # F-Ω Federation Handoff Adapters — forged 2026-06-17
     # See FEDERATION_HOOKS.md for the canonical contract.
@@ -15925,7 +16010,6 @@ SOMATIC_TOOLS = {
     # Human State Classifier — Phase 1 + Phase 3
     # Forged 2026-06-25. Deterministic rule-based Polyvagal + SDT + contradiction.
     "well_classify_state",  # State Classifier → federation surface
-    "well_readiness",  # ZEN: single verdict — color/score/TTL/action
     "well_sense_substrate",  # automated machine-to-human substrate sensor
     "well_dark_geometry_mirror",  # entropy integrity mesh extension
     "well_sabar_latency",  # entropy integrity mesh extension
@@ -16485,7 +16569,7 @@ _WELL_SOMATIC_MANIFEST: list[dict[str, object]] = [
     },
     {"name": "well_registry_status", "axis": "identity", "expose": True},
     {"name": "well_signal_coverage", "axis": "reflect", "expose": True},
-    {"name": "well_readiness", "axis": "judge", "expose": True},
+    {"name": "well_readiness", "axis": "judge", "expose": False},
     {"name": "well_handoff_dignity_to_arifos", "axis": "bridge", "expose": True},
     {"name": "well_handoff_livelihood_to_wealth", "axis": "bridge", "expose": True},
     {"name": "well_attest_to_kernel", "axis": "attest", "expose": True},
@@ -16597,6 +16681,8 @@ try:
     # Only register SOMATIC tools in the federation manifest.
     # Autonomic tools remain internal to WELL and must not appear in public listings.
     for _entry in _WELL_SOMATIC_MANIFEST:
+        if not bool(_entry.get("expose", False)):
+            continue
         _name = str(_entry["name"])
         FEDERATION_TOOLS[_name] = ToolManifest(
             name=_name,
@@ -17044,36 +17130,12 @@ if __name__ == "__main__":
     # well.arif-fazil.com/.well-known/oauth-* → mcp.arif-fazil.com
     # (one canonical door). WELL becomes an internal endpoint.
 
-    # ── A2A Agent Card (Federation Discovery) — FORGE 2026-06-28 ─────────────
-    _WELL_A2A_CARD = {
-        "schema": "agent-manifest/v1",
-        "name": "WELL — Human Substrate Vitality",
-        "description": (
-            "Universal substrate vitality mirror for arifOS federation. "
-            "Reflect-only — does not judge or decide."
-        ),
-        "version": "2026.06.05",
-        "url": "https://well.arif-fazil.com",
-        "endpoints": {
-            "mcp": "https://well.arif-fazil.com/mcp",
-            "health": "https://well.arif-fazil.com/health",
-        },
-        "authority_class": "evidence",
-        "allowed_action_classes": ["OBSERVE"],
-        "max_risk_tier": "T1",
-        "auth": {"type": "none"},
-        "federation": {
-            "protocol": "A2A",
-            "peer_coordinator": "https://aaa.arif-fazil.com",
-        },
-        "owned_mcp": {"server": "well-mcp", "tool_count": 18},
-    }
-
-    async def _well_a2a_card(request):
-        return JSONResponse(_WELL_A2A_CARD)
-
-    app.add_route("/.well-known/agent.json", _well_a2a_card, methods=["GET"])
-    app.add_route("/.well-known/agent-card.json", _well_a2a_card, methods=["GET"])
+    # NOTE (A2A consolidation 2026-07-15): Local A2A agent-card route removed.
+    # Canonical A2A card surfaces are owned by AAA at
+    # `/.well-known/agent.json` and `/.well-known/agent-card.json`
+    # (see /root/AAA/docs/AGENT_IDENTITY.md and /root/AAA/UNIFIED_AGENT.md).
+    # WELL keeps only MCP manifests (.well-known/mcp/server.json) and the
+    # health/ready/tools/build-info surfaces. Caddy fronts the public ingress.
     app.add_middleware(OriginValidationMiddleware)
     logger.info("WELL MCP server starting on %s:%d", host, port)
     uvicorn.run(

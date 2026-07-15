@@ -1,0 +1,20 @@
+{
+  "organ": "WELL",
+  "epoch": "2026-07-15",
+  "entries": [
+    {
+      "item": "docs/archive/*SEAL*",
+      "archived_at": "2026-07-15T04:55:00Z",
+      "archive_path": "999_vault/archive/",
+      "reason": "Constitutional seals belong in 999_vault not docs/",
+      "reversible": true
+    },
+    {
+      "item": "well_mcp/tools empty __init__",
+      "archived_at": "2026-07-15T04:56:00Z",
+      "canonical": "well_mcp/tools/__init__.py CANONICAL_TOOL_NAMES",
+      "reason": "Tool surface unclear",
+      "reversible": true
+    }
+  ]
+}

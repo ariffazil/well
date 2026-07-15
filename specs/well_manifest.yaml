@@ -17,9 +17,10 @@
 #   DEPRECATED     — Wrapper to canonical (still callable, emits advisory)
 #   ALIAS          — Internal routing alias (Ω-WELL namespace)
 #   AUTONOMIC      — Internal only, not on public MCP surface
+#   HIDDEN         — Python function exists, not advertised, callable only from federation_bridge (P0.5 fix 2026-07-14)
 #   PHANTOM        — Listed in docs but not registered in runtime
 
-schema_version: "2026.05.16"
+schema_version: "2026.07.14-P0.5"
 
 # ── Canonical 13-Tool Spine (Ω-WELL Public Surface) ─────────────────────────
 #
@@ -129,16 +130,8 @@ canonical_tools:
   - name: well_registry_status
     omega: "Ω-ops"
     axis: registry
-    modes: [status]
-    returns: intended_count, registered_count, callable_count, phantom_tools, verdict
-    medical_boundary: NON_DIAGNOSTIC
-    authority: ADVISORY_ONLY
-
-  - name: well_system_registry_status
-    omega: "Ω-sys"
-    axis: registry
-    modes: [status]
-    returns: system_status, service_health, version, commit, uptime
+    modes: [status, full]
+    returns: intended_count, registered_count, callable_count, phantom_tools, classification, verdict
     medical_boundary: NON_DIAGNOSTIC
     authority: ADVISORY_ONLY
 
@@ -193,6 +186,38 @@ deprecated_tools:
     mode: "health"
     deprecation_epoch: "2026-Q3"
     still_callable: true
+
+  - legacy: well_system_registry_status
+    canonical: well_registry_status
+    deprecation_epoch: "2026-06-28"
+    still_callable: false
+    visibility: hidden
+    note: |
+      Removed from public MCP surface (P0.5 fix 2026-07-14).
+      Internal Python function only — used by arifOS federation_bridge.py.
+      ChatGPT plugin schema and A2A agent card no longer advertise it.
+      Canonical replacement: well_registry_status (blueprint format).
+
+# ── Hidden Internal Aliases (Documented, Not Exposed) ──────────────────────────
+#
+# These exist in code but are NOT advertised on the public MCP surface.
+# They may be called only from internal federation bridges (e.g. arifOS).
+# Do not add to .well-known/mcp/server.json or agent-card.json.
+# well_registry_status reports these separately under "internal_aliases".
+hidden_aliases:
+  - name: well_system_registry_status
+    canonical: well_registry_status
+    caller: arifOS federation_bridge.py (internal only)
+    deprecated: "2026-06-28"
+    p0_5_fix: "2026-07-14 — removed from public manifest"
+  - name: well_readiness
+    canonical: well_validate_vitality
+    caller: internal compatibility only
+    deprecated: "2026-07-12"
+  - name: well_13_signal_coverage
+    canonical: well_signal_coverage
+    caller: internal compatibility only
+    deprecated: "2026-07-14"
 
 # ── Ω-WELL Aliases (Internal Routing Only) ───────────────────────────────────
 #
