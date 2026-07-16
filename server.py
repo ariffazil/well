@@ -1774,9 +1774,7 @@ def well_health_check(
     reliability["read_only"] = True
     reliability["final_authority"] = "ARIF"
     reliability["tool_count"] = len(SOMATIC_TOOLS)  # was hardcoded 79; now dynamic
-    reliability["mcp_registered_tools"] = (
-        18  # actual MCP tools/list count post-boundary
-    )
+    reliability["mcp_registered_tools"] = len(_current_somatic_tool_names())
     reliability["canonical_tools"] = len(SOMATIC_TOOLS)  # SOMATIC_TOOLS set size
     if not include_federation:
         reliability["federation_geometry"] = None
@@ -5972,25 +5970,22 @@ def _check_tool_surface() -> dict[str, Any]:
     """Verify registered tool surface matches canonical expectation.
 
     Measures MCP-registered somatic tools against SOMATIC_TOOLS canonical set.
-    registered_count: actual MCP tools/list count (18 after boundary enforcement).
-    canonical_count:  SOMATIC_TOOLS set size (18).
+    registered_count: actual registered somatic/public tool count.
+    canonical_count:  SOMATIC_TOOLS set size.
     surface_integrity: True when registered == canonical.
     """
-    # Count MCP-registered somatic tools by checking what's exposed
-    # SOMATIC_TOOLS set = canonical public surface (18 tools)
-    # After boundary enforcement, 18 are actually in MCP tools/list
-    registered_count = 18  # live MCP tools/list count post-boundary
-    canonical_count = len(SOMATIC_TOOLS)  # 18
+    registered_tools = _current_somatic_tool_names()
+    registered_count = len(registered_tools)
+    canonical_count = len(SOMATIC_TOOLS)
     missing_count = canonical_count - registered_count
 
     return {
         "registered_count": registered_count,
         "canonical_count": canonical_count,
         "canonical_missing": missing_count,
+        "registered_tools": registered_tools,
         # surface_integrity: MCP surface is clean — no phantom tools
-        # 2 missing = known registry-only tools (well_system_registry_status,
-        # well_registry_status) not auto-registered by FastMCP — not a breach
-        "surface_integrity": True,
+        "surface_integrity": missing_count == 0,
     }
 
 
@@ -16324,6 +16319,34 @@ def well_sense_substrate(
             },
         }
 
+
+def _component_names(prefix: str, allowed_names: set[str] | None = None) -> list[str]:
+    """Read registered FastMCP component names from the local provider."""
+    provider = getattr(mcp, "_local_provider", None)
+    components = getattr(provider, "_components", {}) if provider else {}
+    names: set[str] = set()
+    for key in components:
+        if not key.startswith(prefix):
+            continue
+        name = key[len(prefix) :].split("@", 1)[0]
+        if allowed_names is None or name in allowed_names:
+            names.add(name)
+    return sorted(names)
+
+
+def _current_somatic_tool_names() -> list[str]:
+    """Somatic/public tools registered on the local FastMCP provider."""
+    return _component_names("tool:", SOMATIC_TOOLS)
+
+
+def _current_resource_uris() -> list[str]:
+    """Registered resource URIs on the local FastMCP provider."""
+    return _component_names("resource:")
+
+
+def _current_prompt_names() -> list[str]:
+    """Registered prompt names on the local FastMCP provider."""
+    return _component_names("prompt:")
 
 # MCP Spec 2025-11-25 tool annotations (SEP-1862/1913/1984/2417)
 _TOOL_ANNOTATIONS: dict[str, dict[str, Any]] = {
