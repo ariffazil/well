@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from server import well_health_check, well_registry_status
+from server import _check_dependencies, well_health_check, well_registry_status
 
 
 def test_well_health_echoes_federation_context() -> None:
@@ -27,3 +27,9 @@ def test_well_registry_echoes_federation_context() -> None:
     assert result["session_id"] == "SEAL-session-echo"
     assert result["actor_id"] == "arif"
     assert result["trace_id"] == "trace-echo"
+
+
+def test_canonical_state_schema_satisfies_dependency_probe() -> None:
+    dependencies = _check_dependencies()
+    assert dependencies["schema_readable"] is True
+    assert dependencies["all_ok"] is True

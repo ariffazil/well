@@ -1866,6 +1866,31 @@ def well_health_check(
             fed_geometry_note = "arifOS did not return mcp-session-id"
     except Exception as _exc:
         fed_geometry_note = f"arifOS unreachable: {type(_exc).__name__}"
+    # MCP 2025-11-25 permits sessionless transports, so absence of an
+    # mcp-session-id header is not a federation failure. Fall back to the
+    # read-only arifOS health surface and emit a small observed geometry.
+    if fed_geometry is None:
+        try:
+            _health_req = urllib.request.Request(
+                "http://127.0.0.1:8088/health",
+                headers={"Accept": "application/json"},
+            )
+            with urllib.request.urlopen(_health_req, timeout=1.5) as _health_resp:
+                _health = json.loads(_health_resp.read().decode("utf-8"))
+            fed_geometry = {
+                "telemetry_source": "arifos_health_v1",
+                "status": _health.get("status", "UNKNOWN"),
+                "tools_loaded": _health.get("tools_loaded"),
+                "floors_active": _health.get("floors_active"),
+                "source_commit": _health.get("source_commit"),
+            }
+            fed_geometry_source = "arifOS:8088/health"
+            fed_geometry_note = "sessionless MCP fallback"
+        except Exception as _health_exc:
+            if fed_geometry_note is None:
+                fed_geometry_note = (
+                    f"arifOS health unreachable: {type(_health_exc).__name__}"
+                )
     reliability["federation_geometry"] = fed_geometry
     reliability["federation_geometry_source"] = fed_geometry_source
     reliability["federation_geometry_note"] = fed_geometry_note
@@ -5969,7 +5994,13 @@ def _check_dependencies() -> dict[str, Any]:
         and _os.access(EVENTS_PATH.parent, _os.W_OK),
         "vault_path_writable": VAULT_LEDGER_PATH.parent.exists()
         and _os.access(VAULT_LEDGER_PATH.parent, _os.W_OK),
-        "schema_readable": (Path(__file__).parent / "schema.json").exists(),
+        "schema_readable": any(
+            path.exists()
+            for path in (
+                Path(__file__).parent / "schema.json",
+                Path(__file__).parent / "WELL_STATE_SCHEMA.json",
+            )
+        ),
     }
     checks["all_ok"] = all(checks.values())
     return checks
