@@ -1,0 +1,161 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "WELL A2A Surface",
+  "description": "Agent-to-Agent protocol surface for WELL organ",
+  "version": "1.0.0",
+  "date": "2026-07-16",
+  "sovereign": "Muhammad Arif bin Fazil (F13)",
+  "protocol": "A2A v1.0.0",
+  "transport": "JSON-RPC 2.0 over HTTP(S)",
+  "agent_card": {
+    "name": "well-organ",
+    "description": "Human readiness organ — vitality, dignity, coupling",
+    "url": "http://localhost:18083",
+    "version": "1.0.0",
+    "documentationUrl": "https://github.com/ariffazil/well",
+    "provider": {
+      "organization": "arifOS Federation",
+      "url": "https://arif-fazil.com"
+    },
+    "capabilities": {
+      "streaming": false,
+      "pushNotifications": false,
+      "stateTransitionHistory": false
+    },
+    "authentication": {
+      "schemes": ["bearer"]
+    },
+    "defaultInputModes": ["text/plain", "application/json"],
+    "defaultOutputModes": ["application/json"],
+    "skills": [
+      {
+        "id": "well-vitality",
+        "name": "Vitality Assessment",
+        "description": "Assess human readiness and vitality",
+        "tags": ["health", "readiness", "vitality"],
+        "examples": [
+          "Assess my current readiness level",
+          "Am I fit to make a critical decision?",
+          "Check my fatigue level"
+        ]
+      },
+      {
+        "id": "well-dignity",
+        "name": "Dignity Guard",
+        "description": "Guard against coercion and reductionism",
+        "tags": ["dignity", "consent", "sovereignty"],
+        "examples": [
+          "Check for coercion signals",
+          "Assess dignity preservation",
+          "Detect reductionism patterns"
+        ]
+      },
+      {
+        "id": "well-coupling",
+        "name": "Coupling Analysis",
+        "description": "Analyze human-machine coupling health",
+        "tags": ["coupling", "metabolism", "entropy"],
+        "examples": [
+          "Check metabolic flux",
+          "Assess coupling health",
+          "Measure entropy rate"
+        ]
+      },
+      {
+        "id": "well-boundary",
+        "name": "Boundary Detection",
+        "description": "Detect boundary breaches across substrates",
+        "tags": ["boundary", "membrane", "governance"],
+        "examples": [
+          "Check for boundary breaches",
+          "Assess membrane integrity",
+          "Detect governance violations"
+        ]
+      },
+      {
+        "id": "well-attestation",
+        "name": "Kernel Attestation",
+        "description": "Attest WELL state to arifOS kernel",
+        "tags": ["attestation", "kernel", "federation"],
+        "examples": [
+          "Attest to kernel",
+          "Report organ health",
+          "Verify federation alignment"
+        ]
+      }
+    ]
+  },
+  "routing": {
+    "arifos": {
+      "tool": "well_handoff_dignity_to_arifos",
+      "endpoint": "http://localhost:8088/mcp",
+      "protocol": "MCP"
+    },
+    "wealth": {
+      "tool": "well_handoff_livelihood_to_wealth",
+      "endpoint": "http://localhost:18082/mcp",
+      "protocol": "MCP"
+    },
+    "geox": {
+      "tool": "well_handoff_livelihood_to_wealth",
+      "endpoint": "http://localhost:8081/mcp",
+      "protocol": "MCP"
+    },
+    "aforge": {
+      "tool": "well_attest_to_kernel",
+      "endpoint": "http://localhost:7071/mcp",
+      "protocol": "MCP"
+    },
+    "aaa": {
+      "tool": "well_health_check",
+      "endpoint": "http://localhost:3001/mcp",
+      "protocol": "MCP"
+    }
+  },
+  "task_lifecycle": {
+    "states": ["submitted", "working", "input-required", "completed", "failed", "canceled"],
+    "transitions": {
+      "submitted": ["working", "canceled"],
+      "working": ["input-required", "completed", "failed", "canceled"],
+      "input-required": ["working", "canceled"],
+      "completed": [],
+      "failed": [],
+      "canceled": []
+    }
+  },
+  "message_parts": {
+    "text": {
+      "type": "text",
+      "mime_type": "text/plain"
+    },
+    "data": {
+      "type": "data",
+      "mime_type": "application/json"
+    },
+    "file": {
+      "type": "file",
+      "mime_type": "application/octet-stream"
+    }
+  },
+  "opaque_state": true,
+  "federation_position": {
+    "organ_class": "domain",
+    "domain_law": "SUBSTRATE_LAW",
+    "authority": "REFLECT_ONLY",
+    "kernel": "arifos",
+    "control_plane": "aaa",
+    "executor": "aforge",
+    "siblings": ["geox", "wealth"]
+  },
+  "constitutional_alignment": {
+    "floors": "F1-F13",
+    "apex_formula": "G = A·P·E·X·Φ",
+    "metabolic_loop": "000→999",
+    "invariants": {
+      "W0": "OPERATOR_VETO_INTACT",
+      "REFLECT_ONLY": "mirror, not veto",
+      "DOMAIN_LAW": "SUBSTRATE_LAW",
+      "SIGNAL_NOT_VERDICT": "signal, never verdict"
+    }
+  }
+}

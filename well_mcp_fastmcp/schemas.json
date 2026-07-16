@@ -1,0 +1,869 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "WELL MCP Typed Tool Schemas",
+  "description": "Canonical typed schemas for all 27 WELL tools",
+  "version": "1.0.0",
+  "date": "2026-07-16",
+  "sovereign": "Muhammad Arif bin Fazil (F13)",
+  "domain_law": "SUBSTRATE_LAW",
+  "authority": "REFLECT_ONLY",
+  "tools": {
+    "well_assess_homeostasis": {
+      "description": "Assess regulation, stability, and empathic balance under change",
+      "domain": "H-WELL",
+      "apex_gate": "Energy",
+      "kernel_verb": "333_REASON",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "mode": {
+            "type": "string",
+            "enum": ["sleep", "fatigue", "stress", "emotional"],
+            "default": "sleep"
+          },
+          "subject": {
+            "type": "string",
+            "description": "Subject identifier (default: Arif)"
+          },
+          "sleep_hours": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 24,
+            "description": "Hours of sleep"
+          },
+          "sleep_debt_days": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Days of sleep debt"
+          },
+          "cognitive_clarity": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "Cognitive clarity score"
+          },
+          "decision_fatigue": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "Decision fatigue score"
+          },
+          "stress_load": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "Stress load score"
+          },
+          "hrv_status": {
+            "type": "string",
+            "enum": ["normal", "elevated", "low", "unknown"],
+            "default": "normal"
+          },
+          "emotional_state": {
+            "type": "string",
+            "enum": ["neutral", "positive", "negative", "mixed", "unknown"],
+            "default": "neutral"
+          },
+          "chronic_fatigue": {
+            "type": "boolean",
+            "default": false
+          },
+          "decision_class": {
+            "type": "string",
+            "enum": ["C1", "C2", "C3", "C4", "C5"],
+            "default": "C3"
+          }
+        },
+        "required": []
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "verdict": {
+            "type": "string",
+            "enum": ["OPTIMAL", "STABLE", "DEGRADED", "CRITICAL"]
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "truth_class": {
+            "type": "string",
+            "enum": ["LIVE", "CACHED", "INFERRED"]
+          },
+          "evidence_label": {
+            "type": "string",
+            "enum": ["OBS", "DER", "INT", "SPEC"]
+          },
+          "friction_score": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "cost_estimate": {
+            "type": "number",
+            "minimum": 0
+          },
+          "reversibility_class": {
+            "type": "string",
+            "enum": ["REVERSIBLE", "IRREVERSIBLE"]
+          },
+          "novelty_tags": {
+            "type": "array",
+            "items": {"type": "string"}
+          }
+        }
+      }
+    },
+    "well_assess_livelihood": {
+      "description": "Assess human wellness, role, dignity, support, and meaning",
+      "domain": "H-WELL",
+      "apex_gate": "Authority",
+      "kernel_verb": "666_JUDGE",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "mode": {
+            "type": "string",
+            "enum": ["role", "cashflow", "purpose", "support"],
+            "default": "role"
+          },
+          "subject": {
+            "type": "string",
+            "description": "Subject identifier"
+          },
+          "energy_level": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "Energy level score"
+          },
+          "duty_load": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "Duty load score"
+          },
+          "role_clarity": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "Role clarity score"
+          },
+          "role_burden": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "Role burden score"
+          },
+          "purpose_alignment": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "Purpose alignment score"
+          },
+          "cashflow_status": {
+            "type": "string",
+            "enum": ["healthy", "strained", "critical", "unknown"],
+            "description": "Cashflow status"
+          },
+          "voluntary": {
+            "type": "boolean",
+            "description": "Whether burden is voluntary"
+          }
+        },
+        "required": []
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "verdict": {
+            "type": "string",
+            "enum": ["THRIVING", "STABLE", "STRAINED", "CRITICAL"]
+          },
+          "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+          "truth_class": {"type": "string", "enum": ["LIVE", "CACHED", "INFERRED"]},
+          "evidence_label": {"type": "string", "enum": ["OBS", "DER", "INT", "SPEC"]},
+          "friction_score": {"type": "number", "minimum": 0, "maximum": 1},
+          "cost_estimate": {"type": "number", "minimum": 0},
+          "reversibility_class": {"type": "string", "enum": ["REVERSIBLE", "IRREVERSIBLE"]},
+          "novelty_tags": {"type": "array", "items": {"type": "string"}}
+        }
+      }
+    },
+    "well_assess_metabolism": {
+      "description": "Assess biological metabolism and system throughput across substrates",
+      "domain": "C-WELL",
+      "apex_gate": "Signal",
+      "kernel_verb": "111_OBSERVE",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "mode": {
+            "type": "string",
+            "enum": ["coupled", "human", "machine"],
+            "default": "coupled"
+          },
+          "subject": {"type": "string"},
+          "energy_level": {"type": "number", "minimum": 0, "maximum": 1},
+          "duty_load": {"type": "number", "minimum": 0, "maximum": 1},
+          "mission_clarity": {"type": "number", "minimum": 0, "maximum": 1},
+          "internal_consistency": {"type": "number", "minimum": 0, "maximum": 1}
+        },
+        "required": []
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "verdict": {"type": "string", "enum": ["OPTIMAL", "STABLE", "DEGRADED", "CRITICAL"]},
+          "confidence": {"type": "number"},
+          "truth_class": {"type": "string"},
+          "evidence_label": {"type": "string"},
+          "friction_score": {"type": "number"},
+          "cost_estimate": {"type": "number"},
+          "reversibility_class": {"type": "string"},
+          "novelty_tags": {"type": "array", "items": {"type": "string"}}
+        }
+      }
+    },
+    "well_assess_reliability": {
+      "description": "Assess machine, tool, institution, and operational reliability",
+      "domain": "M-WELL",
+      "apex_gate": "Proof",
+      "kernel_verb": "111_OBSERVE",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "mode": {
+            "type": "string",
+            "enum": ["health", "tools", "institutions"],
+            "default": "health"
+          }
+        },
+        "required": []
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "verdict": {"type": "string", "enum": ["STABLE", "STRAINED", "DEGRADED", "CRITICAL"]},
+          "confidence": {"type": "number"},
+          "truth_class": {"type": "string"},
+          "evidence_label": {"type": "string"},
+          "friction_score": {"type": "number"},
+          "cost_estimate": {"type": "number"},
+          "reversibility_class": {"type": "string"},
+          "novelty_tags": {"type": "array", "items": {"type": "string"}}
+        }
+      }
+    },
+    "well_assess_sovereign_entropy": {
+      "description": "Measure the sovereign's resistance to behavioral modeling",
+      "domain": "H-WELL",
+      "apex_gate": "Sovereign",
+      "kernel_verb": "888_JUDGE",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "mode": {
+            "type": "string",
+            "enum": ["current", "assess", "protect", "baseline"],
+            "default": "current"
+          },
+          "behavioral_signals": {"type": "object"},
+          "digital_footprint_diversity": {"type": "number", "minimum": 0, "maximum": 1},
+          "paradox_density": {"type": "number", "minimum": 0, "maximum": 1},
+          "inconsistency_rate": {"type": "number", "minimum": 0, "maximum": 1},
+          "context_switching_frequency": {"type": "number", "minimum": 0, "maximum": 1},
+          "refusal_patterns": {"type": "number", "minimum": 0, "maximum": 1}
+        },
+        "required": []
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "verdict": {"type": "string", "enum": ["HIGH_ENTROPY", "MEDIUM_ENTROPY", "LOW_ENTROPY", "VULNERABLE"]},
+          "confidence": {"type": "number"},
+          "truth_class": {"type": "string"},
+          "evidence_label": {"type": "string"},
+          "friction_score": {"type": "number"},
+          "cost_estimate": {"type": "number"},
+          "reversibility_class": {"type": "string"},
+          "novelty_tags": {"type": "array", "items": {"type": "string"}}
+        }
+      }
+    },
+    "well_attest_to_kernel": {
+      "description": "Active organ attestation from WELL to arifOS kernel",
+      "domain": "Federation",
+      "apex_gate": "Authority",
+      "kernel_verb": "000_INIT",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "actor_id": {
+            "type": "string",
+            "default": "well-system"
+          }
+        },
+        "required": []
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "status": {"type": "string", "enum": ["ok", "federation_unavailable"]},
+          "attestation": {"type": "object"},
+          "truth_class": {"type": "string"},
+          "evidence_label": {"type": "string"}
+        }
+      }
+    },
+    "well_check_repair": {
+      "description": "Check repair, recovery, resilience, and forge cycle integrity",
+      "domain": "M-WELL",
+      "apex_gate": "Reversibility",
+      "kernel_verb": "777_FORGE",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "mode": {
+            "type": "string",
+            "enum": ["precheck", "postcheck", "recovery"],
+            "default": "precheck"
+          },
+          "task_description": {"type": "string"},
+          "decision_class": {"type": "string"},
+          "source": {"type": "string"},
+          "intensity": {"type": "number", "minimum": 0, "maximum": 1},
+          "outcome": {"type": "string"}
+        },
+        "required": []
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "verdict": {"type": "string", "enum": ["READY", "REPAIRING", "DEGRADED", "CRITICAL"]},
+          "confidence": {"type": "number"},
+          "truth_class": {"type": "string"},
+          "evidence_label": {"type": "string"},
+          "friction_score": {"type": "number"},
+          "cost_estimate": {"type": "number"},
+          "reversibility_class": {"type": "string"},
+          "novelty_tags": {"type": "array", "items": {"type": "string"}}
+        }
+      }
+    },
+    "well_classify_state": {
+      "description": "Classify human psychological state from message",
+      "domain": "H-WELL",
+      "apex_gate": "Understanding",
+      "kernel_verb": "000_INIT",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "message": {"type": "string"},
+          "session_id": {"type": "string"},
+          "recent_messages": {"type": "array", "items": {"type": "string"}},
+          "stated_intent": {"type": "string"}
+        },
+        "required": ["message"]
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "state": {"type": "string"},
+          "confidence": {"type": "number"},
+          "truth_class": {"type": "string"},
+          "evidence_label": {"type": "string"}
+        }
+      }
+    },
+    "well_classify_substrate": {
+      "description": "Substrate classification and boundary sensing",
+      "domain": "G-WELL",
+      "apex_gate": "Understanding",
+      "kernel_verb": "000_INIT",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "mode": {
+            "type": "string",
+            "enum": ["classification", "boundary", "health"],
+            "default": "classification"
+          },
+          "subject": {"type": "string"},
+          "description": {"type": "string"},
+          "evaluation_intent": {"type": "string"},
+          "session_id": {"type": "string"},
+          "actor_id": {"type": "string", "default": "well-substrate"}
+        },
+        "required": []
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "substrate_class": {"type": "string", "enum": ["HUMAN", "MACHINE", "INSTITUTIONAL", "COUPLED"]},
+          "confidence": {"type": "number"},
+          "truth_class": {"type": "string"},
+          "evidence_label": {"type": "string"}
+        }
+      }
+    },
+    "well_compute_metabolic_flux": {
+      "description": "Compute unified thermodynamic entropy rate",
+      "domain": "C-WELL",
+      "apex_gate": "Energy",
+      "kernel_verb": "333_REASON",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "mode": {
+            "type": "string",
+            "enum": ["compute", "status", "trigger"],
+            "default": "compute"
+          },
+          "force_recompute": {"type": "boolean", "default": false}
+        },
+        "required": []
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "cognitive_entropy_rate": {"type": "number"},
+          "machine_entropy": {"type": "number"},
+          "unified_scalar": {"type": "number", "minimum": 0, "maximum": 1},
+          "compulsory_reallocation": {"type": "boolean"},
+          "system_hold": {"type": "boolean"},
+          "truth_class": {"type": "string"},
+          "friction_score": {"type": "number"},
+          "cost_estimate": {"type": "number"},
+          "reversibility_class": {"type": "string"},
+          "novelty_tags": {"type": "array", "items": {"type": "string"}}
+        }
+      }
+    },
+    "well_correction_capacity": {
+      "description": "Score observable correctability",
+      "domain": "H-WELL",
+      "apex_gate": "Humility",
+      "kernel_verb": "888_COMPOSE",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "correction_events": {"type": "array", "items": {"type": "object"}},
+          "baseline_capacity": {"type": "number", "minimum": 0, "maximum": 1}
+        },
+        "required": []
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "score": {"type": "number", "minimum": 0, "maximum": 1},
+          "confidence": {"type": "number"},
+          "truth_class": {"type": "string"},
+          "evidence_label": {"type": "string"}
+        }
+      }
+    },
+    "well_dark_geometry_mirror": {
+      "description": "Mirror language and behavioral signals for dark geometry patterns",
+      "domain": "H-WELL",
+      "apex_gate": "Signal",
+      "kernel_verb": "111_OBSERVE",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "text_or_events": {"type": "string"},
+          "baseline_ref": {"type": "string"},
+          "time_window": {"type": "string"},
+          "vitality_signals": {"type": "object"}
+        },
+        "required": ["text_or_events"]
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "patterns_detected": {"type": "array", "items": {"type": "string"}},
+          "signals": {"type": "object"},
+          "confidence": {"type": "number"},
+          "truth_class": {"type": "string"},
+          "evidence_label": {"type": "string"}
+        }
+      }
+    },
+    "well_detect_boundary": {
+      "description": "Boundary detection across membrane, body, machine, and federation",
+      "domain": "G-WELL",
+      "apex_gate": "Authority",
+      "kernel_verb": "666_JUDGE",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "mode": {
+            "type": "string",
+            "enum": ["boundary", "membrane", "body", "machine", "federation"],
+            "default": "boundary"
+          },
+          "subject": {"type": "string"},
+          "description": {"type": "string"},
+          "evaluation_intent": {"type": "string"},
+          "peer": {"type": "string"}
+        },
+        "required": []
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "verdict": {"type": "string", "enum": ["INTACT", "BREACHED", "CRITICAL"]},
+          "confidence": {"type": "number"},
+          "truth_class": {"type": "string"},
+          "evidence_label": {"type": "string"},
+          "friction_score": {"type": "number"},
+          "cost_estimate": {"type": "number"},
+          "reversibility_class": {"type": "string"},
+          "novelty_tags": {"type": "array", "items": {"type": "string"}}
+        }
+      }
+    },
+    "well_guard_dignity": {
+      "description": "Guard soul, personhood, meaning, and symbolic boundaries",
+      "domain": "H-WELL",
+      "apex_gate": "Sovereign",
+      "kernel_verb": "888_JUDGE",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "mode": {
+            "type": "string",
+            "enum": ["consent", "coercion", "reductionism"],
+            "default": "consent"
+          },
+          "subject": {"type": "string"},
+          "dignity_preservation": {"type": "number", "minimum": 0, "maximum": 1},
+          "coercion_signals": {"type": "array", "items": {"type": "string"}},
+          "reductionism_risk": {"type": "number", "minimum": 0, "maximum": 1}
+        },
+        "required": []
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "verdict": {"type": "string", "enum": ["PROTECTED", "AT_RISK", "BREACHED"]},
+          "confidence": {"type": "number"},
+          "truth_class": {"type": "string"},
+          "evidence_label": {"type": "string"},
+          "friction_score": {"type": "number"},
+          "cost_estimate": {"type": "number"},
+          "reversibility_class": {"type": "string"},
+          "novelty_tags": {"type": "array", "items": {"type": "string"}}
+        }
+      }
+    },
+    "well_handoff_dignity_to_arifos": {
+      "description": "Handoff S12 dignity signal to arifOS 888_JUDGE",
+      "domain": "Federation",
+      "apex_gate": "Sovereign",
+      "kernel_verb": "888_JUDGE",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "signal": {"type": "string", "default": "dignity_leakage_under_review"},
+          "coercion_signals": {"type": "array", "items": {"type": "string"}},
+          "dignity_preservation": {"type": "number"},
+          "reductionism_risk": {"type": "number"}
+        },
+        "required": []
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "status": {"type": "string"},
+          "signal": {"type": "string"},
+          "truth_class": {"type": "string"}
+        }
+      }
+    },
+    "well_handoff_livelihood_to_wealth": {
+      "description": "Handoff S13 livelihood frame to WEALTH capital organ",
+      "domain": "Federation",
+      "apex_gate": "Authority",
+      "kernel_verb": "666_JUDGE",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "duty_load": {"type": "number"},
+          "cashflow_status": {"type": "string"}
+        },
+        "required": []
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "status": {"type": "string"},
+          "cashflow_status": {"type": "string"},
+          "truth_class": {"type": "string"}
+        }
+      }
+    },
+    "well_health_check": {
+      "description": "WELL organ health check with provenance and schema version",
+      "domain": "M-WELL",
+      "apex_gate": "Proof",
+      "kernel_verb": "111_OBSERVE",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "include_federation": {"type": "boolean", "default": true}
+        },
+        "required": []
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "status": {"type": "string"},
+          "tools_ok": {"type": "boolean"},
+          "truth_class": {"type": "string"},
+          "evidence_label": {"type": "string"}
+        }
+      }
+    },
+    "well_measure_gradient": {
+      "description": "Measure chemical, energy, pressure, attention, and compute gradients",
+      "domain": "C-WELL",
+      "apex_gate": "Signal",
+      "kernel_verb": "111_OBSERVE",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "mode": {"type": "string", "enum": ["evidence", "gradient"], "default": "evidence"},
+          "evidence_source": {"type": "string", "default": "unknown"},
+          "evidence_age_hours": {"type": "number"},
+          "corroboration_count": {"type": "integer", "default": 0}
+        },
+        "required": []
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "verdict": {"type": "string"},
+          "confidence": {"type": "number"},
+          "truth_class": {"type": "string"},
+          "evidence_label": {"type": "string"}
+        }
+      }
+    },
+    "well_medical_boundary": {
+      "description": "Explicit non-diagnosis guard for WELL",
+      "domain": "H-WELL",
+      "apex_gate": "Humility",
+      "kernel_verb": "888_COMPOSE",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "include_score": {"type": "boolean", "default": true}
+        },
+        "required": []
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "boundary": {"type": "string"},
+          "message": {"type": "string"},
+          "truth_class": {"type": "string"}
+        }
+      }
+    },
+    "well_niat_impact_mirror": {
+      "description": "Compare declared niat with acknowledged impact",
+      "domain": "H-WELL",
+      "apex_gate": "Amanah",
+      "kernel_verb": "000_INIT",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "declared_niat": {"type": "string"},
+          "acknowledged_impact": {"type": "string"},
+          "repair_response": {"type": "string"},
+          "witness_acceptance": {"type": "string"}
+        },
+        "required": []
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "verdict": {"type": "string"},
+          "confidence": {"type": "number"},
+          "truth_class": {"type": "string"}
+        }
+      }
+    },
+    "well_registry_status": {
+      "description": "WELL registry truth diagnostic",
+      "domain": "Meta",
+      "apex_gate": "Proof",
+      "kernel_verb": "111_OBSERVE",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "mode": {"type": "string", "enum": ["status", "full"], "default": "status"}
+        },
+        "required": []
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "total": {"type": "integer"},
+          "callable": {"type": "integer"},
+          "phantom": {"type": "integer"},
+          "verdict": {"type": "string"}
+        }
+      }
+    },
+    "well_regulation_recovery": {
+      "description": "Measure recovery after activation",
+      "domain": "H-WELL",
+      "apex_gate": "Reversibility",
+      "kernel_verb": "777_FORGE",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "activation_events": {"type": "array", "items": {"type": "object"}},
+          "baseline_recovery_time": {"type": "number"}
+        },
+        "required": []
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "verdict": {"type": "string"},
+          "confidence": {"type": "number"},
+          "truth_class": {"type": "string"}
+        }
+      }
+    },
+    "well_sabar_latency": {
+      "description": "Measure temporal compression between stimulus and response",
+      "domain": "H-WELL",
+      "apex_gate": "Presence",
+      "kernel_verb": "555_MEMORY",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "events": {"type": "array", "items": {"type": "object"}},
+          "baseline_response_latency": {"type": "number"},
+          "baseline_revision_latency": {"type": "number"}
+        },
+        "required": []
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "verdict": {"type": "string"},
+          "confidence": {"type": "number"},
+          "truth_class": {"type": "string"}
+        }
+      }
+    },
+    "well_signal_coverage": {
+      "description": "Audit WELL's coverage of canonical human substrate signals",
+      "domain": "Meta",
+      "apex_gate": "Signal",
+      "kernel_verb": "111_OBSERVE",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "operator_id": {"type": "string"}
+        },
+        "required": []
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "total_signals": {"type": "integer"},
+          "active": {"type": "integer"},
+          "partial": {"type": "integer"},
+          "missing": {"type": "integer"},
+          "verdict": {"type": "string"}
+        }
+      }
+    },
+    "well_trace_lineage": {
+      "description": "Memory, trend, ledger, and vault chain tracing",
+      "domain": "C-WELL",
+      "apex_gate": "Presence",
+      "kernel_verb": "555_MEMORY",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "mode": {"type": "string", "enum": ["recall", "inspect", "attest"], "default": "recall"},
+          "limit": {"type": "integer", "default": 10},
+          "lookback_days": {"type": "integer", "default": 30},
+          "reason": {"type": "string", "default": "state_checkpoint"}
+        },
+        "required": []
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "entries": {"type": "array", "items": {"type": "object"}},
+          "truth_class": {"type": "string"},
+          "evidence_label": {"type": "string"}
+        }
+      }
+    },
+    "well_trust_compression": {
+      "description": "Detect narrowing trust patterns",
+      "domain": "H-WELL",
+      "apex_gate": "Humility",
+      "kernel_verb": "888_COMPOSE",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "text": {"type": "string"},
+          "events": {"type": "array", "items": {"type": "object"}},
+          "baseline_trust_diversity": {"type": "number"}
+        },
+        "required": []
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "verdict": {"type": "string"},
+          "confidence": {"type": "number"},
+          "truth_class": {"type": "string"}
+        }
+      }
+    },
+    "well_validate_vitality": {
+      "description": "Validate vitality, readiness, and NIAT",
+      "domain": "H-WELL",
+      "apex_gate": "Amanah",
+      "kernel_verb": "000_INIT",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "mode": {"type": "string", "enum": ["readiness", "state", "niat"], "default": "readiness"},
+          "intent": {"type": "string"},
+          "context": {"type": "string"},
+          "reversibility": {"type": "string", "default": "unknown"},
+          "task_description": {"type": "string"},
+          "decision_class": {"type": "string"}
+        },
+        "required": []
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "verdict": {"type": "string", "enum": ["READY", "DEGRADED", "CRITICAL"]},
+          "confidence": {"type": "number"},
+          "truth_class": {"type": "string"},
+          "evidence_label": {"type": "string"},
+          "friction_score": {"type": "number"},
+          "cost_estimate": {"type": "number"},
+          "reversibility_class": {"type": "string"},
+          "novelty_tags": {"type": "array", "items": {"type": "string"}}
+        }
+      }
+    }
+  }
+}

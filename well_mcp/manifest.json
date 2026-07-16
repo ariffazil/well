@@ -1,0 +1,217 @@
+{
+  "name": "well-mcp",
+  "version": "1.0.0",
+  "description": "WELL — Human Readiness Organ for arifOS Federation",
+  "author": "Muhammad Arif bin Fazil",
+  "license": "AGPL-3.0",
+  "port": 18083,
+  "transport": "streamable-http",
+  "domain_law": "SUBSTRATE_LAW",
+  "authority": "REFLECT_ONLY",
+  "sovereign": "F13",
+  "organ_id": "well",
+  "organ_class": "domain",
+  "federation_position": {
+    "kernel": "arifos",
+    "control_plane": "aaa",
+    "executor": "aforge",
+    "siblings": ["geox", "wealth"],
+    "vault": "vault999"
+  },
+  "invariants": {
+    "W0": "OPERATOR_VETO_INTACT — WELL holds a mirror, not a veto",
+    "REFLECT_ONLY": "WELL can reflect, classify, detect, protect, warn. NEVER judge, block, diagnose, prescribe, or seal.",
+    "DOMAIN_LAW": "SUBSTRATE_LAW — not constitutional law, not natural law, not capital law",
+    "SIGNAL_NOT_VERDICT": "WELL outputs signal, never verdict. SEAL/HOLD/SABAR/VOID belong to arifOS alone.",
+    "MEDICAL_BOUNDARY": "WELL does not diagnose, treat, or predict. Not a medical device.",
+    "PERSONA_NOT_SELF": "Pathology begins when the mask is mistaken for the being.",
+    "FLOOR_DOMINANCE": "Weakest substrate determines vitality gate response."
+  },
+  "apex": {
+    "formula": "G = A · P · E · X · Φ",
+    "dark_formula": "C_dark = A · (1-P) · (1-X)",
+    "witness": "W³ = ∛(H × AI × Ext)",
+    "entropy": "ΔS ≤ 0",
+    "clarity": "Δ",
+    "humility": "Ω",
+    "vitality": "Ψ"
+  },
+  "metabolic_loop": {
+    "stages": ["000_init", "111_observe", "333_reason", "444_route", "555_critique", "666_judge", "777_cool", "888_hold", "999_seal"],
+    "outputs_per_stage": ["friction_score", "truth_class", "cost_estimate", "reversibility_class", "novelty_tags"]
+  },
+  "tools": {
+    "total": 27,
+    "callable": 27,
+    "phantom": 0,
+    "unknown": 0,
+    "canonical": [
+      "well_assess_homeostasis",
+      "well_assess_livelihood",
+      "well_assess_metabolism",
+      "well_assess_reliability",
+      "well_assess_sovereign_entropy",
+      "well_attest_to_kernel",
+      "well_check_repair",
+      "well_classify_state",
+      "well_classify_substrate",
+      "well_compute_metabolic_flux",
+      "well_correction_capacity",
+      "well_dark_geometry_mirror",
+      "well_detect_boundary",
+      "well_guard_dignity",
+      "well_handoff_dignity_to_arifos",
+      "well_handoff_livelihood_to_wealth",
+      "well_health_check",
+      "well_measure_gradient",
+      "well_medical_boundary",
+      "well_niat_impact_mirror",
+      "well_registry_status",
+      "well_regulation_recovery",
+      "well_sabar_latency",
+      "well_signal_coverage",
+      "well_trace_lineage",
+      "well_trust_compression",
+      "well_validate_vitality"
+    ]
+  },
+  "resources": {
+    "total": 29,
+    "canonical": [
+      "well://identity",
+      "well://doctrine",
+      "well://bio_signals",
+      "well://flux",
+      "well://decision_classes",
+      "well://coupling",
+      "well://human_substrate",
+      "well://machine_substrate",
+      "well://chemistry_glue",
+      "well://transport_loop",
+      "well://registry",
+      "well://physics_laws",
+      "well://interaction_substrate",
+      "well://info_asymmetry",
+      "well://consent_integrity",
+      "well://bridge_wealth",
+      "well://bridge_geox",
+      "well://bridge_arifos_kernel",
+      "well://transport_stages",
+      "well://afwell_schema",
+      "well://afwell_state_arif",
+      "well://afwell_events_recent",
+      "well://afwell_floors",
+      "well://afwell_vitals_arif",
+      "well://afwell_substrate_registry",
+      "well://afwell_telemetry",
+      "well://afwell_readiness",
+      "well://afwell_sovereign_entropy",
+      "well://afwell_causal_dag"
+    ]
+  },
+  "prompts": {
+    "total": 3,
+    "canonical": [
+      "well_sense",
+      "well_qc",
+      "well_interpret"
+    ]
+  },
+  "substrate_classes": {
+    "HUMAN": "biological, metabolic, conscious, sovereign",
+    "MACHINE": "computational, electrical, governed, non-conscious",
+    "INSTITUTIONAL": "collective, procedural, multi-agent",
+    "COUPLED": "human-machine system"
+  },
+  "substrate_states": {
+    "HUMAN": ["READY", "BELOW_BASELINE", "DEGRADED", "CRITICAL", "UNKNOWN"],
+    "MACHINE": ["STABLE", "STRAINED", "DEGRADED", "CRITICAL"],
+    "GOVERNANCE": ["COHERENT", "UNCERTAIN", "DRIFTING", "COMPROMISED"],
+    "COUPLED": ["LOW_RISK", "MEDIUM_RISK", "HIGH_RISK", "RECOVERY"]
+  },
+  "federation_bridges": {
+    "arifos": "well_handoff_dignity_to_arifos",
+    "wealth": "well_handoff_livelihood_to_wealth",
+    "kernel": "well_attest_to_kernel"
+  },
+  "a2a": {
+    "agent_card": {
+      "name": "well-organ",
+      "description": "Human readiness organ — vitality, dignity, coupling",
+      "url": "http://localhost:18083",
+      "version": "1.0.0",
+      "capabilities": {
+        "streaming": false,
+        "pushNotifications": false
+      },
+      "skills": [
+        {
+          "id": "well-vitality",
+          "name": "Vitality Assessment",
+          "description": "Assess human readiness and vitality"
+        },
+        {
+          "id": "well-dignity",
+          "name": "Dignity Guard",
+          "description": "Guard against coercion and reductionism"
+        },
+        {
+          "id": "well-coupling",
+          "name": "Coupling Analysis",
+          "description": "Analyze human-machine coupling health"
+        }
+      ]
+    }
+  },
+  "replay_receipts": {
+    "enabled": true,
+    "format": "json",
+    "fields": ["tool", "timestamp", "session_id", "actor_id", "inputs", "outputs", "truth_class", "evidence_label", "friction_score", "cost_estimate", "reversibility_class", "novelty_tags"],
+    "storage": "vault999"
+  },
+  "contradiction_handling": {
+    "types": ["semantic", "outdated_physics", "duplicated_logic", "drifted_invariants", "missing_governance"],
+    "action": "surface_to_arifos_never_resolve"
+  },
+  "entropy_reduction": {
+    "rules": [
+      "ΔS ≤ 0 on every output",
+      "No phantom tools",
+      "No UNKNOWN tools",
+      "No legacy adapters",
+      "No dual surfaces",
+      "No backward compatibility"
+    ]
+  },
+  "canonical_documents": [
+    "GENESIS/004_WELL_13_CANON.md",
+    "GENESIS/005_WELL_GODEL_LOCK.md",
+    "GENESIS/006_WELL_STRANGE_LOOP_GUARD.md",
+    "GENESIS/007_WELL_ANTI_CALHOUN_GUARD.md",
+    "GENESIS/008_WELL_LANGUAGE_PROTOCOL.md",
+    "GENESIS/009_WELL_PHILOSOPHICAL_ANCHORS.md",
+    "GENESIS/010_WELL_PERSONA_NOT_SELF.md",
+    "GENESIS/011_WELL_MEDICAL_BOUNDARY.md",
+    "GENESIS/012_SUBSTRATE_MANIFEST.md"
+  ],
+  "build": {
+    "install": "pip install -e '.[dev]'",
+    "test": "pytest tests/ -q --tb=short",
+    "deploy": "systemctl restart well",
+    "health": "curl -s :18083/health | python3 -m json.tool"
+  },
+  "sovereign": {
+    "name": "Muhammad Arif bin Fazil",
+    "role": "F13 SOVEREIGN",
+    "veto": true,
+    "final_authority": true
+  },
+  "meta": {
+    "generated": "2026-07-16",
+    "session": "SEAL-ae2825cd07564a64",
+    "actor": "ARIF",
+    "apex_formula": "G = A·P·E·X·Φ",
+    "constitutional_floors": "F1-F13",
+    "mcp_spec": "v2025-11-25"
+  }
+}
