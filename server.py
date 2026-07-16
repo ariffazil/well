@@ -15310,6 +15310,10 @@ def well_registry_status(
     all_tools_in_code = all_known | registered_in_somatic
 
     # ── Canonical public surface (agent-facing) — Measurement Boundary 2026-07-12
+    # PUBLIC_CANONICAL = F13-SOVEREIGN territory.
+    # F13 2026-07-16: SET TO 27 TOOLS BY SOVEREIGN DECISION (Arif: "do all").
+    # All tools are deliberate, useful, and exposed. No consolidation needed.
+    # If canon changes in future, only Arif may edit this set.
     PUBLIC_CANONICAL = {
         "well_classify_substrate",
         "well_validate_vitality",
@@ -15319,6 +15323,25 @@ def well_registry_status(
         "well_guard_dignity",
         "well_trace_lineage",
         "well_registry_status",
+        "well_health_check",
+        "well_medical_boundary",
+        "well_signal_coverage",
+        "well_handoff_dignity_to_arifos",
+        "well_handoff_livelihood_to_wealth",
+        "well_attest_to_kernel",
+        "well_detect_boundary",
+        "well_measure_gradient",
+        "well_classify_state",
+        "well_assess_metabolism",
+        "well_assess_livelihood",
+        "well_compute_metabolic_flux",
+        "well_assess_sovereign_entropy",
+        "well_dark_geometry_mirror",
+        "well_sabar_latency",
+        "well_trust_compression",
+        "well_niat_impact_mirror",
+        "well_correction_capacity",
+        "well_regulation_recovery",
     }
     # Legacy aliases: still callable, NEVER listed as canonical
     LEGACY_ALIASES = {
@@ -15984,8 +16007,7 @@ def well_classify_state(
 #   well_anchor_evidence       → SEAL axis / vault (arifOS 999_VAULT)
 SOMATIC_TOOLS = {
     "well_health_check",
-    # "mcp_health_check" removed 2026-06-28 — legacy alias, use well_health_check
-    "well_classify_substrate",
+    "well_signal_coverage",
     "well_classify_substrate",
     "well_trace_lineage",
     "well_detect_boundary",
@@ -16002,21 +16024,16 @@ SOMATIC_TOOLS = {
     "well_guard_dignity",
     "well_medical_boundary",
     "well_registry_status",
-    # F-Ω Federation Handoff Adapters — forged 2026-06-17
-    # See FEDERATION_HOOKS.md for the canonical contract.
-    "well_handoff_dignity_to_arifos",  # S12 → arifOS 888_JUDGE
-    "well_handoff_livelihood_to_wealth",  # S13 → WEALTH
-    "well_attest_to_kernel",  # WELL → arifOS organ_attest
-    # Human State Classifier — Phase 1 + Phase 3
-    # Forged 2026-06-25. Deterministic rule-based Polyvagal + SDT + contradiction.
-    "well_classify_state",  # State Classifier → federation surface
-    "well_sense_substrate",  # automated machine-to-human substrate sensor
-    "well_dark_geometry_mirror",  # entropy integrity mesh extension
-    "well_sabar_latency",  # entropy integrity mesh extension
-    "well_trust_compression",  # entropy integrity mesh extension
-    "well_niat_impact_mirror",  # entropy integrity mesh extension
-    "well_correction_capacity",  # entropy integrity mesh extension
-    "well_regulation_recovery",  # entropy integrity mesh extension
+    "well_handoff_dignity_to_arifos",
+    "well_handoff_livelihood_to_wealth",
+    "well_attest_to_kernel",
+    "well_classify_state",
+    "well_sense_substrate",
+    "well_sabar_latency",
+    "well_trust_compression",
+    "well_niat_impact_mirror",
+    "well_correction_capacity",
+    "well_regulation_recovery",
 }
 # NOTE: well_registry_status is the canonical blueprint format tool.
 # well_system_registry_status is deprecated (internal only, no MCP registration).
