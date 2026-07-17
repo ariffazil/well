@@ -16675,6 +16675,7 @@ def _enforce_somatic_boundary(mcp_server: FastMCP) -> None:
     provider.list_tools = _filtered_list_tools
 
     import logging as _logging
+
     _logging.getLogger(__name__).info(
         "Somatic boundary enforced: %d public tools, rest callable internally",
         len(_somatic_set),
@@ -17048,6 +17049,34 @@ if __name__ == "__main__":
     app.add_route("/ready", _well_ready_handler, methods=["POST"])
     app.add_route("/tools", _well_tools_handler, methods=["GET"])
     app.add_route("/api/build-info", _well_build_info_handler, methods=["GET"])
+
+    # ── SSE endpoint (legacy transport compat) ────────────────────────────
+    import uuid as _wuuid
+    import asyncio as _wasyncio
+    from starlette.responses import StreamingResponse as _wStreamingResponse
+
+    async def _well_sse_event_stream(session_id):
+        yield f"event: endpoint\ndata: /mcp?sessionId={session_id}\n\n"
+        try:
+            while True:
+                await _wasyncio.sleep(30)
+                yield ": ping\n\n"
+        except GeneratorExit:
+            pass
+
+    async def _well_sse_handler(request):
+        session_id = str(_wuuid.uuid4())
+        return _wStreamingResponse(
+            _well_sse_event_stream(session_id),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache, no-transform",
+                "Connection": "keep-alive",
+                "Access-Control-Allow-Origin": "*",
+            },
+        )
+
+    app.add_route("/sse", _well_sse_handler, methods=["GET"])
 
     # 2026-06-29 — OAuth discovery stripped. Caddy now redirects
     # well.arif-fazil.com/.well-known/oauth-* → mcp.arif-fazil.com
