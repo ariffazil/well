@@ -6,7 +6,7 @@ WORKDIR /app
 COPY --from=ghcr.io/astral-sh/uv:0.6.16 /uv /usr/local/bin/uv
 
 # Copy project files. state.json and events.jsonl are mutable runtime state.
-COPY pyproject.toml server.py schema.json ./
+COPY pyproject.toml server.py contracts/schema.json ./
 COPY .well-known ./.well-known
 
 # FIX: Copy contracts directory properly (not contracts/ which copies contents)
