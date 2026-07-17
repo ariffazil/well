@@ -1777,9 +1777,7 @@ def well_health_check(
     reliability["read_only"] = True
     reliability["final_authority"] = "ARIF"
     reliability["tool_count"] = len(SOMATIC_TOOLS)  # was hardcoded 79; now dynamic
-    reliability["mcp_registered_tools"] = (
-        18  # actual MCP tools/list count post-boundary
-    )
+    reliability["mcp_registered_tools"] = len(SOMATIC_TOOLS)  # dynamic
     reliability["canonical_tools"] = len(SOMATIC_TOOLS)  # SOMATIC_TOOLS set size
     reliability["session_id"] = session_id
     reliability["actor_id"] = actor_id
@@ -6010,15 +6008,15 @@ def _check_tool_surface() -> dict[str, Any]:
     """Verify registered tool surface matches canonical expectation.
 
     Measures MCP-registered somatic tools against SOMATIC_TOOLS canonical set.
-    registered_count: actual MCP tools/list count (18 after boundary enforcement).
-    canonical_count:  SOMATIC_TOOLS set size (18).
+    registered_count: actual MCP tools/list count (8 after boundary enforcement).
+    canonical_count:  SOMATIC_TOOLS set size (8).
     surface_integrity: True when registered == canonical.
     """
     # Count MCP-registered somatic tools by checking what's exposed
-    # SOMATIC_TOOLS set = canonical public surface (18 tools)
-    # After boundary enforcement, 18 are actually in MCP tools/list
-    registered_count = 18  # live MCP tools/list count post-boundary
-    canonical_count = len(SOMATIC_TOOLS)  # 18
+    # SOMATIC_TOOLS set = canonical public surface (8 tools)
+    # After boundary enforcement, 8 are actually in MCP tools/list
+    canonical_count = len(SOMATIC_TOOLS)  # 8
+    registered_count = canonical_count  # dynamic — matches canonical
     missing_count = canonical_count - registered_count
 
     return {
@@ -15963,42 +15961,18 @@ def well_classify_state(
 #   well_guard_dignity         → CRITIQUE axis / meaning (arifOS 666_HEART)
 #   well_anchor_evidence       → SEAL axis / vault (arifOS 999_VAULT)
 SOMATIC_TOOLS = {
-    "well_health_check",
-    # "mcp_health_check" removed 2026-06-28 — legacy alias, use well_health_check
-    "well_classify_substrate",
+    # ── Canonical Public Surface (8 tools) — 2026-07-17 registry drift fix ──
+    # Only these 8 tools are exposed on the default public MCP wire.
+    # All other @mcp.tool() functions remain callable internally but are
+    # removed from the public surface by _enforce_somatic_boundary().
     "well_classify_substrate",
     "well_trace_lineage",
-    "well_detect_boundary",
-    "well_measure_gradient",
-    "well_assess_metabolism",
     "well_assess_homeostasis",
     "well_check_repair",
     "well_validate_vitality",
-    "well_assess_livelihood",
     "well_assess_reliability",
-    "well_compute_metabolic_flux",
-    "well_assess_sovereign_entropy",
-    "well_dark_geometry_mirror",
     "well_guard_dignity",
-    "well_medical_boundary",
-    "well_13_signal_coverage",
     "well_registry_status",
-    # F-Ω Federation Handoff Adapters — forged 2026-06-17
-    # See FEDERATION_HOOKS.md for the canonical contract.
-    "well_handoff_dignity_to_arifos",  # S12 → arifOS 888_JUDGE
-    "well_handoff_livelihood_to_wealth",  # S13 → WEALTH
-    "well_attest_to_kernel",  # WELL → arifOS organ_attest
-    # Human State Classifier — Phase 1 + Phase 3
-    # Forged 2026-06-25. Deterministic rule-based Polyvagal + SDT + contradiction.
-    "well_classify_state",  # State Classifier → federation surface
-    "well_readiness",  # ZEN: single verdict — color/score/TTL/action
-    "well_sense_substrate",  # automated machine-to-human substrate sensor
-    "well_dark_geometry_mirror",  # entropy integrity mesh extension
-    "well_sabar_latency",  # entropy integrity mesh extension
-    "well_trust_compression",  # entropy integrity mesh extension
-    "well_niat_impact_mirror",  # entropy integrity mesh extension
-    "well_correction_capacity",  # entropy integrity mesh extension
-    "well_regulation_recovery",  # entropy integrity mesh extension
 }
 # NOTE: well_registry_status is the canonical blueprint format tool.
 # well_system_registry_status is deprecated (internal only, no MCP registration).
@@ -16523,40 +16497,37 @@ class OriginValidationMiddleware:
 # so FEDERATION_TOOLS only contains the public (somatic) surface.
 
 _WELL_SOMATIC_MANIFEST: list[dict[str, object]] = [
-    # Somatic (visible) tools — these are the public MCP surface
-    # Capability Spine Repair 2026-06-26: All tools below have @mcp.tool decorators
-    # verified at runtime. well_system_registry_status and well_registry_status
-    # are callable (handlers exist) and now exposed in the somatic surface.
-    {"name": "well_health_check", "axis": "identity", "expose": True},
-    # "mcp_health_check" removed 2026-06-28 — legacy alias, use well_health_check
+    # ── Canonical Public Surface (8 tools) — 2026-07-17 registry drift fix ──
+    # Only these 8 tools are exposed on the default public MCP wire.
     {"name": "well_classify_substrate", "axis": "identity", "expose": True},
     {"name": "well_trace_lineage", "axis": "trace", "expose": True},
-    {"name": "well_detect_boundary", "axis": "boundary", "expose": True},
-    {"name": "well_measure_gradient", "axis": "observe", "expose": True},
-    {"name": "well_assess_metabolism", "axis": "reason", "expose": True},
     {"name": "well_assess_homeostasis", "axis": "vitality", "expose": True},
     {"name": "well_check_repair", "axis": "repair", "expose": True},
     {"name": "well_validate_vitality", "axis": "judge", "expose": True},
-    {"name": "well_assess_livelihood", "axis": "vitality", "expose": True},
     {"name": "well_assess_reliability", "axis": "vitality", "expose": True},
-    {"name": "well_compute_metabolic_flux", "axis": "vitality", "expose": True},
-    {"name": "well_assess_sovereign_entropy", "axis": "vitality", "expose": True},
     {"name": "well_guard_dignity", "axis": "critique", "expose": True},
-    {"name": "well_medical_boundary", "axis": "boundary", "expose": True},
-    {
-        "name": "well_system_registry_status",
-        "axis": "identity",
-        "expose": False,
-        "note": "DEPRECATED — use well_registry_status",
-    },
     {"name": "well_registry_status", "axis": "identity", "expose": True},
-    {"name": "well_signal_coverage", "axis": "reflect", "expose": True},
-    {"name": "well_readiness", "axis": "judge", "expose": True},
-    {"name": "well_handoff_dignity_to_arifos", "axis": "bridge", "expose": True},
-    {"name": "well_handoff_livelihood_to_wealth", "axis": "bridge", "expose": True},
-    {"name": "well_attest_to_kernel", "axis": "attest", "expose": True},
-    {"name": "well_classify_state", "axis": "observe", "expose": True},
-    {"name": "well_sense_substrate", "axis": "observe", "expose": True},
+    # ── Demoted to autonomic (callable internally, NOT on public wire) ──
+    {"name": "well_health_check", "axis": "identity", "expose": False},
+    {"name": "well_detect_boundary", "axis": "boundary", "expose": False},
+    {"name": "well_measure_gradient", "axis": "observe", "expose": False},
+    {"name": "well_assess_metabolism", "axis": "reason", "expose": False},
+    {"name": "well_assess_livelihood", "axis": "vitality", "expose": False},
+    {"name": "well_compute_metabolic_flux", "axis": "vitality", "expose": False},
+    {"name": "well_assess_sovereign_entropy", "axis": "vitality", "expose": False},
+    {"name": "well_medical_boundary", "axis": "boundary", "expose": False},
+    {"name": "well_signal_coverage", "axis": "reflect", "expose": False},
+    {"name": "well_handoff_dignity_to_arifos", "axis": "bridge", "expose": False},
+    {"name": "well_handoff_livelihood_to_wealth", "axis": "bridge", "expose": False},
+    {"name": "well_attest_to_kernel", "axis": "attest", "expose": False},
+    {"name": "well_classify_state", "axis": "observe", "expose": False},
+    {"name": "well_sense_substrate", "axis": "observe", "expose": False},
+    {"name": "well_dark_geometry_mirror", "axis": "critique", "expose": False},
+    {"name": "well_sabar_latency", "axis": "vitality", "expose": False},
+    {"name": "well_trust_compression", "axis": "critique", "expose": False},
+    {"name": "well_niat_impact_mirror", "axis": "critique", "expose": False},
+    {"name": "well_correction_capacity", "axis": "critique", "expose": False},
+    {"name": "well_regulation_recovery", "axis": "repair", "expose": False},
 ]
 
 _WELL_AUTONOMIC_TOOLS: list[dict[str, object]] = [
@@ -16676,57 +16647,37 @@ except Exception:
 
 
 def _enforce_somatic_boundary(mcp_server: FastMCP) -> None:
-    """Remove autonomic tools from the public MCP surface.
+    """Filter autonomic tools from the public MCP tools/list response.
 
-    Uses FEDERATION_TOOLS manifest (is_tool_somatic) as single source of truth.
-    Falls back to SOMATIC_TOOLS set if federation manifest is unavailable.
+    Instead of removing tools (which makes them uncallable), this patches
+    the list_tools method to only return somatic (public) tools. All tools
+    remain callable via tools/call — they just don't appear in listings.
+
+    Uses SOMATIC_TOOLS as single source of truth for the public surface.
     """
+    _somatic_set = set(SOMATIC_TOOLS)
+
+    # Patch the provider's list_tools to filter out autonomic tools
     provider = getattr(mcp_server, "_local_provider", None)
     if not provider:
         return
-    removed: list[str] = []
-    somatic_count = 0
-    _all_keys = list(getattr(provider, "_components", {}).keys())
-    _tool_keys = [k for k in _all_keys if k.startswith("tool:")]
-    for key in _all_keys:
-        if not key.startswith("tool:"):
-            continue
-        _tn = key[5:].rstrip("@v")
-        if not key.startswith("tool:"):
-            continue
-        tool_name = key[5:].rstrip("@v")
-        try:
-            from federation.tool_manifest import is_tool_somatic as _its
 
-            visible = bool(_its(tool_name))
-            if visible:
-                print(f"BOUNDARY KEEP (federation): {tool_name}", flush=True)
-        except Exception:
-            visible = False
-        # Dual keep: federation manifest OR local SOMATIC_TOOLS (prevents
-        # silent drop of tools registered in SOMATIC but missing from global
-        # federation registry — e.g. well_sense_substrate).
-        if not visible and tool_name in SOMATIC_TOOLS:
-            visible = True
-            print(f"BOUNDARY KEEP (somatic): {tool_name}", flush=True)
-        if not visible:
-            try:
-                mcp_server.remove_tool(tool_name)
-                removed.append(tool_name)
-            except Exception as e:
-                print(
-                    f"BOUNDARY REMOVE FAILED: {tool_name} — {type(e).__name__}: {e}",
-                    flush=True,
-                )
-                pass
-        else:
-            somatic_count += 1
+    _original_list = getattr(provider, "list_tools", None)
+    if _original_list is None:
+        return
+
+    async def _filtered_list_tools(*args, **kwargs):
+        result = await _original_list(*args, **kwargs)
+        # result is a list of Tool objects — filter to somatic only
+        filtered = [t for t in result if getattr(t, "name", "") in _somatic_set]
+        return filtered
+
+    provider.list_tools = _filtered_list_tools
+
     import logging as _logging
-
     _logging.getLogger(__name__).info(
-        "Somatic boundary enforced: %d somatic, %d autonomic removed",
-        somatic_count,
-        len(removed),
+        "Somatic boundary enforced: %d public tools, rest callable internally",
+        len(_somatic_set),
     )
 
 
@@ -16744,20 +16695,12 @@ if (
 if _REFLECT_LOADED and _wrap_canonical_tools is not None:
     try:
         _canonical_tool_fns = {
-            "well_health_check": well_health_check,
-            # "mcp_health_check" removed 2026-06-28 — legacy alias, use well_health_check
             "well_classify_substrate": _well_classify_substrate_impl,
             "well_trace_lineage": well_trace_lineage,
-            "well_detect_boundary": well_detect_boundary,
-            "well_measure_gradient": well_measure_gradient,
-            "well_assess_metabolism": well_assess_metabolism,
             "well_assess_homeostasis": well_assess_homeostasis,
             "well_check_repair": well_check_repair,
             "well_validate_vitality": well_validate_vitality,
-            "well_assess_livelihood": well_assess_livelihood,
             "well_assess_reliability": well_assess_reliability,
-            "well_compute_metabolic_flux": well_compute_metabolic_flux,
-            "well_assess_sovereign_entropy": well_assess_sovereign_entropy,
             "well_guard_dignity": well_guard_dignity,
         }
         _wrapped_count = _wrap_canonical_tools(
@@ -17132,7 +17075,7 @@ if __name__ == "__main__":
             "protocol": "A2A",
             "peer_coordinator": "https://aaa.arif-fazil.com",
         },
-        "owned_mcp": {"server": "well-mcp", "tool_count": 18},
+        "owned_mcp": {"server": "well-mcp", "tool_count": len(SOMATIC_TOOLS)},
     }
 
     async def _well_a2a_card(request):

@@ -1450,28 +1450,21 @@ def test_well_registry_declared_surface_matches_callable():
     # When WELL_SOMATIC_BOUNDARY=1, only these tools are exposed.
     # ═══════════════════════════════════════════════════════════════════════════
     SOMATIC_SURFACE = {
-        "mcp_health_check",
         "well_classify_substrate",
         "well_trace_lineage",
-        "well_detect_boundary",
-        "well_measure_gradient",
-        "well_assess_metabolism",
         "well_assess_homeostasis",
         "well_check_repair",
         "well_validate_vitality",
-        "well_assess_livelihood",
         "well_assess_reliability",
-        "well_compute_metabolic_flux",
-        "well_guard_dignity",  # Ω-gateway — on public surface
-        "well_system_registry_status",  # federation probe
-        "well_registry_status",  # blueprint canonical registry diagnostic
+        "well_guard_dignity",
+        "well_registry_status",
     }
 
     _write_canonical_state()
     import asyncio
 
     async def _check_registry():
-        await mcp.call_tool("mcp_health_check")  # verify server is loaded
+        await mcp.call_tool("well_health_check")  # verify server is loaded
         all_tools = await mcp.list_tools()
         callable_names = {t.name for t in all_tools}
 
@@ -1753,7 +1746,7 @@ def test_well_registry_status_tool():
 
     _write_canonical_state()
 
-    res = asyncio.run(mcp.call_tool("well_registry_status", arguments={}))
+    res = asyncio.run(mcp.call_tool("well_registry_status", arguments={"mode": "full"}))
     data = get_data(res)
 
     # Must have blueprint-specified fields
