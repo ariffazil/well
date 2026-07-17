@@ -16,6 +16,11 @@ abc_trinity_verdict: GREEN (10/10 after 3 critical fixes)
 boundary_sense: ACTIVE
 -->
 
+[![Agentic CI](https://github.com/ariffazil/well/actions/workflows/agentic-ci.yml/badge.svg?branch=main)](https://github.com/ariffazil/well/actions/workflows/agentic-ci.yml)
+[![License](https://img.shields.io/github/license/ariffazil/well?label=License)](LICENSE)
+[![🫀 REFLECT](https://img.shields.io/badge/%F0%9F%AB%80%20REFLECT-27%20tools-purple)](https://well.arif-fazil.com/mcp)
+[![Federation](https://img.shields.io/badge/Federation-v2026.07.15-0a7b83)](https://arifos.arif-fazil.com)
+
 # WELL — Human Readiness Mirror
 
 > **DITEMPA BUKAN DIBERI.** It **reflects**. It does **not** diagnose.
