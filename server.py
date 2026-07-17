@@ -11304,6 +11304,50 @@ try:
 
         if arguments is None:
             arguments = {}
+
+        # ── SCT ingress gate (2026-07-17) ─────────────────────────────────
+        # WELL is REFLECT_ONLY — SCT optional unless presented (then verify).
+        try:
+            import sys as _sys
+
+            if "/root/AAA" not in _sys.path:
+                _sys.path.insert(0, "/root/AAA")
+            from governance.federation_sct import gate_tool_ingress
+
+            _meta = (
+                arguments.get("_meta")
+                if isinstance(arguments, dict) and isinstance(arguments.get("_meta"), dict)
+                else None
+            )
+            _sct_rej = gate_tool_ingress(
+                name,
+                arguments if isinstance(arguments, dict) else {},
+                meta=_meta,
+                organ="well",
+                require_sct=False,
+            )
+            if _sct_rej is not None:
+                from fastmcp.exceptions import ToolError
+
+                raise ToolError(
+                    f"SCT_GATE: {_sct_rej.get('error')}: {_sct_rej.get('message')}"
+                )
+            # Strip SCT transport fields before tool schema validation
+            if isinstance(arguments, dict):
+                for _sk in ("session_token", "sct", "arifos_sct"):
+                    arguments.pop(_sk, None)
+        except Exception as _sct_exc:
+            from fastmcp.exceptions import ToolError as _TE
+
+            if isinstance(_sct_exc, _TE):
+                raise
+            # Present token + infra failure → fail closed
+            _tok = None
+            if isinstance(arguments, dict):
+                _tok = arguments.get("session_token") or arguments.get("sct")
+            if _tok:
+                raise _TE(f"SCT_GATE_INFRA: {_sct_exc!r}") from _sct_exc
+
         verdict, error = check_governance(name, arguments)
         if error is not None:
             # Return governance block as JSON error in MCP format
