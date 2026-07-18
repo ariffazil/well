@@ -16445,7 +16445,9 @@ def well_assess_readiness(
         _vital_signals.append(f"high_caffeine ({_caffeine} cups)")
 
     _readiness_state = (
-        "RED" if len(_vital_signals) >= 3 else ("YELLOW" if _vital_signals else "GREEN")
+        "RED"
+        if len(_vital_signals) >= 3
+        else ("YELLOW" if _vital_signals else ("UNKNOWN" if not case else "GREEN"))
     )
 
     human_vitals = {
