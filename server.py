@@ -1649,7 +1649,7 @@ def _apply_public_host_allowlist(app: Any) -> Any:
 
 mcp = FastMCP(
     name="WELL",
-    version="2026.05.15",
+    version="v2026.07.17",
     website_url="https://well.arif-fazil.com",
     instructions=(
         "WELL is the Universal Substrate Vitality Mirror for arifOS. "
@@ -1732,7 +1732,7 @@ def _mcp_health_check_impl() -> dict:
         "status": status,
         "transport": "SSE_VALID",
         "auth": "OK",
-        "schema_version": "2026.05.15",
+        "schema_version": "v2026.07.17",
         # FEDERATION HANDSHAKE (canonical: arifOS/arifosmcp/schemas/federation_enums.py)
         # See: /root/AAA/governance/FEDERATION_HANDSHAKE.md
         "federation_schema_version": "2.0.0",
@@ -11316,7 +11316,8 @@ try:
 
             _meta = (
                 arguments.get("_meta")
-                if isinstance(arguments, dict) and isinstance(arguments.get("_meta"), dict)
+                if isinstance(arguments, dict)
+                and isinstance(arguments.get("_meta"), dict)
                 else None
             )
             _sct_rej = gate_tool_ingress(
@@ -11846,7 +11847,7 @@ if __name__ == "__main__":
                 "role": "Body / Human Intelligence — Operator Cognitive Pressure Monitor",
                 "authority": "REFLECT_ONLY — WELL informs. arifOS judges. Arif decides.",
                 "schema": "well-federation-v2026.05.08",
-                "version": "2026.05.15-ΩWELL+GWELL",
+                "version": "v2026.07.17",
                 "count": len(tools),
                 "w0_invariant": "WELL holds a mirror, not a veto. Operator sovereignty is invariant.",
                 "danger_taxonomy": {
@@ -11902,7 +11903,7 @@ if __name__ == "__main__":
                 "identity_valid": classification["well_ok"],
                 "has_telemetry": classification["has_telemetry"],
                 "service": "well-mcp",
-                "version": "2026.05.15-ΩWELL+GWELL",
+                "version": "v2026.07.17",
                 "identity_hash": identity_hash,
                 # P6 — WELL identity anchor (SUBSTRATE_LAW, not constitutional)
                 "domain_law": domain_law,
@@ -15335,7 +15336,7 @@ def well_system_registry_status() -> dict[str, Any]:
         telemetry_status="registry_probe",
         data={
             "service": "well-mcp",
-            "version": "2026.05.15-ΩWELL+GWELL+FEDERATION",
+            "version": "v2026.07.17",
             "registry_status": registry_truth,
             "overall_signal": overall_signal,
             # P1: Explicit two-layer split
@@ -16887,7 +16888,7 @@ if __name__ == "__main__":
                     "well_signal"
                 ],  # REFLECT_ONLY — never "verdict"
                 "service": "well-mcp",
-                "version": "2026.05.15-ΩWELL+GWELL+FEDERATION",
+                "version": "v2026.07.17",
                 # FEDERATION HANDSHAKE (canonical: arifOS/arifosmcp/schemas/federation_enums.py)
                 # See: /root/AAA/governance/FEDERATION_HANDSHAKE.md
                 "federation_schema_version": "2.0.0",
@@ -17025,7 +17026,7 @@ if __name__ == "__main__":
                 "role": "Body / Human Intelligence — Operator Cognitive Pressure Monitor",
                 "authority": "REFLECT_ONLY — WELL informs. arifOS judges. Arif decides.",
                 "schema": "well-federation-v2026.05.08",
-                "version": "2026.05.15-ΩWELL+GWELL",
+                "version": "v2026.07.17",
                 "count": len(tools),
                 "w0_invariant": "WELL holds a mirror, not a veto. Operator sovereignty is invariant.",
                 "danger_taxonomy": {
