@@ -7,9 +7,150 @@ import json
 import datetime
 from pathlib import Path
 import sys
+import urllib.request
+import urllib.error
 
 # Topology: Sovereign WELL Root
 WELL_STATE_PATH = Path("/root/WELL/state.json")
+
+# arifOS kernel endpoint — adopted from WEALTH wealth_arifos_bridge pattern.
+# Per sovereign (888) C3 REDTEAM ratification 2026-07-18: every organ must
+# delegate session validation to the arifOS kernel. WELL adopts the same
+# pattern as GEOX + WEALTH — no new abstractions, just a new function on an
+# existing gate module.
+ARIFOS_KERNEL_URL = "http://127.0.0.1:8088"
+ARIFOS_MCP_URL = f"{ARIFOS_KERNEL_URL}/mcp"
+
+
+def validate_session_at_arifos(
+    session_id: str | None = None,
+    actor_id: str | None = None,
+    session_token: str | None = None,
+    timeout_seconds: float = 3.0,
+) -> dict:
+    """Delegate session validation to arifOS kernel (WELL adoption of GEOX/WEALTH pattern).
+
+    Three-state verdict:
+      valid=True                                       → ALLOW
+      valid=False, reason='...'                        → HOLD (session rejected)
+      valid=False, reason='ARIFOS_UNREACHABLE'         → HOLD, FAIL-CLOSED
+
+    Fail-closed: if arifOS is unreachable, return HOLD. Never open.
+    """
+    if not session_id and not session_token:
+        return {
+            "valid": False,
+            "reason": "L11 AUTH: session_id or session_token required",
+            "fail_mode": "CLOSED",
+            "actor_id": actor_id,
+        }
+
+    payload = json.dumps({
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "tools/call",
+        "params": {
+            "name": "arif_init",
+            "arguments": {
+                "mode": "validate",
+                "session_id": session_id,
+                "actor_id": actor_id,
+                "session_token": session_token,
+            },
+        },
+    }).encode("utf-8")
+
+    try:
+        req = urllib.request.Request(
+            ARIFOS_MCP_URL,
+            data=payload,
+            headers={"Accept": "application/json", "Content-Type": "application/json"},
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=timeout_seconds) as resp:
+            if 200 <= resp.status < 300:
+                raw = resp.read().decode("utf-8")
+                try:
+                    data = json.loads(raw)
+                except json.JSONDecodeError:
+                    return {
+                        "valid": False,
+                        "reason": "L11 AUTH: arifOS response malformed",
+                        "fail_mode": "CLOSED",
+                    }
+                result = data.get("result", {}) or {}
+                content = result.get("content", [])
+                parsed = result
+                if isinstance(content, list):
+                    for item in content:
+                        if isinstance(item, dict) and item.get("type") == "text":
+                            try:
+                                parsed = json.loads(item.get("text", "{}"))
+                                break
+                            except (json.JSONDecodeError, TypeError):
+                                pass
+                if not isinstance(parsed, dict):
+                    return {
+                        "valid": False,
+                        "reason": "L11 AUTH: arifOS response malformed",
+                        "fail_mode": "CLOSED",
+                    }
+                # Trust arifOS's authoritative verdict: result.valid is the
+                # ground truth. effective_verdict can be HOLD/VOID/APPROVED;
+                # we accept only when arifOS explicitly says valid=True AND
+                # the session standing has a verified actor (or session_token).
+                inner_result = parsed.get("result", {}) if isinstance(parsed.get("result"), dict) else {}
+                arifos_says_valid = inner_result.get("valid")
+                if arifos_says_valid is False:
+                    return {
+                        "valid": False,
+                        "reason": inner_result.get("error")
+                        or parsed.get("reason")
+                        or "L11 AUTH: arifOS rejected session",
+                        "fail_mode": "CLOSED",
+                        "actor_id": actor_id,
+                        "session_id": session_id,
+                    }
+                standing = parsed.get("standing", {}) if isinstance(parsed.get("standing"), dict) else {}
+                standing_actor = standing.get("actor", {}) if isinstance(standing.get("actor"), dict) else {}
+                actor_verified = standing_actor.get("verified") is True
+                session_token_present = bool(parsed.get("session_token"))
+                resp_sid = parsed.get("session_id") or standing.get("session_id")
+                if actor_verified or session_token_present:
+                    return {
+                        "valid": True,
+                        "session": parsed,
+                        "actor": standing_actor.get("claimed_id")
+                        or standing_actor.get("canonical_id")
+                        or parsed.get("actor_id")
+                        or actor_id,
+                        "authority": standing.get("authority", {}).get("band")
+                        if isinstance(standing.get("authority"), dict)
+                        else parsed.get("authority")
+                        or "OBSERVE_ONLY",
+                        "session_id": resp_sid or session_id,
+                    }
+                return {
+                    "valid": False,
+                    "reason": "L11 AUTH: session not verified by arifOS (no verified actor, no session_token)",
+                    "fail_mode": "CLOSED",
+                    "actor_id": actor_id,
+                    "session_id": session_id,
+                }
+            return {
+                "valid": False,
+                "reason": f"L11 AUTH: arifOS HTTP {resp.status}",
+                "fail_mode": "CLOSED",
+                "actor_id": actor_id,
+            }
+    except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError, OSError) as exc:
+        return {
+            "valid": False,
+            "reason": f"ARIFOS_UNREACHABLE: {type(exc).__name__}: {str(exc)[:80]}",
+            "fail_mode": "CLOSED",
+            "actor_id": actor_id,
+            "session_id": session_id,
+        }
 
 
 def reflect_readiness(self_report_rasa=None, text_context=None):
