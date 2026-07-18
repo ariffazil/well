@@ -1668,6 +1668,75 @@ mcp = FastMCP(
     ),
 )
 
+# ── Session Validation Middleware (FORGED 2026-07-18) ─────────────────────────
+# WELL tools accept session_id as optional. This middleware enforces that
+# ALL tool calls provide a non-empty session_id. Anonymous reads are blocked.
+# Constitutional basis: F11 AUDIT — every call must carry provenance.
+import json as _json_mw
+from fastmcp.exceptions import ToolError as _ToolErrorMw
+from fastmcp.server.middleware import Middleware as _MiddlewareBase
+
+
+class WellSessionValidationMiddleware(_MiddlewareBase):
+    """Reject tool calls that lack a session_id.
+
+    Three-way error taxonomy (aligned with GEOX 2026-07-18):
+      - No session_id → 400 SESSION_MISSING (client error, routine)
+      - Empty/anonymous session_id → 400 SESSION_MISSING
+    """
+
+    # Tools that are exempt from session validation (internal/diagnostic).
+    _EXEMPT_TOOLS: frozenset[str] = frozenset(
+        {
+            "well_health_check",
+        }
+    )
+
+    async def on_call_tool(self, context, call_next):
+        tool_name = getattr(context.message, "name", "")
+        raw_arguments = getattr(context.message, "arguments", {}) or {}
+
+        # Defensive parse: some MCP transports serialize arguments as JSON string
+        if isinstance(raw_arguments, str):
+            try:
+                arguments = _json_mw.loads(raw_arguments)
+            except (_json_mw.JSONDecodeError, TypeError):
+                arguments = {}
+        else:
+            arguments = raw_arguments
+
+        # Check session_id presence (skip exempt tools)
+        if tool_name not in self._EXEMPT_TOOLS:
+            session_id = (
+                arguments.get("session_id") if isinstance(arguments, dict) else None
+            )
+            if not session_id or (
+                isinstance(session_id, str) and not session_id.strip()
+            ):
+                logger.warning(
+                    "SESSION_VALIDATION: tool=%s rejected — no session_id (400 SESSION_MISSING)",
+                    tool_name,
+                )
+                raise _ToolErrorMw(
+                    f"SESSION_MISSING: tool '{tool_name}' requires a session_id. "
+                    f"Provide a valid session token. http_status=400"
+                )
+
+        # Strip session_id from arguments before tool dispatch
+        # (tools don't declare it; it's middleware-only metadata)
+        if isinstance(arguments, dict) and "session_id" in arguments:
+            cleaned = {k: v for k, v in arguments.items() if k != "session_id"}
+            context.message.arguments = cleaned
+
+        return await call_next(context)
+
+
+try:
+    mcp.add_middleware(WellSessionValidationMiddleware())
+    logger.info("WellSessionValidationMiddleware armed — anonymous reads blocked")
+except Exception as _mw_exc:
+    logger.warning("WellSessionValidationMiddleware failed to load: %s", _mw_exc)
+
 # Completions CANCELLED 2026-07-09 — agent surface uses full tool JSON.
 
 # ── well_mcp canon surface wiring (2026-06-27) ─────────────────────────────────
@@ -15363,7 +15432,11 @@ def well_validate_consensus(
 
 
 # DEPRECATED 2026-06-28 — use well_registry_status (blueprint canonical format) instead.
-# Internal function kept for programmatic use. MCP registration removed.
+# P0-B (sovereign 2026-07-18): re-register the legacy alias. The audit's tooling
+# calls well_system_registry_status; the modern canonical name is
+# well_registry_status. Keep both available so the advertised surface matches
+# what the connector can dispatch.
+@mcp.tool()
 def well_system_registry_status() -> dict[str, Any]:
     """WELL registry truth probe — somatic surface vs autonomic internals.
 
@@ -17922,6 +17995,80 @@ if __name__ == "__main__":
 
     app.add_route("/.well-known/agent.json", _well_a2a_card, methods=["GET"])
     app.add_route("/.well-known/agent-card.json", _well_a2a_card, methods=["GET"])
+
+    # ── MCP Session Enforcement Middleware (strict-organ doctrine) ─────
+    # Domain operations require a valid Mcp-Session-Id. Always.
+    # Three-way taxonomy: 400 missing / 401 invalid / 403 insufficient.
+    import uuid as _uuid_mw
+    from starlette.middleware.base import BaseHTTPMiddleware
+    from starlette.requests import Request as _MWRequest
+    from starlette.responses import Response as _MWResponse
+
+    _well_valid_mcp_sessions: set[str] = set()
+
+    class WellMcpSessionEnforcement(BaseHTTPMiddleware):
+        _EXEMPT_METHODS = frozenset({"initialize", "notifications/initialized"})
+
+        async def dispatch(self, request: _MWRequest, call_next):
+            if request.method == "POST" and request.url.path.startswith("/mcp"):
+                body = await request.body()
+                method = None
+                if body:
+                    try:
+                        payload = json.loads(body)
+                        method = payload.get("method", "")
+                    except (json.JSONDecodeError, UnicodeDecodeError):
+                        pass
+
+                if method in self._EXEMPT_METHODS:
+                    if method == "initialize":
+                        new_sid = _uuid_mw.uuid4().hex
+                        _well_valid_mcp_sessions.add(new_sid)
+                        request._body = body
+                        response = await call_next(request)
+                        response.headers["Mcp-Session-Id"] = new_sid
+                        return response
+                    request._body = body
+                    return await call_next(request)
+
+                session_id = request.headers.get(
+                    "Mcp-Session-Id"
+                ) or request.headers.get("mcp-session-id")
+
+                if not session_id:
+                    return _MWResponse(
+                        content=json.dumps(
+                            {
+                                "jsonrpc": "2.0",
+                                "error": {
+                                    "code": -32000,
+                                    "message": "SESSION_MISSING: Mcp-Session-Id header required",
+                                },
+                            }
+                        ),
+                        status_code=400,
+                        media_type="application/json",
+                    )
+
+                if session_id not in _well_valid_mcp_sessions:
+                    return _MWResponse(
+                        content=json.dumps(
+                            {
+                                "jsonrpc": "2.0",
+                                "error": {
+                                    "code": -32000,
+                                    "message": "SESSION_INVALID: Unknown or expired session ID",
+                                },
+                            }
+                        ),
+                        status_code=404,
+                        media_type="application/json",
+                    )
+                request._body = body
+
+            return await call_next(request)
+
+    app.add_middleware(WellMcpSessionEnforcement)
     app.add_middleware(OriginValidationMiddleware)
     logger.info("WELL MCP server starting on %s:%d", host, port)
     uvicorn.run(

@@ -180,19 +180,19 @@ async def _test_input_validation():
     _write_canonical_state()
 
     # Negative sleep_hours should be clamped to 0, not crash
-    res = await mcp.call_tool("well_log", arguments={"sleep_hours": -100})
+    res = await mcp.call_tool("well_log", arguments={"sleep_hours": -100, "session_id": "SEAL-test-session"})
     data = get_data(res)
     assert data["ok"] is True, f"Expected ok=True for clamped negative, got {data}"
 
     # Out-of-range clarity should be clamped
-    res = await mcp.call_tool("well_log", arguments={"clarity": 999})
+    res = await mcp.call_tool("well_log", arguments={"clarity": 999, "session_id": "SEAL-test-session"})
     data = get_data(res)
     assert data["ok"] is True, f"Expected ok=True for clamped high clarity, got {data}"
 
     # String where number expected should fail gracefully
     # FastMCP/Pydantic rejects at the transport layer; we verify it does not mutate state
     try:
-        res = await mcp.call_tool("well_log", arguments={"sleep_hours": "hacked"})
+        res = await mcp.call_tool("well_log", arguments={"sleep_hours": "hacked", "session_id": "SEAL-test-session"})
         data = get_data(res)
         assert data["ok"] is False, f"Expected ok=False for string input, got {data}"
     except Exception as e:
@@ -208,13 +208,13 @@ async def _test_input_validation():
     assert state_after.get("well_score") is not None
 
     # None values should pass (omitted fields)
-    res = await mcp.call_tool("well_log", arguments={"sleep_hours": None})
+    res = await mcp.call_tool("well_log", arguments={"sleep_hours": None, "session_id": "SEAL-test-session"})
     data = get_data(res)
     assert data["ok"] is True
 
     # Injection attempt in note should be sanitized
     res = await mcp.call_tool(
-        "well_log", arguments={"note": "malicious\x00null\x01byte"}
+        "well_log", arguments={"note": "malicious\x00null\x01byte", "session_id": "SEAL-test-session"}
     )
     data = get_data(res)
     assert data["ok"] is True
@@ -223,7 +223,7 @@ async def _test_input_validation():
 async def _test_well_state_reflect_only():
     """well_state preserves its original format for backward compatibility."""
     _write_canonical_state()
-    res = await mcp.call_tool("well_state")
+    res = await mcp.call_tool("well_state", arguments={"session_id": "SEAL-test-session"})
     data = get_data(res)
     assert data["ok"] is True
     assert data.get("w0") == "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT"
@@ -231,14 +231,14 @@ async def _test_well_state_reflect_only():
 
 async def _test_well_log_green_path():
     _write_canonical_state()
-    res = await mcp.call_tool("well_log", arguments={"note": "Automated test run"})
+    res = await mcp.call_tool("well_log", arguments={"note": "Automated test run", "session_id": "SEAL-test-session"})
     data = get_data(res)
     assert data["ok"] is True
 
 
 async def _test_well_check_floors_canonical():
     _write_canonical_state()
-    res = await mcp.call_tool("well_check_floors")
+    res = await mcp.call_tool("well_check_floors", arguments={"session_id": "SEAL-test-session"})
     data = get_data(res)
     assert data["mcp"] == "AFWELL"
     assert "status" in data
@@ -248,7 +248,7 @@ async def _test_well_check_floors_canonical():
 async def _test_well_readiness_canonical():
     """well_readiness is deprecated — now internal. Use well_validate_vitality(mode='readiness') instead."""
     _write_canonical_state()
-    res = await mcp.call_tool("well_validate_vitality", arguments={"mode": "readiness"})
+    res = await mcp.call_tool("well_validate_vitality", arguments={"mode": "readiness", "session_id": "SEAL-test-session"})
     data = get_data(res)
     # Metabolic format: relevant fields are nested under metabolic.cross_organ_handoff.handoff_payload
     handoff_payload = (
@@ -270,6 +270,7 @@ async def _test_well_log_state_green():
             "stress_level": 2,
             "clarity_score": 9,
             "note": "Test Green Path",
+        "session_id": "SEAL-test-session",
         },
     )
     data = get_data(res)
@@ -287,6 +288,7 @@ async def _test_well_log_state_red():
             "clarity": 2,
             "decision_fatigue": 9,
             "note": "Test Red Path - Extreme Stress",
+        "session_id": "SEAL-test-session",
         },
     )
     data = get_data(res)
@@ -298,7 +300,7 @@ async def _test_well_log_state_red():
 
 async def _test_well_get_readiness():
     _write_canonical_state()
-    res = await mcp.call_tool("well_get_readiness")
+    res = await mcp.call_tool("well_get_readiness", arguments={"session_id": "SEAL-test-session"})
     data = get_data(res)
     assert data["ok"] is True
     assert "readiness" in data
@@ -306,7 +308,7 @@ async def _test_well_get_readiness():
 
 async def _test_well_check_floor_w1():
     _write_canonical_state()
-    res = await mcp.call_tool("well_check_floor", arguments={"floor_id": "W1"})
+    res = await mcp.call_tool("well_check_floor", arguments={"floor_id": "W1", "session_id": "SEAL-test-session"})
     data = get_data(res)
     if "mcp" in data:
         assert data["mcp"] == "AFWELL"
@@ -316,14 +318,14 @@ async def _test_well_check_floor_w1():
 
 async def _test_well_list_log():
     _write_canonical_state()
-    res = await mcp.call_tool("well_list_log", arguments={"limit": 5})
+    res = await mcp.call_tool("well_list_log", arguments={"limit": 5, "session_id": "SEAL-test-session"})
     data = get_data(res)
     assert data["ok"] is True
 
 
 async def _test_well_seal_vault():
     _write_canonical_state()
-    res = await mcp.call_tool("well_seal_vault", arguments={"force": True})
+    res = await mcp.call_tool("well_seal_vault", arguments={"force": True, "session_id": "SEAL-test-session"})
     data = get_data(res)
     # Should fail gracefully (no arifOS in test env), but not leak secrets
     assert "error" not in data or "Vault bridge unavailable" in data.get("error", "")
@@ -331,7 +333,7 @@ async def _test_well_seal_vault():
 
 async def _test_well_coupled_readiness():
     _write_canonical_state()
-    res = await mcp.call_tool("well_coupled_readiness")
+    res = await mcp.call_tool("well_coupled_readiness", arguments={"session_id": "SEAL-test-session"})
     data = get_data(res)
     assert data["mcp"] == "AFWELL"
     assert "risk_level" in data
@@ -341,9 +343,9 @@ async def _test_well_coupled_readiness():
 
 async def _test_well_forge_precheck_conservative():
     _write_canonical_state()
-    await mcp.call_tool("well_log", arguments={"stress_load": 9, "clarity": 4})
+    await mcp.call_tool("well_log", arguments={"stress_load": 9, "clarity": 4, "session_id": "SEAL-test-session"})
     res = await mcp.call_tool(
-        "well_forge_precheck", arguments={"task_description": "Critical Deployment"}
+        "well_forge_precheck", arguments={"task_description": "Critical Deployment", "session_id": "SEAL-test-session"}
     )
     data = get_data(res)
     assert data["risk_level"] in ("AMBER", "RED")
@@ -354,7 +356,7 @@ async def _test_well_forge_precheck_conservative():
 async def _test_well_decision_classify_advisory_language():
     _write_canonical_state()
     res = await mcp.call_tool(
-        "well_decision_classify", arguments={"decision_class": "C5"}
+        "well_decision_classify", arguments={"decision_class": "C5", "session_id": "SEAL-test-session"}
     )
     data = get_data(res)
     assert data["ok"] is True
@@ -368,7 +370,7 @@ async def _test_well_niat_check_advisory_language():
     _write_canonical_state()
     res = await mcp.call_tool(
         "well_niat_check",
-        arguments={"intent": "Deploy production", "reversibility": "irreversible"},
+        arguments={"intent": "Deploy production", "reversibility": "irreversible", "session_id": "SEAL-test-session"},
     )
     data = get_data(res)
     assert data["ok"] is True
@@ -382,7 +384,7 @@ async def _test_well_niat_check_advisory_language():
 
 async def _test_well_bandwidth_advisory_language():
     _write_canonical_state()
-    res = await mcp.call_tool("well_bandwidth_recommendation")
+    res = await mcp.call_tool("well_bandwidth_recommendation", arguments={"session_id": "SEAL-test-session"})
     data = get_data(res)
     assert data["ok"] is True
     # Must not command with LOCKED / FORBIDDEN
@@ -418,6 +420,7 @@ async def _test_well_forge_closeout_fatigue_increases():
             "task_description": "test",
             "outcome": "success",
             "errors_encountered": 0,
+        "session_id": "SEAL-test-session",
         },
     )
     data = get_data(res)
@@ -435,7 +438,7 @@ async def _test_well_init_error_no_leak():
     """well_init is deprecated — now internal. Use well_classify_substrate instead."""
     _write_canonical_state()
     # well_init was session init; well_classify_substrate is canonical replacement
-    res = await mcp.call_tool("well_classify_substrate")
+    res = await mcp.call_tool("well_classify_substrate", arguments={"session_id": "SEAL-test-session"})
     data = get_data(res)
     # Metabolic format: ok is nested in observation
     observation = data.get("observation", {})
@@ -524,7 +527,7 @@ async def _test_well_unknown_telemetry():
 
     # 1. well_check_floors must return UNKNOWN, not PASS/GREEN
     print("\n--- Testing well_check_floors (no telemetry) ---")
-    res = await mcp.call_tool("well_check_floors")
+    res = await mcp.call_tool("well_check_floors", arguments={"session_id": "SEAL-test-session"})
     data = get_data(res)
     print(f"Result: {data}")
     assert data["domain_verdict"] == "UNKNOWN_TELEMETRY"
@@ -533,7 +536,7 @@ async def _test_well_unknown_telemetry():
 
     # 2. well_readiness returns UNKNOWN when no verified telemetry
     print("\n--- Testing well_readiness (no telemetry) ---")
-    res = await mcp.call_tool("well_readiness")
+    res = await mcp.call_tool("well_readiness", arguments={"session_id": "SEAL-test-session"})
     data = get_data(res)
     print(f"Result: {data}")
     assert data["domain_verdict"] == "UNKNOWN"
@@ -544,7 +547,7 @@ async def _test_well_unknown_telemetry():
     # 4. well_forge_precheck must return UNKNOWN_TELEMETRY
     print("\n--- Testing well_forge_precheck (no telemetry) ---")
     res = await mcp.call_tool(
-        "well_forge_precheck", arguments={"task_description": "test"}
+        "well_forge_precheck", arguments={"task_description": "test", "session_id": "SEAL-test-session"}
     )
     data = get_data(res)
     print(f"Result: {data}")
@@ -553,7 +556,7 @@ async def _test_well_unknown_telemetry():
 
     # 5. well_bandwidth_recommendation must return UNKNOWN
     print("\n--- Testing well_bandwidth_recommendation (no telemetry) ---")
-    res = await mcp.call_tool("well_bandwidth_recommendation")
+    res = await mcp.call_tool("well_bandwidth_recommendation", arguments={"session_id": "SEAL-test-session"})
     data = get_data(res)
     print(f"Result: {data}")
     assert data["verdict"] == "UNKNOWN"
@@ -561,7 +564,7 @@ async def _test_well_unknown_telemetry():
 
     # 6. well_daily_brief must return UNKNOWN
     print("\n--- Testing well_daily_brief (no telemetry) ---")
-    res = await mcp.call_tool("well_daily_brief")
+    res = await mcp.call_tool("well_daily_brief", arguments={"session_id": "SEAL-test-session"})
     data = get_data(res)
     print(f"Result: {data}")
     assert data["readiness"] == "UNKNOWN"
@@ -569,14 +572,14 @@ async def _test_well_unknown_telemetry():
 
     # 7. well_check_floor W1 must return UNKNOWN
     print("\n--- Testing well_check_floor W1 (no telemetry) ---")
-    res = await mcp.call_tool("well_check_floor", arguments={"floor_id": "W1"})
+    res = await mcp.call_tool("well_check_floor", arguments={"floor_id": "W1", "session_id": "SEAL-test-session"})
     data = get_data(res)
     print(f"Result: {data}")
     assert data["domain_verdict"] == "UNKNOWN_TELEMETRY"
 
     # 8. well_get_readiness must return UNKNOWN tier
     print("\n--- Testing well_get_readiness (no telemetry) ---")
-    res = await mcp.call_tool("well_get_readiness")
+    res = await mcp.call_tool("well_get_readiness", arguments={"session_id": "SEAL-test-session"})
     data = get_data(res)
     print(f"Result: {data}")
     assert data["readiness"]["tier"] == "UNKNOWN"
@@ -611,20 +614,20 @@ async def _test_canonical_tools():
 
     # WELL-02 well_get_state
     print("\n--- well_get_state ---")
-    res = await mcp.call_tool("well_get_state")
+    res = await mcp.call_tool("well_get_state", arguments={"session_id": "SEAL-test-session"})
     data = get_data(res)
     assert data["ok"] is True
     assert data["has_telemetry"] is True
-    res = await mcp.call_tool("well_get_state", arguments={"domain": "machine"})
+    res = await mcp.call_tool("well_get_state", arguments={"domain": "machine", "session_id": "SEAL-test-session"})
     data = get_data(res)
     assert "m_machine" in data
 
     # WELL-03 well_check_invariant (identity + floors)
     print("\n--- well_check_invariant ---")
-    res = await mcp.call_tool("well_check_invariant")
+    res = await mcp.call_tool("well_check_invariant", arguments={"session_id": "SEAL-test-session"})
     data = get_data(res)
     assert data["identity_verdict"] == "WELL_PASS"
-    res = await mcp.call_tool("well_check_invariant", arguments={"floor_id": "W0"})
+    res = await mcp.call_tool("well_check_invariant", arguments={"floor_id": "W0", "session_id": "SEAL-test-session"})
     data = get_data(res)
     assert data["floor"] == "W0"
 
@@ -637,6 +640,7 @@ async def _test_canonical_tools():
             "signal": "clarity",
             "value": 8,
             "note": "Canonical test",
+        "session_id": "SEAL-test-session",
         },
     )
     data = get_data(res)
@@ -650,6 +654,7 @@ async def _test_canonical_tools():
             "domain": "machine",
             "signal": "tool_availability",
             "value": 0.95,
+        "session_id": "SEAL-test-session",
         },
     )
     data = get_data(res)
@@ -658,7 +663,7 @@ async def _test_canonical_tools():
     # WELL-05 well_list_events
     print("\n--- well_list_events ---")
     res = await mcp.call_tool(
-        "well_list_events", arguments={"limit": 5, "redact": True}
+        "well_list_events", arguments={"limit": 5, "redact": True, "session_id": "SEAL-test-session"}
     )
     data = get_data(res)
     assert data["ok"] is True
@@ -666,13 +671,13 @@ async def _test_canonical_tools():
 
     # WELL-06 well_reflect_trend
     print("\n--- well_reflect_trend ---")
-    res = await mcp.call_tool("well_reflect_trend")
+    res = await mcp.call_tool("well_reflect_trend", arguments={"session_id": "SEAL-test-session"})
     data = get_data(res)
     assert data["ok"] is True
 
     # WELL-07 well_reflect_readiness (coupled)
     print("\n--- well_reflect_readiness ---")
-    res = await mcp.call_tool("well_reflect_readiness", arguments={"domain": "coupled"})
+    res = await mcp.call_tool("well_reflect_readiness", arguments={"domain": "coupled", "session_id": "SEAL-test-session"})
     data = get_data(res)
     # coupled returns canonical verdict (mcp, task, status) not ok wrapper
     assert data.get("ok") is True or data.get("mcp") == "AFWELL"
@@ -680,42 +685,42 @@ async def _test_canonical_tools():
     # WELL-08 well_suggest_mode
     print("\n--- well_suggest_mode ---")
     res = await mcp.call_tool(
-        "well_suggest_mode", arguments={"domain": "forge", "task_description": "test"}
+        "well_suggest_mode", arguments={"domain": "forge", "task_description": "test", "session_id": "SEAL-test-session"}
     )
     data = get_data(res)
     assert data.get("ok") or data.get("mcp") == "AFWELL"
 
     # WELL-09 well_suggest_recovery
     print("\n--- well_suggest_recovery ---")
-    res = await mcp.call_tool("well_suggest_recovery")
+    res = await mcp.call_tool("well_suggest_recovery", arguments={"session_id": "SEAL-test-session"})
     data = get_data(res)
     assert data["ok"] is True
 
     # WELL-10 well_reflect_niat
     print("\n--- well_reflect_niat ---")
     res = await mcp.call_tool(
-        "well_reflect_niat", arguments={"intent": "Deploy to production"}
+        "well_reflect_niat", arguments={"intent": "Deploy to production", "session_id": "SEAL-test-session"}
     )
     data = get_data(res)
     assert data["ok"] is True
 
     # WELL-11 well_classify_task
     print("\n--- well_classify_task ---")
-    res = await mcp.call_tool("well_classify_task", arguments={"decision_class": "C2"})
+    res = await mcp.call_tool("well_classify_task", arguments={"decision_class": "C2", "session_id": "SEAL-test-session"})
     data = get_data(res)
     assert data["ok"] is True
 
     # WELL-12 well_get_packet
     print("\n--- well_get_packet ---")
     res = await mcp.call_tool(
-        "well_get_packet", arguments={"target": "arifos", "detail": "minimal"}
+        "well_get_packet", arguments={"target": "arifos", "detail": "minimal", "session_id": "SEAL-test-session"}
     )
     data = get_data(res)
     assert data["ok"] is True
 
     # WELL-13 well_request_anchor (dry_run)
     print("\n--- well_request_anchor (dry_run) ---")
-    res = await mcp.call_tool("well_request_anchor", arguments={"dry_run": True})
+    res = await mcp.call_tool("well_request_anchor", arguments={"dry_run": True, "session_id": "SEAL-test-session"})
     data = get_data(res)
     assert data["ok"] is True
     assert data["dry_run"] is True
@@ -741,7 +746,7 @@ async def _test_universal_classify_substrate():
 
     res = await mcp.call_tool(
         "well_classify_substrate",
-        arguments={"subject": "rock", "description": "granite boulder"},
+        arguments={"subject": "rock", "description": "granite boulder", "session_id": "SEAL-test-session"},
     )
     data = get_data(res)
     assert data["observation"]["substrate_class"] == "MATERIAL_OBJECT"
@@ -749,24 +754,24 @@ async def _test_universal_classify_substrate():
     assert 0.0 <= data["uncertainty"] <= 1.0
     assert len(data["constraints"]) >= 3
 
-    res = await mcp.call_tool("well_classify_substrate", arguments={"subject": "virus"})
+    res = await mcp.call_tool("well_classify_substrate", arguments={"subject": "virus", "session_id": "SEAL-test-session"})
     data = get_data(res)
     assert data["observation"]["substrate_class"] == "LIMINAL_BIOLOGICAL"
 
     res = await mcp.call_tool(
-        "well_classify_substrate", arguments={"subject": "AI assistant"}
+        "well_classify_substrate", arguments={"subject": "AI assistant", "session_id": "SEAL-test-session"}
     )
     data = get_data(res)
     assert data["observation"]["substrate_class"] == "MACHINE_SYSTEM"
 
-    res = await mcp.call_tool("well_classify_substrate", arguments={"subject": "soul"})
+    res = await mcp.call_tool("well_classify_substrate", arguments={"subject": "soul", "session_id": "SEAL-test-session"})
     data = get_data(res)
     assert data["observation"]["substrate_class"] == "SYMBOLIC_METAPHYSICAL"
     assert data["observation"]["human_judge_required"] is True
 
     res = await mcp.call_tool(
         "well_classify_substrate",
-        arguments={"subject": "VP", "description": "vice president person"},
+        arguments={"subject": "VP", "description": "vice president person", "session_id": "SEAL-test-session"},
     )
     data = get_data(res)
     assert data["observation"]["substrate_class"] == "HUMAN_PERSON"
@@ -786,7 +791,7 @@ async def _test_classify_human_relational_dynamic():
 
     # Case 1: Cultural archetype "abang sado shadow" alone (the bug case)
     res = await mcp.call_tool(
-        "well_classify_substrate", arguments={"subject": "abang sado shadow"}
+        "well_classify_substrate", arguments={"subject": "abang sado shadow", "session_id": "SEAL-test-session"}
     )
     data = get_data(res)
     assert data["observation"]["substrate_class"] == "HUMAN_RELATIONAL_DYNAMIC", (
@@ -806,7 +811,7 @@ async def _test_classify_human_relational_dynamic():
     # Case 2: "muscle worship dynamic" — explicit body + worship keywords
     res = await mcp.call_tool(
         "well_classify_substrate",
-        arguments={"subject": "muscle worship dynamic"},
+        arguments={"subject": "muscle worship dynamic", "session_id": "SEAL-test-session"},
     )
     data = get_data(res)
     assert data["observation"]["substrate_class"] == "HUMAN_RELATIONAL_DYNAMIC"
@@ -826,6 +831,7 @@ async def _test_classify_human_relational_dynamic():
                 "touch, dominance, validation, and possible erotic "
                 "ambiguity interact."
             ),
+        "session_id": "SEAL-test-session",
         },
     )
     data = get_data(res)
@@ -838,6 +844,7 @@ async def _test_classify_human_relational_dynamic():
         arguments={
             "subject": "sadomasochistic dyad",
             "description": "A consensual power exchange between two adults.",
+        "session_id": "SEAL-test-session",
         },
     )
     data = get_data(res)
@@ -854,7 +861,7 @@ async def _test_classify_human_relational_dynamic():
     # Case 5: MACHINE firewall — AI+human cannot be HUMAN_RELATIONAL_DYNAMIC
     res = await mcp.call_tool(
         "well_classify_substrate",
-        arguments={"subject": "AI assistant worshipping a human"},
+        arguments={"subject": "AI assistant worshipping a human", "session_id": "SEAL-test-session"},
     )
     data = get_data(res)
     assert data["observation"]["substrate_class"] != "HUMAN_RELATIONAL_DYNAMIC", (
@@ -864,7 +871,7 @@ async def _test_classify_human_relational_dynamic():
 
     # Case 6: Authority scope stays reflect_only (F7 HUMILITY)
     res = await mcp.call_tool(
-        "well_classify_substrate", arguments={"subject": "abang sado shadow"}
+        "well_classify_substrate", arguments={"subject": "abang sado shadow", "session_id": "SEAL-test-session"}
     )
     data = get_data(res)
     assert data["observation"]["canonical_object"]["authority_scope"] == "reflect_only"
@@ -882,6 +889,7 @@ async def _test_universal_boundary_check():
             "subject": "rock",
             "substrate_class": "MATERIAL_OBJECT",
             "evaluation_intent": "alive_check",
+        "session_id": "SEAL-test-session",
         },
     )
     data = get_data(res)
@@ -894,6 +902,7 @@ async def _test_universal_boundary_check():
             "subject": "soul",
             "substrate_class": "SYMBOLIC_METAPHYSICAL",
             "evaluation_intent": "quantify",
+        "session_id": "SEAL-test-session",
         },
     )
     data = get_data(res)
@@ -906,6 +915,7 @@ async def _test_universal_boundary_check():
             "subject": "Arif",
             "substrate_class": "HUMAN_PERSON",
             "evaluation_intent": "vitality",
+        "session_id": "SEAL-test-session",
         },
     )
     data = get_data(res)
@@ -920,14 +930,14 @@ async def _test_universal_evidence_quality():
 
     res = await mcp.call_tool(
         "well_evidence_quality_check",
-        arguments={"evidence_source": "direct_observation", "corroboration_count": 2},
+        arguments={"evidence_source": "direct_observation", "corroboration_count": 2, "session_id": "SEAL-test-session"},
     )
     data = get_data(res)
     assert data["evidence_quality"] == "STRONG"
 
     res = await mcp.call_tool(
         "well_evidence_quality_check",
-        arguments={"evidence_source": "hearsay", "evidence_age_hours": 200},
+        arguments={"evidence_source": "hearsay", "evidence_age_hours": 200, "session_id": "SEAL-test-session"},
     )
     data = get_data(res)
     assert data["evidence_quality"] == "INSUFFICIENT"
@@ -945,6 +955,7 @@ async def _test_universal_verdict_packet():
             "substrate_class": "MATERIAL_OBJECT",
             "alive_biologically": False,
             "operational_vitality": "structural_intact",
+        "session_id": "SEAL-test-session",
         },
     )
     data = get_data(res)
@@ -960,7 +971,7 @@ async def _test_universal_livelihood_energy():
     print("\n🧪 Testing U-WELL livelihood_energy_check...")
 
     _write_canonical_state()
-    res = await mcp.call_tool("well_livelihood_energy_check")
+    res = await mcp.call_tool("well_livelihood_energy_check", arguments={"session_id": "SEAL-test-session"})
     data = get_data(res)
     assert data["ok"] is True
     assert "status" in data
@@ -968,7 +979,7 @@ async def _test_universal_livelihood_energy():
 
     # Explicit parameters override state
     res = await mcp.call_tool(
-        "well_livelihood_energy_check", arguments={"energy_level": 2, "duty_load": 9}
+        "well_livelihood_energy_check", arguments={"energy_level": 2, "duty_load": 9, "session_id": "SEAL-test-session"}
     )
     data = get_data(res)
     assert data["status"] == "CRITICAL_DEFICIT"
@@ -981,7 +992,7 @@ async def _test_universal_livelihood_time():
     print("\n🧪 Testing U-WELL livelihood_time_check...")
 
     _write_canonical_state()
-    res = await mcp.call_tool("well_livelihood_time_check")
+    res = await mcp.call_tool("well_livelihood_time_check", arguments={"session_id": "SEAL-test-session"})
     data = get_data(res)
     assert data["ok"] is True
     assert "time_sovereignty_score" in data
@@ -991,6 +1002,7 @@ async def _test_universal_livelihood_time():
         arguments={
             "time_sovereignty_score": 2,
             "competing_demands": ["work", "family", "coding"],
+        "session_id": "SEAL-test-session",
         },
     )
     data = get_data(res)
@@ -1004,7 +1016,7 @@ async def _test_universal_livelihood_role():
     print("\n🧪 Testing U-WELL livelihood_role_check...")
 
     res = await mcp.call_tool(
-        "well_livelihood_role_check", arguments={"role_clarity": 8, "role_burden": 3}
+        "well_livelihood_role_check", arguments={"role_clarity": 8, "role_burden": 3, "session_id": "SEAL-test-session"}
     )
     data = get_data(res)
     assert data["status"] == "HEALTHY"
@@ -1015,6 +1027,7 @@ async def _test_universal_livelihood_role():
             "role_clarity": 2,
             "role_burden": 9,
             "role_contradictions": ["conflict_of_interest"],
+        "session_id": "SEAL-test-session",
         },
     )
     data = get_data(res)
@@ -1028,14 +1041,14 @@ async def _test_universal_livelihood_meaning():
 
     res = await mcp.call_tool(
         "well_livelihood_meaning_check",
-        arguments={"purpose_alignment": 8, "niat_clarity": 9},
+        arguments={"purpose_alignment": 8, "niat_clarity": 9, "session_id": "SEAL-test-session"},
     )
     data = get_data(res)
     assert data["status"] == "ALIGNED"
 
     res = await mcp.call_tool(
         "well_livelihood_meaning_check",
-        arguments={"purpose_alignment": 2, "niat_clarity": 3},
+        arguments={"purpose_alignment": 2, "niat_clarity": 3, "session_id": "SEAL-test-session"},
     )
     data = get_data(res)
     assert data["status"] == "MISALIGNED"
@@ -1048,7 +1061,7 @@ async def _test_universal_livelihood_dignity():
 
     res = await mcp.call_tool(
         "well_livelihood_dignity_check",
-        arguments={"dignity_preservation": 8, "coercion_signals": []},
+        arguments={"dignity_preservation": 8, "coercion_signals": [], "session_id": "SEAL-test-session"},
     )
     data = get_data(res)
     assert data["status"] == "PRESERVED"
@@ -1058,6 +1071,7 @@ async def _test_universal_livelihood_dignity():
         arguments={
             "dignity_preservation": 2,
             "coercion_signals": ["forced_overtime", "verbal_abuse"],
+        "session_id": "SEAL-test-session",
         },
     )
     data = get_data(res)
@@ -1080,6 +1094,7 @@ async def _test_universal_bio_viability():
             "has_response": True,
             "has_reproduction": True,
             "host_dependency": "independent",
+        "session_id": "SEAL-test-session",
         },
     )
     data = get_data(res)
@@ -1092,6 +1107,7 @@ async def _test_universal_bio_viability():
             "has_metabolism": False,
             "has_reproduction": True,
             "host_dependency": "host_dependent",
+        "session_id": "SEAL-test-session",
         },
     )
     data = get_data(res)
@@ -1106,6 +1122,7 @@ async def _test_universal_bio_viability():
             "has_growth_repair": False,
             "has_response": False,
             "has_reproduction": False,
+        "session_id": "SEAL-test-session",
         },
     )
     data = get_data(res)
@@ -1123,6 +1140,7 @@ async def _test_universal_material_integrity():
             "material_type": "concrete beam",
             "structural_condition": "good",
             "age_years": 5,
+        "session_id": "SEAL-test-session",
         },
     )
     data = get_data(res)
@@ -1135,6 +1153,7 @@ async def _test_universal_material_integrity():
             "material_type": "rusted pipe",
             "structural_condition": "critical",
             "hazard_flags": ["toxic_leak"],
+        "session_id": "SEAL-test-session",
         },
     )
     data = get_data(res)
@@ -1154,6 +1173,7 @@ async def _test_universal_institution_entropy():
             "cashflow_status": "positive",
             "role_integrity": 7,
             "trust_trend": "stable",
+        "session_id": "SEAL-test-session",
         },
     )
     data = get_data(res)
@@ -1166,6 +1186,7 @@ async def _test_universal_institution_entropy():
             "cashflow_status": "critical",
             "role_integrity": 3,
             "trust_trend": "falling",
+        "session_id": "SEAL-test-session",
         },
     )
     data = get_data(res)
@@ -1185,6 +1206,7 @@ async def _test_universal_info_coherence():
             "version_integrity": True,
             "executable_status": "passing",
             "maintainability_score": 7,
+        "session_id": "SEAL-test-session",
         },
     )
     data = get_data(res)
@@ -1196,6 +1218,7 @@ async def _test_universal_info_coherence():
             "internal_consistency": 2,
             "version_integrity": False,
             "executable_status": "broken",
+        "session_id": "SEAL-test-session",
         },
     )
     data = get_data(res)
@@ -1208,7 +1231,7 @@ async def _test_universal_symbolic_domain():
     print("\n🧪 Testing U-WELL symbolic_domain_check...")
 
     res = await mcp.call_tool(
-        "well_symbolic_domain_check", arguments={"subject": "soul"}
+        "well_symbolic_domain_check", arguments={"subject": "soul", "session_id": "SEAL-test-session"}
     )
     data = get_data(res)
     assert data["is_symbolic_domain"] is True
@@ -1216,7 +1239,7 @@ async def _test_universal_symbolic_domain():
     assert "quantify" in data["invalid_well_action"]
 
     res = await mcp.call_tool(
-        "well_symbolic_domain_check", arguments={"subject": "rock"}
+        "well_symbolic_domain_check", arguments={"subject": "rock", "session_id": "SEAL-test-session"}
     )
     data = get_data(res)
     assert data["is_symbolic_domain"] is False
@@ -1224,7 +1247,7 @@ async def _test_universal_symbolic_domain():
 
     res = await mcp.call_tool(
         "well_symbolic_domain_check",
-        arguments={"subject": "dignity", "reductionism_risk": 9},
+        arguments={"subject": "dignity", "reductionism_risk": 9, "session_id": "SEAL-test-session"},
     )
     data = get_data(res)
     assert data["reductionism_status"] == "HIGH_RISK"
@@ -1259,7 +1282,7 @@ async def _test_omega_well_core():
 
     # Ω-00 init
     print("--- well_classify_substrate (init) ---")
-    res = await mcp.call_tool("well_classify_substrate", arguments={"mode": "assert"})
+    res = await mcp.call_tool("well_classify_substrate", arguments={"mode": "assert", "session_id": "SEAL-test-session"})
     data = get_data(res)
     assert "observation" in data
     assert 0.0 <= data["uncertainty"] <= 1.0
@@ -1268,7 +1291,7 @@ async def _test_omega_well_core():
     # Ω-01 sense
     print("--- well_classify_substrate (sense) ---")
     res = await mcp.call_tool(
-        "well_classify_substrate", arguments={"mode": "classify", "subject": "virus"}
+        "well_classify_substrate", arguments={"mode": "classify", "subject": "virus", "session_id": "SEAL-test-session"}
     )
     data = get_data(res)
     assert data["observation"]["substrate_class"] == "LIMINAL_BIOLOGICAL"
@@ -1279,6 +1302,7 @@ async def _test_omega_well_core():
             "mode": "boundary",
             "subject": "soul",
             "evaluation_intent": "quantify",
+        "session_id": "SEAL-test-session",
         },
     )
     data = get_data(res)
@@ -1292,6 +1316,7 @@ async def _test_omega_well_core():
             "mode": "evidence",
             "evidence_source": "direct_observation",
             "corroboration_count": 2,
+        "session_id": "SEAL-test-session",
         },
     )
     data = get_data(res)
@@ -1299,13 +1324,13 @@ async def _test_omega_well_core():
 
     # Ω-03 mind
     print("--- well_assess_metabolism ---")
-    res = await mcp.call_tool("well_assess_metabolism", arguments={"mode": "human"})
+    res = await mcp.call_tool("well_assess_metabolism", arguments={"mode": "human", "session_id": "SEAL-test-session"})
     data = get_data(res)
     assert "energy" in data["observation"]
     assert "dignity" in data["observation"]
 
     res = await mcp.call_tool(
-        "well_assess_metabolism", arguments={"mode": "symbolic", "subject": "soul"}
+        "well_assess_metabolism", arguments={"mode": "symbolic", "subject": "soul", "session_id": "SEAL-test-session"}
     )
     data = get_data(res)
     assert "observation" in data
@@ -1316,6 +1341,7 @@ async def _test_omega_well_core():
             "mode": "material",
             "material_type": "beam",
             "structural_condition": "critical",
+        "session_id": "SEAL-test-session",
         },
     )
     data = get_data(res)
@@ -1326,19 +1352,19 @@ async def _test_omega_well_core():
 
     # Ω-05 memory
     print("--- well_trace_lineage ---")
-    res = await mcp.call_tool("well_trace_lineage", arguments={"mode": "context"})
+    res = await mcp.call_tool("well_trace_lineage", arguments={"mode": "context", "session_id": "SEAL-test-session"})
     data = get_data(res)
     assert "state" in data["observation"]
 
     # Ω-06 heart
     print("--- well_assess_homeostasis ---")
     res = await mcp.call_tool(
-        "well_assess_homeostasis", arguments={"mode": "empathize"}
+        "well_assess_homeostasis", arguments={"mode": "empathize", "session_id": "SEAL-test-session"}
     )
     data = get_data(res)
     assert "human_impact_load" in data["observation"]
 
-    res = await mcp.call_tool("well_assess_homeostasis", arguments={"mode": "redteam"})
+    res = await mcp.call_tool("well_assess_homeostasis", arguments={"mode": "redteam", "session_id": "SEAL-test-session"})
     data = get_data(res)
     assert "attack_surface" in data["observation"]
 
@@ -1347,23 +1373,23 @@ async def _test_omega_well_core():
 
     # Ω-07 forge
     print("--- well_check_repair ---")
-    res = await mcp.call_tool("well_check_repair", arguments={"mode": "mode"})
+    res = await mcp.call_tool("well_check_repair", arguments={"mode": "mode", "session_id": "SEAL-test-session"})
     data = get_data(res)
     assert "observation" in data
 
-    res = await mcp.call_tool("well_check_repair", arguments={"mode": "bandwidth"})
+    res = await mcp.call_tool("well_check_repair", arguments={"mode": "bandwidth", "session_id": "SEAL-test-session"})
     data = get_data(res)
     assert "observation" in data
 
     # Ω-08 judge
     print("--- well_validate_vitality ---")
-    res = await mcp.call_tool("well_validate_vitality", arguments={"mode": "readiness"})
+    res = await mcp.call_tool("well_validate_vitality", arguments={"mode": "readiness", "session_id": "SEAL-test-session"})
     data = get_data(res)
     assert "observation" in data
 
     res = await mcp.call_tool(
         "well_validate_vitality",
-        arguments={"mode": "niat", "intent": "test", "reversibility": "reversible"},
+        arguments={"mode": "niat", "intent": "test", "reversibility": "reversible", "session_id": "SEAL-test-session"},
     )
     data = get_data(res)
     assert "observation" in data
@@ -1373,28 +1399,28 @@ async def _test_omega_well_core():
 
     # Ω-11 gateway
     print("--- well_detect_boundary ---")
-    res = await mcp.call_tool("well_detect_boundary", arguments={"mode": "status"})
+    res = await mcp.call_tool("well_detect_boundary", arguments={"mode": "status", "session_id": "SEAL-test-session"})
     data = get_data(res)
     assert "observation" in data
 
-    res = await mcp.call_tool("well_detect_boundary", arguments={"mode": "manifest"})
+    res = await mcp.call_tool("well_detect_boundary", arguments={"mode": "manifest", "session_id": "SEAL-test-session"})
     data = get_data(res)
     assert "federation" in data["observation"]
 
     # Ω-12 ops
     print("--- well_assess_reliability ---")
-    res = await mcp.call_tool("well_assess_reliability", arguments={"mode": "health"})
+    res = await mcp.call_tool("well_assess_reliability", arguments={"mode": "health", "session_id": "SEAL-test-session"})
     data = get_data(res)
     assert "observation" in data
 
-    res = await mcp.call_tool("well_assess_reliability", arguments={"mode": "vitals"})
+    res = await mcp.call_tool("well_assess_reliability", arguments={"mode": "vitals", "session_id": "SEAL-test-session"})
     data = get_data(res)
     assert "human_health" in data["observation"]
     assert "machine_health" in data["observation"]
 
     # Ω-13 unified packet — live reflection via well_get_packet
     print("--- well_get_packet (unified) ---")
-    res = await mcp.call_tool("well_get_packet", arguments={"target": "unified"})
+    res = await mcp.call_tool("well_get_packet", arguments={"target": "unified", "session_id": "SEAL-test-session"})
     data = get_data(res)
     assert data["ok"] is True
     assert "human" in data
@@ -1464,7 +1490,7 @@ def test_well_registry_declared_surface_matches_callable():
     import asyncio
 
     async def _check_registry():
-        await mcp.call_tool("well_health_check")  # verify server is loaded
+        await mcp.call_tool("well_health_check")  # verify server, arguments={"session_id": "SEAL-test-session"} is loaded
         all_tools = await mcp.list_tools()
         callable_names = {t.name for t in all_tools}
 
@@ -1600,7 +1626,7 @@ def test_well_output_federation_format():
         failures = []
         for name, args in output_tools:
             try:
-                res = await mcp.call_tool(name, arguments=args)
+                res = await mcp.call_tool(name, arguments={**args, "session_id": "SEAL-test-session"})
                 data = json.loads(res.content[0].text)
                 if not REQUIRED_FIELDS.issubset(data.keys()):
                     missing = REQUIRED_FIELDS - data.keys()
@@ -1648,7 +1674,7 @@ def test_well_no_telemetry_invariant():
     )
 
     res = asyncio.run(
-        mcp.call_tool("well_validate_vitality", arguments={"mode": "readiness"})
+        mcp.call_tool("well_validate_vitality", arguments={"mode": "readiness", "session_id": "SEAL-test-session"})
     )
     data = get_data(res)
 
@@ -1684,7 +1710,7 @@ def test_well_no_telemetry_invariant():
     )
 
     res = asyncio.run(
-        mcp.call_tool("well_validate_vitality", arguments={"mode": "readiness"})
+        mcp.call_tool("well_validate_vitality", arguments={"mode": "readiness", "session_id": "SEAL-test-session"})
     )
     data = get_data(res)
     readiness_inner = data.get("observation", {}).get("readiness", {})
@@ -1721,7 +1747,7 @@ def test_well_no_telemetry_invariant():
     )
 
     res = asyncio.run(
-        mcp.call_tool("well_validate_vitality", arguments={"mode": "readiness"})
+        mcp.call_tool("well_validate_vitality", arguments={"mode": "readiness", "session_id": "SEAL-test-session"})
     )
     data = get_data(res)
     readiness_inner = data.get("observation", {}).get("readiness", {})
@@ -1746,7 +1772,7 @@ def test_well_registry_status_tool():
 
     _write_canonical_state()
 
-    res = asyncio.run(mcp.call_tool("well_registry_status", arguments={"mode": "full"}))
+    res = asyncio.run(mcp.call_tool("well_registry_status", arguments={"mode": "full", "session_id": "SEAL-test-session"}))
     data = get_data(res)
 
     # Must have blueprint-specified fields
