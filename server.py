@@ -16492,20 +16492,63 @@ def well_assess_readiness(
                 f"Rejected delegation. Continued after stating should stop. "
                 f"Reply latency {case.get('current_reply_latency_seconds', '?')}s vs baseline {case.get('normal_reply_latency_seconds', '?')}s."
             )
-        _dark_geom = _call_tool(
-            "well_dark_geometry_mirror",
-            well_dark_geometry_mirror,
-            text_or_events=_case_text,
-            ctx=ctx,
-        )
-        # dark_geometry_mirror is async — if it returns a coroutine, we can't use it synchronously
-        if hasattr(_dark_geom, "__await__"):
-            _dark_geom = {"error": "async_tool_requires_await", "signal": "UNAVAILABLE"}
-            _tool_receipts[-1] = {
-                "tool": "well_dark_geometry_mirror",
-                "status": "async_skip",
-                "note": "requires async caller",
-            }
+        # dark_geometry_mirror is async — use asyncio.run() to call from sync context
+        try:
+            import asyncio as _asyncio
+
+            _dark_geom = _asyncio.run(
+                well_dark_geometry_mirror(text_or_events=_case_text, ctx=ctx)
+            )
+            _tool_receipts.append(
+                {
+                    "tool": "well_dark_geometry_mirror",
+                    "status": "ok",
+                    "signal": _dark_geom.get("signal", ""),
+                }
+            )
+        except RuntimeError:
+            # Already in an event loop (e.g. uvicorn) — fall back to sync attempt
+            try:
+                _dark_geom = well_dark_geometry_mirror(
+                    text_or_events=_case_text, ctx=ctx
+                )
+                if hasattr(_dark_geom, "__await__"):
+                    _dark_geom = {
+                        "error": "async_in_event_loop",
+                        "signal": "UNAVAILABLE",
+                    }
+                    _tool_receipts.append(
+                        {
+                            "tool": "well_dark_geometry_mirror",
+                            "status": "async_skip",
+                            "note": "in event loop, cannot asyncio.run()",
+                        }
+                    )
+                else:
+                    _tool_receipts.append(
+                        {
+                            "tool": "well_dark_geometry_mirror",
+                            "status": "ok",
+                        }
+                    )
+            except Exception as _dg_err:
+                _dark_geom = {"error": str(_dg_err), "signal": "UNAVAILABLE"}
+                _tool_receipts.append(
+                    {
+                        "tool": "well_dark_geometry_mirror",
+                        "status": "error",
+                        "error": str(_dg_err)[:200],
+                    }
+                )
+        except Exception as _dg_err:
+            _dark_geom = {"error": str(_dg_err), "signal": "UNAVAILABLE"}
+            _tool_receipts.append(
+                {
+                    "tool": "well_dark_geometry_mirror",
+                    "status": "error",
+                    "error": str(_dg_err)[:200],
+                }
+            )
 
         # Boundary detection
         _boundary = _call_tool(
@@ -16706,6 +16749,51 @@ def well_assess_readiness(
                 aim["state"] = "NORMAL"
         else:
             aim["state"] = "INSUFFICIENT_DATA"
+
+        # ── 6a. Actionable tests from correction capacity (2026-07-18) ────────
+        # When correction capacity is low, generate specific falsifiable tests.
+        # This is the difference between "score 0.4" and "test after rest."
+        _cc_dims = _correction.get("dimensions", {})
+        _cc_score_val = _correction.get("capacity_score")
+        _actionable_tests = []
+        if _cc_score_val is not None and _cc_score_val < 0.6:
+            if _cc_dims.get("can_revise", 1.0) < 0.3:
+                _actionable_tests.append(
+                    {
+                        "test": "contradictory_evidence_after_rest",
+                        "description": "Present contradictory evidence after rest interval. Measure whether operator revises position.",
+                        "method": "Show the same contradicting indicators (pressure data, velocity uncertainty) anonymously after 4h sleep. If position changes → fatigue was the cause. If position holds → investigate fixation or legitimate conviction.",
+                        "success_criterion": "Operator revises confidence or position on at least one contradicting indicator",
+                        "failure_criterion": "Operator maintains identical position despite rest and re-presentation",
+                        "timeframe": "After minimum 4h uninterrupted sleep",
+                        "epistemic": "DER",
+                    }
+                )
+            if _cc_dims.get("can_add_context", 1.0) < 0.3:
+                _actionable_tests.append(
+                    {
+                        "test": "context_enrichment_after_recovery",
+                        "description": "Ask operator to articulate what specific evidence would resolve the contradicting indicators.",
+                        "method": "After rest, ask: 'What specific evidence would resolve the pressure-data inconsistency?' Assess novelty and specificity of response.",
+                        "success_criterion": "Operator produces new evidence or acknowledges uncertainty",
+                        "failure_criterion": "Operator repeats prior interpretation without new evidence",
+                        "timeframe": "After rest + food",
+                        "epistemic": "INT",
+                    }
+                )
+            if _cc_dims.get("can_tolerate_ambiguity", 1.0) < 0.3:
+                _actionable_tests.append(
+                    {
+                        "test": "ambiguity_tolerance_check",
+                        "description": "Present decision as genuinely uncertain with equal-weight options. Measure whether operator can hold the uncertainty.",
+                        "method": "Frame the choice as 'both options have merit, neither is clearly superior.' Observe whether operator forces premature closure.",
+                        "success_criterion": "Operator can articulate both paths without forcing one",
+                        "failure_criterion": "Operator immediately selects one path and dismisses the other",
+                        "timeframe": "After rest",
+                        "epistemic": "INT",
+                    }
+                )
+        aim["actionable_tests"] = _actionable_tests
 
     else:
         # mode == "vitals" — no depth fields
