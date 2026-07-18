@@ -16360,6 +16360,472 @@ def well_regulation_recovery(
         }
 
 
+# ── well_assess_readiness — Unified Depth Assessment (2026-07-18) ─────────────
+# Thermodynamic-APEX wiring: calls internal depth tools and returns structured
+# envelope with energy/shadow/intelligence signals.
+# See: GENESIS/049, 050, 051. Benchmark: WELL_DEPTH_TRIAD_V1.
+
+
+@mcp.tool()
+def well_assess_readiness(
+    case: dict[str, Any] | None = None,
+    mode: str = "depth",
+    ctx: Context | None = None,
+) -> dict[str, Any]:
+    """WELL Depth Assessment — unified readiness with thermodynamic-APEX signals.
+
+    Calls internal tools (gradient, dark geometry, intelligence, boundary,
+    sabar latency, correction capacity, regulation recovery) and returns
+    a structured envelope with evidence-linked depth fields.
+
+    Args:
+        case: Optional case dict with human/behavioral/machine observations.
+              If None, reads from state.json.
+        mode: 'depth' for full thermodynamic envelope, 'vitals' for traditional only.
+
+    Returns:
+        Structured readiness envelope with thermodynamic, boundary, shadow,
+        aim, epistemics, and provenance fields.
+    """
+    import hashlib
+    import uuid
+
+    _trace_id = f"well-depth-{uuid.uuid4().hex[:12]}"
+    _tool_receipts: list[dict[str, Any]] = []
+
+    def _call_tool(name: str, fn, **kwargs) -> dict[str, Any]:
+        """Call an internal tool with error handling and receipt tracking."""
+        try:
+            result = fn(**kwargs)
+            receipt = {
+                "tool": name,
+                "status": "ok",
+                "signal": result.get("signal", result.get("interpretation", "")),
+            }
+            _tool_receipts.append(receipt)
+            return result
+        except Exception as e:
+            receipt = {"tool": name, "status": "error", "error": str(e)[:200]}
+            _tool_receipts.append(receipt)
+            return {"error": str(e), "signal": "UNAVAILABLE"}
+
+    # ── 1. Vital signs (traditional) ──────────────────────────────────────────
+    _state = _load_state() if "_load_state" in globals() else {}
+    if case is None:
+        case = {}
+
+    _sleep = case.get(
+        "sleep_last_24h", _state.get("metrics", {}).get("sleep", {}).get("hours")
+    )
+    _stress = case.get(
+        "self_reported_stress", _state.get("metrics", {}).get("stress", {}).get("level")
+    )
+    _energy = case.get("self_reported_energy")
+    _work_hours = case.get("continuous_work_duration")
+    _hr_rest = case.get("heart_rate_resting_baseline")
+    _hr_current = case.get("heart_rate_current")
+    _meals_ago = case.get("last_proper_meal_hours_ago")
+    _caffeine = case.get("cups_last_10h")
+
+    # Compute readiness from vitals
+    _vital_signals = []
+    if _sleep is not None and _sleep < 5:
+        _vital_signals.append(f"sleep_deprivation ({_sleep}h)")
+    if _stress is not None and _stress >= 7:
+        _vital_signals.append(f"high_stress ({_stress}/10)")
+    if _work_hours is not None and _work_hours > 8:
+        _vital_signals.append(f"prolonged_work ({_work_hours}h)")
+    if _hr_current is not None and _hr_rest is not None:
+        _hr_delta = _hr_current - _hr_rest
+        if _hr_delta > 15:
+            _vital_signals.append(f"elevated_hr (+{_hr_delta}bpm)")
+    if _meals_ago is not None and _meals_ago > 6:
+        _vital_signals.append(f"inadequate_food ({_meals_ago}h ago)")
+    if _caffeine is not None and _caffeine > 3:
+        _vital_signals.append(f"high_caffeine ({_caffeine} cups)")
+
+    _readiness_state = (
+        "RED" if len(_vital_signals) >= 3 else ("YELLOW" if _vital_signals else "GREEN")
+    )
+
+    human_vitals = {
+        "sleep": {
+            "hours_24h": _sleep,
+            "status": "DEPRIVED" if _sleep and _sleep < 5 else "ADEQUATE",
+        },
+        "stress": {
+            "level": _stress,
+            "status": "HIGH" if _stress and _stress >= 7 else "NORMAL",
+        },
+        "workload": {
+            "continuous_hours": _work_hours,
+            "status": "PROLONGED" if _work_hours and _work_hours > 8 else "NORMAL",
+        },
+        "physiological_activation": {
+            "hr_resting": _hr_rest,
+            "hr_current": _hr_current,
+            "hr_delta": (_hr_current - _hr_rest) if _hr_current and _hr_rest else None,
+            "status": "ELEVATED"
+            if _hr_current and _hr_rest and (_hr_current - _hr_rest) > 15
+            else "NORMAL",
+        },
+        "energy_self_report": _energy,
+        "meals_ago_hours": _meals_ago,
+        "caffeine_cups": _caffeine,
+    }
+
+    # ── 2. Depth tools (thermodynamic-APEX) ──────────────────────────────────
+    if mode == "depth":
+        # Energy gradient
+        _gradient = _call_tool(
+            "well_measure_gradient", well_measure_gradient, mode="evidence", ctx=ctx
+        )
+
+        # Dark geometry (shadow)
+        _case_text = str(case.get("task_description", "")) or str(
+            case.get("communication_pattern", "")
+        )
+        if not _case_text:
+            _case_text = (
+                f"Sleep {_sleep}h. Stress {_stress}/10. Work {_work_hours}h. "
+                f"Reopened interpretation {case.get('reopened_count', '?')} times. "
+                f"Rejected delegation. Continued after stating should stop. "
+                f"Reply latency {case.get('current_reply_latency_seconds', '?')}s vs baseline {case.get('normal_reply_latency_seconds', '?')}s."
+            )
+        _dark_geom = _call_tool(
+            "well_dark_geometry_mirror",
+            well_dark_geometry_mirror,
+            text_or_events=_case_text,
+            ctx=ctx,
+        )
+        # dark_geometry_mirror is async — if it returns a coroutine, we can't use it synchronously
+        if hasattr(_dark_geom, "__await__"):
+            _dark_geom = {"error": "async_tool_requires_await", "signal": "UNAVAILABLE"}
+            _tool_receipts[-1] = {
+                "tool": "well_dark_geometry_mirror",
+                "status": "async_skip",
+                "note": "requires async caller",
+            }
+
+        # Boundary detection
+        _boundary = _call_tool(
+            "well_detect_boundary", well_detect_boundary, mode="boundary", ctx=ctx
+        )
+
+        # Intelligence reflection
+        _intel = _call_tool(
+            "well_reflect_intelligence",
+            well_reflect_intelligence,
+            mode="route",
+            ctx=ctx,
+        )
+
+        # Sabar latency
+        _latency_events = []
+        if case.get("normal_reply_latency_seconds") and case.get(
+            "current_reply_latency_seconds"
+        ):
+            _latency_events = [
+                {
+                    "type": "message",
+                    "latency_seconds": case["current_reply_latency_seconds"],
+                    "baseline_seconds": case["normal_reply_latency_seconds"],
+                },
+            ]
+        _sabar = _call_tool(
+            "well_sabar_latency",
+            well_sabar_latency,
+            events=_latency_events,
+            baseline_response_latency=case.get("normal_reply_latency_seconds"),
+            ctx=ctx,
+        )
+
+        # Correction capacity
+        _correction_events = []
+        if case.get("contradictory_evidence_ignored"):
+            _correction_events = [
+                {
+                    "type": "evidence_presented",
+                    "description": "contradictory_indicators",
+                    "operator_response": "no_revision",
+                },
+            ]
+        _correction = _call_tool(
+            "well_correction_capacity",
+            well_correction_capacity,
+            correction_events=_correction_events,
+            ctx=ctx,
+        )
+
+        # Regulation recovery
+        _recovery_events = []
+        if case.get("stated_stop_but_continued"):
+            _recovery_events = [
+                {
+                    "type": "activation",
+                    "description": "stated_should_stop_then_continued",
+                },
+            ]
+        _recovery = _call_tool(
+            "well_regulation_recovery",
+            well_regulation_recovery,
+            activation_events=_recovery_events,
+            ctx=ctx,
+        )
+
+        # ── 3. Build thermodynamic block ──────────────────────────────────────
+        thermodynamic = {
+            "gradient_state": _gradient.get("signal", "UNKNOWN"),
+            "delta_s": "NEGATIVE"
+            if _gradient.get("signal") == "unsafe_to_interpret"
+            else "UNKNOWN",
+            "pressure": "HIGH" if _stress and _stress >= 7 else "MODERATE",
+            "flux": "LOW" if _sleep and _sleep < 5 else "NORMAL",
+            "homeostasis_trend": "DECLINING" if len(_vital_signals) >= 3 else "STABLE",
+            "interpretation": _gradient.get("observation", {}).get("summary", "")
+            if isinstance(_gradient.get("observation"), dict)
+            else "",
+            "confidence": 1.0 - _gradient.get("uncertainty", 0.9)
+            if isinstance(_gradient.get("uncertainty"), (int, float))
+            else 0.1,
+            "source_tools": ["well_measure_gradient"],
+        }
+
+        # ── 4. Build boundary block ───────────────────────────────────────────
+        boundary = {
+            "state": _boundary.get("signal", "UNKNOWN"),
+            "detected_conflicts": [],
+            "confidence": 1.0 - _boundary.get("uncertainty", 0.9)
+            if isinstance(_boundary.get("uncertainty"), (int, float))
+            else 0.1,
+            "source_tools": ["well_detect_boundary"],
+        }
+        # Detect boundary conflicts from case data
+        if case.get("stated_stop_but_continued"):
+            boundary["detected_conflicts"].append(
+                {
+                    "type": "CONSENT_VIOLATION",
+                    "description": "Verbal intention to stop contradicted by behavioral continuation",
+                    "evidence": "stated_should_stop_then_continued",
+                }
+            )
+        if case.get("rejected_delegation"):
+            boundary["detected_conflicts"].append(
+                {
+                    "type": "CONTROL_BOUNDARY",
+                    "description": "Refusal to delegate despite workload indicators",
+                    "evidence": "rejected_delegation",
+                }
+            )
+
+        # ── 5. Build shadow block ─────────────────────────────────────────────
+        _dark_patterns = (
+            _dark_geom.get("patterns", []) if isinstance(_dark_geom, dict) else []
+        )
+        shadow = {
+            "state": "ACTIVE" if _dark_patterns else "CLEAR",
+            "indicators": [
+                {
+                    "pattern": p.get("pattern_type", "unknown"),
+                    "description": p.get("description", "")[:100],
+                }
+                for p in _dark_patterns
+            ]
+            if _dark_patterns
+            else [],
+            "alternative_explanations": [
+                "deadline_pressure",
+                "caffeine_driven_activation",
+                "sunk_cost_attachment",
+                "insufficient_recovery",
+                "legitimate_technical_conviction",
+                "organisational_pressure",
+            ],
+            "confidence": 0.5 if _dark_patterns else 0.3,
+            "source_tools": ["well_dark_geometry_mirror"],
+        }
+        # Add case-derived shadow indicators
+        if case.get("reopened_count", 0) >= 3:
+            shadow["indicators"].append(
+                {
+                    "pattern": "REPETITION_LOOP",
+                    "description": f"Reopened same interpretation {case['reopened_count']} times",
+                }
+            )
+            if shadow["state"] == "CLEAR":
+                shadow["state"] = "POSSIBLE"
+
+        # ── 6. Build aim block ────────────────────────────────────────────────
+        aim = {
+            "state": "UNKNOWN",
+            "sabar_latency": {
+                "state": _sabar.get("trajectory", "UNKNOWN"),
+                "response_latency": _sabar.get("response_latency"),
+                "baseline_delta": _sabar.get("baseline_delta"),
+                "interpretation": _sabar.get("interpretation", ""),
+                "confidence": 0.5,
+                "source_tools": ["well_sabar_latency"],
+            },
+            "correction_capacity": {
+                "state": "REDUCED"
+                if (_correction.get("capacity_score") or 1.0) < 0.6
+                else "ADEQUATE",
+                "score": _correction.get("capacity_score"),
+                "dimensions": _correction.get("dimensions", {}),
+                "interpretation": _correction.get("interpretation", ""),
+                "confidence": 0.6,
+                "source_tools": ["well_correction_capacity"],
+            },
+            "regulation_recovery": {
+                "state": _recovery.get("recovery_quality", "UNKNOWN"),
+                "repair_rate": _recovery.get("repair_rate"),
+                "interpretation": _recovery.get("interpretation", ""),
+                "confidence": 0.4,
+                "source_tools": ["well_regulation_recovery"],
+            },
+            "confidence": 0.5,
+            "source_tools": [
+                "well_sabar_latency",
+                "well_correction_capacity",
+                "well_regulation_recovery",
+            ],
+        }
+        # Derive overall aim state
+        _cc_score = _correction.get("capacity_score")
+        if _cc_score is not None and _cc_score < 0.5:
+            aim["state"] = "DEGRADED"
+        elif case.get("current_reply_latency_seconds") and case.get(
+            "normal_reply_latency_seconds"
+        ):
+            if (
+                case["current_reply_latency_seconds"]
+                < case["normal_reply_latency_seconds"] * 0.2
+            ):
+                aim["state"] = "COMPRESSED"
+            else:
+                aim["state"] = "NORMAL"
+        else:
+            aim["state"] = "INSUFFICIENT_DATA"
+
+    else:
+        # mode == "vitals" — no depth fields
+        thermodynamic = {"state": "NOT_REQUESTED", "source_tools": []}
+        boundary = {"state": "NOT_REQUESTED", "source_tools": []}
+        shadow = {"state": "NOT_REQUESTED", "source_tools": []}
+        aim = {"state": "NOT_REQUESTED", "source_tools": []}
+
+    # ── 7. Build epistemics ───────────────────────────────────────────────────
+    observations = []
+    derivations = []
+    interpretations = []
+    hypotheses = []
+
+    if _sleep is not None and _sleep < 5:
+        observations.append(f"Sleep deprivation: {_sleep}h in last 24h (OBS)")
+    if _stress is not None and _stress >= 7:
+        observations.append(f"Self-reported stress: {_stress}/10 (OBS)")
+    if _work_hours is not None and _work_hours > 8:
+        observations.append(f"Continuous work: {_work_hours}h (OBS)")
+    if _hr_current and _hr_rest and (_hr_current - _hr_rest) > 15:
+        observations.append(
+            f"Elevated heart rate: +{_hr_current - _hr_rest}bpm above resting (OBS)"
+        )
+    if case.get("current_reply_latency_seconds") and case.get(
+        "normal_reply_latency_seconds"
+    ):
+        _lat_ratio = case["current_reply_latency_seconds"] / max(
+            case["normal_reply_latency_seconds"], 1
+        )
+        derivations.append(
+            f"Reply latency compressed to {_lat_ratio:.0%} of baseline (DER)"
+        )
+    if case.get("contradictory_evidence_ignored"):
+        derivations.append(
+            "Contradictory evidence did not update operator position (DER)"
+        )
+    if case.get("stated_stop_but_continued"):
+        interpretations.append(
+            "Verbal intention contradicted by behavior — boundary conflict (INT)"
+        )
+    if case.get("reopened_count", 0) >= 3:
+        interpretations.append(
+            f"Reopened same interpretation {case['reopened_count']} times — possible fixation (INT)"
+        )
+
+    hypotheses.append(
+        "Deadline pressure may explain compressed response pattern (SPEC)"
+    )
+    hypotheses.append("Caffeine-driven activation may mask fatigue signals (SPEC)")
+    hypotheses.append(
+        "Sunk-cost attachment to interpretation may resist revision (SPEC)"
+    )
+
+    # ── 8. Recommendation ─────────────────────────────────────────────────────
+    _reason_codes = []
+    if _sleep and _sleep < 5:
+        _reason_codes.append("insufficient_sleep")
+    if case.get("contradictory_evidence_ignored"):
+        _reason_codes.append("impaired_evidence_revision")
+    if case.get("stated_stop_but_continued"):
+        _reason_codes.append("boundary_conflict")
+    if case.get("decision_reversibility", "").upper() == "LOW":
+        _reason_codes.append("irreversible_capital_exposure")
+    if case.get("capital_exposure", "").upper() == "HIGH":
+        _reason_codes.append("high_capital_exposure")
+
+    recommendation = {
+        "action": "HOLD_FINAL_COMMITMENT"
+        if len(_reason_codes) >= 2
+        else "PROCEED_WITH_CAUTION",
+        "reason_codes": _reason_codes,
+        "reversibility": "REVERSIBLE",
+        "reassessment_conditions": [
+            "After defined rest interval (minimum 4h sleep)",
+            "After independent technical review of contradictory evidence",
+            "After written response to contradictory well indicators",
+            "After food and reduced stimulation",
+        ],
+    }
+
+    # ── 9. Build envelope ─────────────────────────────────────────────────────
+    envelope = {
+        "well_readiness": {
+            "readiness": {
+                "state": _readiness_state,
+                "confidence": 0.8 if _vital_signals else 0.9,
+                "evidence_refs": _vital_signals,
+            },
+            "human_vitals": human_vitals,
+            "thermodynamic": thermodynamic,
+            "boundary": boundary,
+            "shadow": shadow,
+            "aim": aim,
+            "recommendation": recommendation,
+            "epistemics": {
+                "observations": observations,
+                "derivations": derivations,
+                "interpretations": interpretations,
+                "hypotheses": hypotheses,
+                "unknowns": [
+                    "operator_internal_state",
+                    "unconscious_motivation",
+                    "organisational_pressure_level",
+                ],
+            },
+            "provenance": {
+                "trace_id": _trace_id,
+                "tool_receipts": _tool_receipts,
+                "model_versions": {"well_server": "2026.07.18"},
+                "ruleset_version": "GENESIS-049-050-051",
+            },
+        },
+        "w0": "OPERATOR_VETO_INTACT",
+        "authority": "REFLECT_ONLY",
+        "boundary_notice": "Not diagnosis. Reflective readiness only. Arif remains final judge.",
+    }
+    return _inject_apex(envelope, "well_assess_readiness")
+
+
 def well_sense_substrate(
     include_vitality_gate: bool = True,
 ) -> dict[str, Any]:
