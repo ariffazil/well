@@ -1,5 +1,6 @@
 # PROTOCOL_CONFORMANCE.md — WELL (L3 DOMAIN)
 
+<!-- PROTOCOL_TAGS: MCP-Server JSON-RPC Well-Known FastMCP -->
 ```yaml
 organ: WELL
 layer: L3 DOMAIN
