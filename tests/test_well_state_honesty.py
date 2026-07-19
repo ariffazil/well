@@ -150,6 +150,8 @@ def test_autouse_fixture_preserves_production_state():
     import server
 
     production_state_path = ROOT / "state.json"
+    if not production_state_path.exists():
+        pytest.skip("production state.json not present on this host (CI / fresh clone)")
     production_events_path = ROOT / "events.jsonl"
     state_before = production_state_path.read_bytes()
     state_mtime_before = production_state_path.stat().st_mtime_ns
