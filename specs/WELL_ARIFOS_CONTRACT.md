@@ -34,9 +34,9 @@ Any engineer modifying either repo must consult this contract before changing th
 | **Multi-organ consensus** | ✅ `well_validate_consensus` (local leg only) | ✅ Final judgment |
 | **MCP health reflection** | ✅ `mcp_health_check` (mirrored) | ❌ Owns raw probe |
 | **Coupled readiness** | ✅ Computes `human + machine + G-WELL + MCP` | ❌ Consumes only |
-| **Constitutional verdict** | ❌ Never judges | ✅ `arif_judge_deliberate` |
+| **Constitutional verdict** | ❌ Never judges | ✅ `arif_judge` |
 | **Routing / lanes** | ❌ Never routes | ✅ `arif_kernel_route` |
-| **Vault anchoring** | ❌ Requests only | ✅ `arif_vault_seal` |
+| **Vault anchoring** | ❌ Requests only | ✅ `arif_seal` |
 | **Execution** | ❌ Never executes | ✅ `arif_forge_execute` |
 
 **Golden rule:** WELL reflects. arifOS judges. The operator decides.
@@ -232,7 +232,7 @@ If any witness is HOLD or UNREACHABLE, consensus returns HOLD.
 
 | Project | Pattern | Example |
 |---------|---------|---------|
-| arifOS | `arif_<noun>_<verb>` | `arif_mind_reason` |
+| arifOS | `arif_<noun>_<verb>` | `arif_think` |
 | WELL | `well_<verb>_<noun>` | `well_classify_substrate` |
 | GEOX | `geox_<noun>_<verb>` | `geox_lithos_interpret` |
 | WEALTH | `wealth_<noun>_<verb>` | `wealth_npv_reward` |

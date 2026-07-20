@@ -32,9 +32,9 @@ Any engineer modifying either repo must consult this contract before changing th
 | **Machine reliability** | ✅ `well_assess_reliability` | ❌ Consumes only |
 | **MCP health reflection** | ✅ `mcp_health_check` (mirrored) | ❌ Owns raw probe |
 | **Coupled readiness** | ✅ Computes `human + machine + MCP` | ❌ Consumes only |
-| **Constitutional verdict** | ❌ Never judges | ✅ `arif_judge_deliberate` |
+| **Constitutional verdict** | ❌ Never judges | ✅ `arif_judge` |
 | **Routing / lanes** | ❌ Never routes | ✅ `arif_kernel_route` |
-| **Vault anchoring** | ❌ Requests only | ✅ `arif_vault_seal` |
+| **Vault anchoring** | ❌ Requests only | ✅ `arif_seal` |
 | **Execution** | ❌ Never executes | ✅ `arif_forge_execute` |
 
 **Golden rule:** WELL reflects. arifOS judges. The operator decides.
@@ -177,7 +177,7 @@ else:
 
 | Project | Pattern | Example |
 |---------|---------|---------|
-| arifOS | `arif_<noun>_<verb>` | `arif_mind_reason` |
+| arifOS | `arif_<noun>_<verb>` | `arif_think` |
 | WELL | `well_<verb>_<noun>` | `well_classify_substrate` |
 | GEOX | `geox_<noun>_<verb>` | `geox_lithos_interpret` |
 | WEALTH | `wealth_<noun>_<verb>` | `wealth_npv_reward` |
@@ -238,7 +238,7 @@ well_assess_homeostasis(
     └── route_verdict: ADVISORY_BLOCKED → produce safety notice only, do not proceed
     │
     ▼
-arifOS governance tools (arif_heart_critique, arif_judge_deliberate)
+arifOS governance tools (arif_heart_critique, arif_judge)
     │
     ▼
 Final output shaped by both WELL verdict + arifOS constraints
@@ -278,7 +278,7 @@ well_assess_homeostasis(
 | `well_assess_homeostasis(mode="fatigue", ...)` | WELL | Unified readiness gate — computes homeostasis + C-class routing; returns route_verdict PROCEED/DEFER/ADVISORY_BLOCKED |
 | `well_arifos_packet` | WELL | Full substrate state packet for arifOS consumption |
 | `arif_heart_critique` | arifOS | Ethical risk + human impact before sensitive actions |
-| `arif_judge_deliberate` | arifOS | Final constitutional verdict before irreversible actions |
+| `arif_judge` | arifOS | Final constitutional verdict before irreversible actions |
 
 ---
 

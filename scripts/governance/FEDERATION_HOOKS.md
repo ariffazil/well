@@ -45,7 +45,7 @@ def well_handoff_dignity_to_arifos(
 
 ### What it does
 1. Builds a dignity packet with the supplied signals.
-2. Calls arifOS `arif_judge_deliberate(mode="judge", action_class="dignity_breach_signal")`
+2. Calls arifOS `arif_judge(mode="judge", action_class="dignity_breach_signal")`
    via the standard MCP initialize → tools/call handshake.
 3. Returns the arifOS receipt (which contains the **verdict** — emitted
    by arifOS, not by WELL).
