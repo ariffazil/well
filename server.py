@@ -6,12 +6,12 @@ W0 Sovereignty Invariant: WELL holds a mirror, not a veto.
 WELL informs. arifOS judges. A-FORGE executes. Hierarchy is invariant.
 """
 
+from __future__ import annotations
+
 # ── PORT FIX 2026-07-20: Prevent arifOS import from overriding PORT to 8088 ──
 import os as _os_portfix
 _os_portfix.environ['PORT'] = '18083'
 _os_portfix.environ['HOST'] = '127.0.0.1'
-
-from __future__ import annotations
 
 try:
     import uvloop
