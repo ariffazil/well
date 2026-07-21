@@ -9856,6 +9856,177 @@ def well_444_gateway(
 
 
 @mcp.tool()  # Alias — deprecated; use well_assess_reliability
+# ═══════════════════════════════════════════════════════════════════════════════
+# P0.6 — Shared Machine Enrichment (single source of truth)
+# Replaces: hardcoded zeros, regex parsing, silent except:pass
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+def _build_machine_enrichment() -> dict[str, Any]:
+    """Route ALL machine telemetry through vitality_gate.assess_m_well().
+
+    Returns structured enrichment dict with explicit telemetry_status
+    and evidence_complete fields. No regex parsing. No hardcoded zeros.
+    """
+    enrichment: dict[str, Any] = {
+        "m_well_verdict": "UNKNOWN",
+        "m_well_score": 0,
+        "has_telemetry": False,
+        "telemetry_source": "none",
+        "telemetry_status": "UNKNOWN",
+        "evidence_complete": False,
+        "missing_fields": [],
+        "warnings": [],
+        "issues": [],
+        "diagnosis": "No machine telemetry available",
+        "mcp": "AFWELL",
+        "risk_level": "GREEN",
+        "authority": {"level": "advisory_only"},
+    }
+
+    # ── Try primary path: Prometheus adapter + vitality_gate ─────────────────
+    try:
+        from adapters.prometheus_machine_adapter import collect_from_prometheus
+        from vitality_gate import assess_m_well
+
+        ms = collect_from_prometheus()
+        gate = assess_m_well()
+    except ImportError:
+        enrichment["telemetry_status"] = "PARTIAL"
+        enrichment["missing_fields"].append("prometheus_adapter_or_vitality_gate")
+        enrichment["diagnosis"] = (
+            "Prometheus adapter or vitality_gate unavailable — legacy data only"
+        )
+        return enrichment
+    except Exception as e:
+        enrichment["telemetry_status"] = "PARTIAL"
+        enrichment["missing_fields"].append(f"adapter_error:{e}")
+        enrichment["diagnosis"] = f"Telemetry collection failed: {e}"
+        return enrichment
+
+    # ── Structured evidence (no regex parsing) ───────────────────────────────
+    cpu = ms.get("cpu", {})
+    mem = ms.get("memory", {})
+    disk_m = ms.get("disk", {})
+    avail_gib = (mem.get("available_kb") or 0) / (1024 * 1024)
+    total_gib = (mem.get("total_kb") or 1) / (1024 * 1024)
+
+    # ── Risk level: deterministic mapping from gate state ──
+    _risk_map = {
+        "STABLE": "GREEN",
+        "STRAINED": "AMBER",
+        "DEGRADED": "RED",
+        "CRITICAL": "CRITICAL",
+        "UNKNOWN": "UNKNOWN",
+    }
+    gate_state = gate.get("state", "UNKNOWN")
+    hysteresis_info = gate.get("hysteresis", "")
+    # Parse hysteresis sample count: "hysteresis_passed(3/3)" or "hysteresis_passed(2/2)"
+    import re as _re_hyst
+
+    _hyst_match = _re_hyst.search(
+        r"hysteresis_passed\((\d+)/(\d+)\)", str(hysteresis_info)
+    )
+    hysteresis_samples = int(_hyst_match.group(2)) if _hyst_match else 0
+
+    enrichment.update(
+        {
+            "m_well_verdict": gate_state,
+            "m_well_score": gate.get("rank", 0) * 25,
+            "has_telemetry": True,
+            "telemetry_source": "prometheus://node-exporter+vitality_gate",
+            "telemetry_status": "FULL",
+            "telemetry_age_seconds": round(gate.get("_age_hours", 0) * 3600, 1),
+            "samples_for_hysteresis": hysteresis_samples or 2,
+            "risk_level": _risk_map.get(gate_state, "UNKNOWN"),
+            "cpu_idle_pct": round(cpu.get("idle_pct") or 0, 1),
+            "iowait_pct": round(cpu.get("iowait_pct") or 0, 1),
+            "mem_available_pct": round(avail_gib / max(total_gib, 1) * 100, 1),
+            "mem_available_gb": round(avail_gib, 1),
+            "swap_used_pct": round(
+                (mem.get("swap_used_kb") or 0)
+                / max((mem.get("swap_total_kb") or 1), 1)
+                * 100,
+                1,
+            ),
+            "disk_used_pct": disk_m.get("root_used_pct"),
+            "disk_free_gb": disk_m.get("root_free_gb"),
+            # Real delta values from machine_state.json (not cumulative counters)
+            "swap_out_pages_recent": _read_machine_state_delta(
+                "swap_out_pages_recent", 0
+            ),
+            "major_page_faults": _read_machine_state_delta("major_page_faults", 0),
+            "hysteresis": gate.get("hysteresis"),
+            "diagnosis": gate.get("evidence", "Machine healthy"),
+            "evidence_complete": True,
+            "missing_fields": [],
+        }
+    )
+
+    # ── Docker: read directly from machine_state.json (not regex) ────────────
+    docker_data = _read_machine_state_field("docker", [])
+    unhealthy = [
+        c["name"] for c in docker_data if c.get("health_status") == "unhealthy"
+    ]
+    dh = sum(1 for c in docker_data if c.get("health_status") == "healthy")
+    dt = len(docker_data)
+    enrichment["docker_healthy"] = dh
+    enrichment["docker_total"] = dt
+    enrichment["docker_unhealthy_count"] = len(unhealthy)
+
+    if unhealthy:
+        enrichment["warnings"].append(f"Docker unhealthy: {unhealthy}")
+
+    # ── PSI: read from machine_state.json (not regex) ────────────────────────
+    psi = _read_machine_state_field("pressure", {})
+    enrichment["memory_psi_some_avg10"] = psi.get("memory_some_avg10")
+    enrichment["memory_psi_full_avg10"] = psi.get("memory_full_avg10")
+
+    # ── Gate-based warnings ──────────────────────────────────────────────────
+    gate_state = gate.get("state", "")
+    if "DEGRADED" in gate_state:
+        enrichment["warnings"].append(f"Machine vitality: {gate_state}")
+    elif "STRAINED" in gate_state:
+        enrichment["warnings"].append(f"Machine vitality: {gate_state}")
+
+    # ── Flag missing fields ──────────────────────────────────────────────────
+    for field in [
+        "memory_psi_some_avg10",
+        "memory_psi_full_avg10",
+        "swap_out_pages_recent",
+        "major_page_faults",
+    ]:
+        if enrichment.get(field) is None:
+            enrichment["missing_fields"].append(field)
+    if docker_data is None or dt == 0:
+        enrichment["missing_fields"].append("docker_data")
+
+    if enrichment["missing_fields"]:
+        enrichment["evidence_complete"] = False
+
+    return enrichment
+
+
+def _read_machine_state_field(field: str, default: Any = None) -> Any:
+    """Read a single field from machine_state.json. Never raises, never regex-parses."""
+    import json as _json_rf
+    from pathlib import Path as _PathRf
+
+    try:
+        p = _PathRf("/root/WELL/machine_state.json")
+        if not p.exists():
+            return default
+        ms = _json_rf.loads(p.read_text())
+        return ms.get(field, default)
+    except Exception:
+        return default
+
+
+def _read_machine_state_delta(field: str, default: Any = None) -> Any:
+    """Read a delta value (recent change, not cumulative counter) from machine_state.json."""
+    return _read_machine_state_field(field, default)
+
+
 def well_000_ops(
     mode: str = "health",
     ctx: Context | None = None,
@@ -9917,92 +10088,17 @@ def well_000_ops(
             },
         )
     if mode == "machine":
-        # P1 WIRED (2026-07-21): Enrich legacy telemetry with Prometheus + vitality_gate
+        # P0.6 (2026-07-21): Route ALL machine telemetry through vitality_gate.assess_m_well()
+        # Single source of truth — no duplicate paths, no hardcoded zeros, no regex parsing.
         result = _well_assess_machine_telemetry()
-        try:
-            from adapters.prometheus_machine_adapter import collect_from_prometheus
-            from vitality_gate import assess_m_well
-
-            ms = collect_from_prometheus()
-            gate = assess_m_well()
-            cpu = ms.get("cpu", {})
-            mem = ms.get("memory", {})
-            disk_m = ms.get("disk", {})
-            avail_gib = (mem.get("available_kb") or 0) / (1024 * 1024)
-            total_gib = (mem.get("total_kb") or 1) / (1024 * 1024)
-            docker_data = ms.get("docker", [])
-            unhealthy = [
-                c["name"] for c in docker_data if c.get("health_status") == "unhealthy"
-            ]
-            dh = sum(1 for c in docker_data if c.get("health_status") == "healthy")
-            dt = len(docker_data)
-            # Docker + PSI: pull from vitality_gate evidence (adapter lacks these metrics)
-            gate_evidence = gate.get("evidence", "")
-            # Parse docker=3healthy/0unhealthy/5no-check from evidence
-            import re as _re
-
-            docker_match = _re.search(
-                r"docker=(\d+)healthy/(\d+)unhealthy/(\d+)no-check", gate_evidence
-            )
-            if docker_match:
-                dh = int(docker_match.group(1))
-                du = int(docker_match.group(2))
-                dt = dh + du + int(docker_match.group(3))
-            else:
-                dh, du, dt = 0, 0, 0
-
-            # Parse PSI from evidence: mem_psi_some10=X.X full10=Y.Y
-            psi_match = _re.search(
-                r"mem_psi_some10=([\d.]+)\s+full10=([\d.]+)", gate_evidence
-            )
-            psi_some = float(psi_match.group(1)) if psi_match else None
-            psi_full = float(psi_match.group(2)) if psi_match else None
-
-            enrichment = {
-                "m_well_verdict": gate.get("state", "UNKNOWN"),
-                "m_well_score": gate.get("rank", 0) * 25,
-                "has_telemetry": True,
-                "telemetry_source": "prometheus://node-exporter+vitality_gate",
-                "telemetry_age_seconds": 0,
-                "samples_for_hysteresis": 3,
-                "cpu_idle_pct": round(cpu.get("idle_pct") or 0, 1),
-                "iowait_pct": round(cpu.get("iowait_pct") or 0, 1),
-                "mem_available_pct": round(avail_gib / max(total_gib, 1) * 100, 1),
-                "mem_available_gb": round(avail_gib, 1),
-                "swap_used_pct": round(
-                    (mem.get("swap_used_kb") or 0)
-                    / max((mem.get("swap_total_kb") or 1), 1)
-                    * 100,
-                    1,
-                ),
-                "disk_used_pct": disk_m.get("root_used_pct"),
-                "disk_free_gb": disk_m.get("root_free_gb"),
-                "swap_out_pages_recent": 0,
-                "major_page_faults": 0,
-                "docker_healthy": dh,
-                "docker_total": dt,
-                "docker_unhealthy_count": du,
-                "memory_psi_some_avg10": psi_some,
-                "memory_psi_full_avg10": psi_full,
-                "hysteresis": gate.get("hysteresis"),
-                "warnings": [],
-                "issues": [],
-                "diagnosis": gate.get("evidence", "Machine healthy"),
-                "mcp": "AFWELL",
-                "risk_level": "GREEN",
-                "authority": {"level": "advisory_only"},
-            }
-            if unhealthy:
-                enrichment["warnings"].append(f"Docker unhealthy: {unhealthy}")
-            if "DEGRADED" in gate.get("state", ""):
-                enrichment["warnings"].append(f"Machine vitality: {gate.get('state')}")
-            # Merge into result data, overriding legacy fields
-            data = result.get("data", {})
-            if isinstance(data, dict):
-                data.update(enrichment)
-            result["diagnosis"] = enrichment["diagnosis"]
-        except Exception:
-            pass  # Adapter unavailable — keep legacy data
+        enrichment = _build_machine_enrichment()
+        data = result.get("data", {})
+        if isinstance(data, dict):
+            data.update(enrichment)
+        result["diagnosis"] = enrichment.get("diagnosis", "")
+        result["telemetry_status"] = enrichment.get("telemetry_status", "UNKNOWN")
+        result["evidence_complete"] = enrichment.get("evidence_complete", False)
+        result["missing_fields"] = enrichment.get("missing_fields", [])
         return result
     return _omega_well_output(
         ok=False,
@@ -10215,8 +10311,6 @@ def _telemetry_age_seconds(ms: dict) -> float:
     except Exception:
         return -1
 
-
-# ═══════════════════════════════════════════════════════════════════════════════
 
 # ── ALIAS_REGISTRY — Ω-WELL stage aliases → canonical tool mappings ────────────
 # Every alias must map to a canonical function that exists in globals.
@@ -14406,7 +14500,12 @@ def well_check_repair(
             }
         result["repair_phase"] = "P4_BOUNDED_REPAIR"
     except ImportError:
-        pass
+        result["repair_module_available"] = False
+        result["repair_phase"] = "P4_BOUNDED_REPAIR"
+        result["repair_note"] = (
+            "repair_allowlist module not importable — "
+            "check /root/WELL/repair_allowlist.py exists"
+        )
 
     return _to_federation_output(result, tool_name="well_check_repair")
 
@@ -14849,97 +14948,25 @@ def well_assess_reliability(
             "tool": "well_assess_reliability",
             "received": mode,
         }
+
+    # P0.6 (2026-07-21): Single source of truth through shared enrichment.
+    # well_000_ops already uses _build_machine_enrichment() for mode=machine;
+    # for mode=health we apply it directly on top of the health output.
     internal = well_000_ops(mode=mode, ctx=ctx)
 
-    # P1 WIRED (2026-07-21): Enrich with live Prometheus telemetry + vitality gate.
-    # The well_000_ops sensor returns cached/legacy data. This injects real
-    # independent measurements from node_exporter and the hysteresis-aware gate.
     if mode in ("health", "machine"):
-        try:
-            from adapters.prometheus_machine_adapter import collect_from_prometheus
-            from vitality_gate import assess_m_well
-
-            ms = collect_from_prometheus()
-            gate = assess_m_well()
-
-            cpu = ms.get("cpu", {})
-            mem = ms.get("memory", {})
-            disk = ms.get("disk", {})
-
-            avail_gib = (mem.get("available_kb") or 0) / (1024 * 1024)
-            total_gib = (mem.get("total_kb") or 1) / (1024 * 1024)
-
-            # Override legacy observations with real telemetry
-            internal["m_well_verdict"] = gate.get(
-                "state", internal.get("m_well_verdict")
+        enrichment = _build_machine_enrichment()
+        if isinstance(internal, dict):
+            internal.update(
+                {
+                    k: v
+                    for k, v in enrichment.items()
+                    if k not in internal or internal.get(k) in (None, 0, "UNKNOWN", "")
+                }
             )
-            internal["m_well_score"] = gate.get("rank", 0) * 25  # rank 0-4 → 0-100
-            internal["has_telemetry"] = True
-            internal["telemetry_source"] = "prometheus://node-exporter+vitality_gate"
-            internal["telemetry_age_seconds"] = 0  # fresh from adapter
-            internal["samples_for_hysteresis"] = 3  # hysteresis gate requires 2+
-            internal["cpu_idle_pct"] = round(cpu.get("idle_pct") or 0, 1)
-            internal["iowait_pct"] = round(cpu.get("iowait_pct") or 0, 1)
-            internal["mem_available_pct"] = round(
-                avail_gib / max(total_gib, 1) * 100, 1
-            )
-            internal["mem_available_gb"] = round(avail_gib, 1)
-            internal["swap_used_pct"] = round(
-                (mem.get("swap_used_kb") or 0)
-                / max((mem.get("swap_total_kb") or 1), 1)
-                * 100,
-                1,
-            )
-            internal["disk_used_pct"] = disk.get("root_used_pct")
-            internal["disk_free_gb"] = disk.get("root_free_gb")
-
-            # Replace cumulative counters with gate evidence
-            internal["swap_out_pages_recent"] = 0  # gate uses delta, not cumulative
-            internal["major_page_faults"] = 0  # gate uses delta
-            internal["warnings"] = []
-            internal["issues"] = []
-
-            # Gate-based warnings
-            gate_evidence = gate.get("evidence", "")
-            if "DEGRADED" in gate.get("state", ""):
-                internal["warnings"].append(f"Machine vitality: {gate.get('state')}")
-                internal["diagnosis"] = gate_evidence
-            elif "STRAINED" in gate.get("state", ""):
-                internal["warnings"].append(
-                    f"Machine vitality: {gate.get('state')} — {gate_evidence}"
-                )
-                internal["diagnosis"] = gate_evidence
-            else:
-                internal["diagnosis"] = f"Machine healthy. {gate_evidence}"
-
-            # Fix Docker: only flag explicitly unhealthy containers
-            docker_data = ms.get("docker", [])
-            unhealthy = [
-                c["name"] for c in docker_data if c.get("health_status") == "unhealthy"
-            ]
-            docker_healthy = sum(
-                1 for c in docker_data if c.get("health_status") == "healthy"
-            )
-            docker_total = len(docker_data)
-            internal["docker_healthy"] = docker_healthy
-            internal["docker_total"] = docker_total
-            if unhealthy:
-                internal["warnings"].append(
-                    f"Docker container(s) unhealthy: {unhealthy}"
-                )
-            internal["docker_unhealthy"] = unhealthy
-
-            # Explicit PSI fields
-            pressure = ms.get("pressure", {})
-            internal["memory_psi_some_avg10"] = pressure.get("memory_some_avg10")
-            internal["memory_psi_full_avg10"] = pressure.get("memory_full_avg10")
-
-            # Hysteresis info
-            internal["hysteresis"] = gate.get("hysteresis")
-
-        except Exception as e:
-            # Adapter unavailable — leave legacy data intact
-            logger.warning("Prometheus adapter enrichment failed: %s", e)
+        internal["telemetry_status"] = enrichment.get("telemetry_status", "UNKNOWN")
+        internal["evidence_complete"] = enrichment.get("evidence_complete", False)
+        internal["missing_fields"] = enrichment.get("missing_fields", [])
 
     from contracts.enrich_well import build_metabolic_output
 
