@@ -1,0 +1,29 @@
+[Unit]
+Description=WITNESS — Independent Substrate Observer for WELL
+Documentation=https://github.com/ariffazil/WELL/tree/main/witness
+After=network-online.target prometheus.service well.service
+Wants=network-online.target prometheus.service well.service
+StartLimitIntervalSec=30
+StartLimitBurst=3
+
+[Service]
+Type=simple
+User=well-witness
+Group=well-witness
+WorkingDirectory=/root/WELL
+ExecStart=/usr/bin/python3 well_witness_http.py
+Restart=always
+RestartSec=5
+
+# Lightweight — stdlib HTTP, no heavy deps
+CPUQuota=50%
+MemoryHigh=64M
+MemoryMax=128M
+OOMScoreAdjust=500
+
+# Security — tightened post-validation
+NoNewPrivileges=true
+# TODO: add ProtectSystem=strict + ReadOnlyPaths after /proc access validated
+
+[Install]
+WantedBy=multi-user.target
