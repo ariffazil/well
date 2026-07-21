@@ -288,7 +288,7 @@ def collect_substrate_signals() -> dict[str, Any]:
             "is_self_report": False,
             "is_mock_or_test": False,
             "is_stale": False,
-            "banner": "LIVE — inferred from machine telemetry (sessions, auth, history, circadian)",
+            "banner": "UNKNOWN — machine telemetry sensor pipeline not deployed. Install Prometheus Node Exporter for live substrate signals.",
         },
     }
 

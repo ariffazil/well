@@ -348,7 +348,14 @@ async def _test_well_forge_precheck_conservative():
         "well_forge_precheck", arguments={"task_description": "Critical Deployment", "session_id": "SEAL-test-session"}
     )
     data = get_data(res)
-    assert data["risk_level"] in ("AMBER", "RED")
+    # P0: WELL must return UNKNOWN when no verified body telemetry.
+    # was: assert data["risk_level"] in ("AMBER", "RED")
+    assert data["risk_level"] in ("AMBER", "RED", "UNKNOWN")
+    if data.get("risk_level") == "UNKNOWN":
+        assert data.get("recommended_mode") == "draft_only"
+        exec_data = data.get("execution", {})
+        assert exec_data.get("human_confirmation_required") is True
+        return
     assert data["recommended_mode"] in ("draft_only", "pause")
     assert "final_authority" in data
 
