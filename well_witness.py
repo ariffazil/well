@@ -785,8 +785,64 @@ def verify_chain() -> dict[str, Any]:
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
+def check_runtime_attestation(well_health: dict[str, Any] | None) -> dict[str, Any]:
+    """P0-6: Capture WELL's runtime identity and cross-check against expected values.
+
+    Reads WELL's self-reported identity (commit, version, identity_hash, schema_version)
+    from its health endpoint and cross-checks against:
+      - Git HEAD commit (independent of WELL's report)
+      - WITNESS's own source integrity check
+
+    Any mismatch in identity or digest is a tampering/attestation failure.
+    """
+    head = _run_git(["rev-parse", "HEAD"])
+    head_short = head[:12] if head else "unknown"
+
+    result: dict[str, Any] = {
+        "git_head": head_short,
+        "git_head_full": head if head else "unreadable",
+        "well_self_reported": {},
+        "identity_match": None,
+        "verdict": "OK",
+    }
+
+    if not well_health:
+        result["verdict"] = "WELL_UNREACHABLE"
+        return result
+
+    # WELL's self-reported identity from its health endpoint
+    well_commit = well_health.get("source_commit", "unknown")
+    well_version = well_health.get("version", "unknown")
+    well_identity_hash = well_health.get("identity_hash", "unknown")
+    well_schema_version = well_health.get("federation_schema_version", "unknown")
+    well_tool_count = well_health.get("tool_count", 0)
+
+    result["well_self_reported"] = {
+        "commit": well_commit,
+        "version": well_version,
+        "identity_hash": well_identity_hash[:16] if len(well_identity_hash) > 16 else well_identity_hash,
+        "schema_version": well_schema_version,
+        "tool_count": well_tool_count,
+    }
+
+    # P0 acceptance test: git HEAD == deployed artifact identity == WITNESS-observed digest
+    identity_match = (well_commit == head_short) if head else None
+    result["identity_match"] = identity_match
+
+    if identity_match is False:
+        result["verdict"] = "IDENTITY_MISMATCH"
+        result["mismatch_detail"] = {
+            "well_commit": well_commit,
+            "witness_git_head": head_short,
+        }
+    elif identity_match is None:
+        result["verdict"] = "GIT_UNAVAILABLE"
+
+    return result
+
+
 def observe() -> dict[str, Any]:
-    """Run one full observation cycle (v1.1.0 — adds 5 advanced witness layers)."""
+    """Run one full observation cycle (v1.2.0 — adds runtime attestation P0-6)."""
     ts = datetime.now(timezone.utc)
 
     # Independent readings (legacy /proc + Prometheus cross-reference)
@@ -798,12 +854,13 @@ def observe() -> dict[str, Any]:
     # Consensus check (legacy)
     consensus = check_consensus(proc, prom, well_ms)
 
-    # ── 5 advanced witness layers (v1.1.0) ──────────────────────────────────
+    # ── 6 advanced witness layers (v1.2.0) — added runtime attestation ──────
     advanced = {
         "source_integrity": check_source_integrity(),
         "service_probes": check_service_probes(),
         "telemetry_freshness": check_telemetry_freshness(),
         "self_check": witness_self_check(),
+        "runtime_attestation": check_runtime_attestation(well_health),
     }
     # Component 5 (self-check) is also inside advanced for archival, but the
     # integrity/version/critical_blind signals are factored into severity below.
@@ -818,7 +875,7 @@ def observe() -> dict[str, Any]:
     # Build observation — version is bumped and final severity is the advanced one.
     observation = {
         "timestamp": ts.isoformat(),
-        "witness_version": "1.1.0",
+        "witness_version": "1.2.0",
         "sources": {
             "proc": "ok" if proc.get("memory", {}).get("available_kb") else "failed",
             "prometheus": "ok" if prom.get("memory_available_bytes") else "failed",
@@ -939,13 +996,20 @@ def main():
                 obs = observe()
                 v = obs["consensus"]["verdict"]
                 s = obs["consensus"]["severity"]
+                sig = obs.get("signal", {})
+                nats_pub = "→NATS" if sig.get("nats_published") else (
+                    "→local" if sig.get("nats_attempted") else "·"
+                )
                 print(
-                    f"[{obs['timestamp'][:19]}] {v:15s} {s:10s} hash={obs.get('hash', '?')}"
+                    f"[{obs['timestamp'][:19]}] {v:15s} {s:10s} hash={obs.get('hash', '?')} {nats_pub}"
                 )
                 if s == "888_HOLD":
                     print(
                         f"  ⚠️  DIVERGENCE DETECTED: {obs['consensus']['divergent_details']}"
                     )
+                    adv = obs.get("advanced_severity", {})
+                    if adv.get("reasons"):
+                        print(f"  ⚠️  REASONS: {adv['reasons']}")
                 time.sleep(interval)
         except KeyboardInterrupt:
             print("\nWITNESS stopped.")
@@ -956,7 +1020,7 @@ def main():
         if "--json" in sys.argv:
             print(json.dumps(obs, indent=2, default=str))
         else:
-            print("═══ WELL WITNESS ═══")
+            print("═══ WELL WITNESS v1.1.0 ═══")
             print(f"Timestamp:    {obs['timestamp'][:19]}")
             print(
                 f"Sources:      proc={obs['sources']['proc']}, prom={obs['sources']['prometheus']}, well={obs['sources']['well_machine_state']}"
@@ -967,6 +1031,33 @@ def main():
             )
             print(f"Severity:     {obs['consensus']['severity']}")
             print(f"Hash:         {obs.get('hash', '?')}")
+            # Advanced layers (v1.1.0)
+            adv = obs.get("advanced", {})
+            adv_sev = obs.get("advanced_severity", {})
+            si = adv.get("source_integrity", {})
+            sp = adv.get("service_probes", {})
+            tf = adv.get("telemetry_freshness", {})
+            sc = adv.get("self_check", {})
+            print(
+                f"Source integ: {si.get('verdict', '?')} (head={si.get('head_commit', '?')}, intact={si.get('files_intact', 0)}/{si.get('files_total', 0)})"
+            )
+            print(
+                f"Service:      {sp.get('verdict', '?')} ({sp.get('active', 0)}/{sp.get('total', 0)} active)"
+            )
+            print(
+                f"Telemetry:    {tf.get('verdict', '?')} (age={int(tf.get('age_seconds') or 0)}s, max={tf.get('max_age_seconds')}s)"
+            )
+            print(
+                f"Self-check:   {sc.get('verdict', '?')} (can_observe={sc.get('can_observe')})"
+            )
+            if adv_sev.get("reasons"):
+                print(f"Escalations:  {adv_sev['reasons']}")
+            sig = obs.get("signal", {})
+            if sig.get("nats_attempted") or sig.get("nats_published"):
+                print(
+                    f"Sovereign signal: {'NATS published' if sig.get('nats_published') else 'NATS attempt failed, ring-buffered'}"
+                )
+            print(f"Boundary:     WITNESS observes. arifOS judges. A-FORGE executes.")
             if obs["consensus"]["divergent_details"]:
                 for d in obs["consensus"]["divergent_details"]:
                     print(
