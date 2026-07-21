@@ -36,15 +36,146 @@ async def well_assess_homeostasis(
     chronic_fatigue: bool = False,
     decision_class: Literal["C1", "C2", "C3", "C4", "C5"] = "C3",
 ) -> dict:
-    """Assess regulation, stability, and empathic balance under change."""
+    """Assess regulation, stability, and empathic balance under change.
+
+    P2 WIRED (2026-07-21): Accepts self-report parameters (sleep_hours, cognitive_clarity,
+    decision_fatigue, stress_load, hrv_status, emotional_state). When provided, returns
+    an OPERATOR_REPORTED assessment with capped confidence instead of UNKNOWN.
+    Health Connect telemetry integration is still pending.
+    """
+    # Check if any self-report data was provided
+    has_self_report = (
+        sleep_hours is not None
+        or sleep_debt_days is not None
+        or cognitive_clarity is not None
+        or decision_fatigue is not None
+        or stress_load is not None
+        or hrv_status != "normal"  # default — user likely didn't set this
+    )
+
+    if has_self_report:
+        # P2 WIRED: Operator self-report check-in
+        evidence_parts = []
+        homeostasis_state = "READY"
+        rank = 4
+        uncertainty = 0.4  # self-report baseline
+
+        # Sleep assessment
+        if sleep_hours is not None:
+            evidence_parts.append(f"sleep={sleep_hours}h")
+            if sleep_hours < 4:
+                homeostasis_state = "CRITICAL"
+                rank = 1
+            elif sleep_hours < 6:
+                homeostasis_state = "DEGRADED"
+                rank = 2
+            elif sleep_hours < 7:
+                homeostasis_state = "BELOW_BASELINE"
+                rank = 3
+
+        if sleep_debt_days is not None and sleep_debt_days > 0:
+            evidence_parts.append(f"sleep_debt={sleep_debt_days}d")
+            if sleep_debt_days > 3:
+                rank = min(rank, 2)
+
+        # Cognitive assessment
+        if cognitive_clarity is not None:
+            evidence_parts.append(f"clarity={cognitive_clarity}/10")
+            if cognitive_clarity < 3:
+                rank = min(rank, 1)
+            elif cognitive_clarity < 5:
+                rank = min(rank, 2)
+            elif cognitive_clarity < 7:
+                rank = min(rank, 3)
+
+        if decision_fatigue is not None:
+            evidence_parts.append(f"decision_fatigue={decision_fatigue}/10")
+            if decision_fatigue > 7:
+                rank = min(rank, 1)
+            elif decision_fatigue > 5:
+                rank = min(rank, 2)
+
+        # Stress assessment
+        if stress_load is not None:
+            evidence_parts.append(f"stress={stress_load}/10")
+            if stress_load > 8:
+                rank = min(rank, 1)
+            elif stress_load > 6:
+                rank = min(rank, 2)
+
+        # Chronic fatigue flag
+        if chronic_fatigue:
+            evidence_parts.append("chronic_fatigue")
+            rank = min(rank, 2)
+
+        # Recompute state from final rank
+        inv = {
+            4: "READY",
+            3: "BELOW_BASELINE",
+            2: "DEGRADED",
+            1: "CRITICAL",
+            0: "UNKNOWN",
+        }
+        homeostasis_state = inv.get(rank, "UNKNOWN")
+
+        result = build_unknown_result(
+            "well_assess_homeostasis",
+            missing=["health_connect_telemetry", "hrv_wearable_data"],
+            note=None,
+        )
+        result.update(
+            {
+                "verdict": homeostasis_state,
+                "confidence": min(0.60, 1.0 - uncertainty),
+                "truth_class": "INFERRED",
+                "evidence_label": "DER",
+                "missing_evidence": ["health_connect_telemetry", "hrv_wearable_data"],
+                "evidence": "; ".join(evidence_parts),
+                "source": "OPERATOR_SELF_REPORT",
+                "note": "Self-report assessment — not sensor verified. Confidence capped at 0.60. "
+                "Health Connect integration pending for verified telemetry.",
+                "mode": mode,
+            }
+        )
+
+        receipt = generate_replay_receipt(
+            tool="well_assess_homeostasis",
+            session_id="UNBOUND",
+            actor_id=getattr(ctx, "actor_id", "unknown"),
+            inputs={
+                "mode": mode,
+                "subject": subject,
+                "sleep_hours": sleep_hours,
+                "sleep_debt_days": sleep_debt_days,
+                "cognitive_clarity": cognitive_clarity,
+                "decision_fatigue": decision_fatigue,
+                "stress_load": stress_load,
+                "hrv_status": hrv_status,
+                "emotional_state": emotional_state,
+                "chronic_fatigue": chronic_fatigue,
+                "decision_class": decision_class,
+            },
+            outputs=result,
+            truth_class="INFERRED",
+            evidence_label="DER",
+        )
+
+        return {**result, "replay_receipt": receipt.model_dump()}
+
+    # No self-report, no telemetry → UNKNOWN
     result = build_unknown_result(
         "well_assess_homeostasis",
-        missing=["sleep_telemetry", "hrv_data", "cognitive_assessment", "stress_measurement"],
-        note="No biometric telemetry available. Human homeostasis is UNKNOWN. Connect Health Connect or provide self-report.",
+        missing=[
+            "sleep_telemetry",
+            "hrv_data",
+            "cognitive_assessment",
+            "stress_measurement",
+        ],
+        note="No biometric telemetry or self-report provided. Human homeostasis is UNKNOWN. "
+        "Provide sleep_hours, cognitive_clarity, decision_fatigue, or stress_load for self-report assessment.",
     )
-    # TODO: P2 — wire to Health Connect sleep/HRV + self-report check-in
+    # TODO: P2 — wire to Health Connect sleep/HRV for verified telemetry
 
-    # Generate replay receipt
     receipt = generate_replay_receipt(
         tool="well_assess_homeostasis",
         session_id="UNBOUND",
@@ -83,7 +214,12 @@ async def well_assess_livelihood(
     """Assess human wellness, role, dignity, support, and meaning."""
     result = build_unknown_result(
         "well_assess_livelihood",
-        missing=["role_self_report", "cashflow_data", "purpose_assessment", "support_network"],
+        missing=[
+            "role_self_report",
+            "cashflow_data",
+            "purpose_assessment",
+            "support_network",
+        ],
         note="No livelihood self-report or WEALTH bridge data. Livelihood state is UNKNOWN.",
     )
     # TODO: P2 — add self-report check-in + WEALTH bridge for cashflow
@@ -413,7 +549,6 @@ async def well_correction_capacity(
     )
 
     return {**result, "replay_receipt": receipt.model_dump()}
-
 
     # Generate replay receipt
     receipt = generate_replay_receipt(
