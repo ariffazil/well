@@ -10,8 +10,9 @@ from __future__ import annotations
 
 # ── PORT FIX 2026-07-20: Prevent arifOS import from overriding PORT to 8088 ──
 import os as _os_portfix
-_os_portfix.environ['PORT'] = '18083'
-_os_portfix.environ['HOST'] = '127.0.0.1'
+
+_os_portfix.environ["PORT"] = "18083"
+_os_portfix.environ["HOST"] = "127.0.0.1"
 
 try:
     import uvloop
@@ -1715,6 +1716,23 @@ class WellSessionValidationMiddleware(_MiddlewareBase):
             session_id = (
                 arguments.get("session_id") if isinstance(arguments, dict) else None
             )
+            # Fall back to MCP transport session ID (OpenCode compatibility).
+            # The MCP handshake (initialize → mcp-session-id header) already establishes
+            # an authenticated session. Tools that don't pass session_id as an argument
+            # can still authenticate via the transport session.
+            if not session_id:
+                session_id = getattr(context, "session_id", None)
+            # In stateless HTTP mode, context.session_id is None. Read the
+            # mcp-session-id header directly from the HTTP request.
+            if not session_id:
+                try:
+                    from fastmcp.server.dependencies import get_http_request
+
+                    req = get_http_request()
+                    if req is not None:
+                        session_id = req.headers.get("mcp-session-id")
+                except Exception:
+                    pass
             if not session_id or (
                 isinstance(session_id, str) and not session_id.strip()
             ):
@@ -9898,6 +9916,8 @@ def well_000_ops(
                 "floors_violated": state.get("floors_violated"),
             },
         )
+    if mode == "machine":
+        return _well_assess_machine_telemetry()
     return _omega_well_output(
         ok=False,
         stage="000_OPS",
@@ -9908,8 +9928,208 @@ def well_000_ops(
     )
 
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# Ω-WELL Tool Surface Integrity Check
+# ── Machine Telemetry Reader (forged 2026-07-21) ─────────────────────────────
+
+
+def _well_assess_machine_telemetry() -> dict[str, Any]:
+    """Read machine_state.json and return M-WELL diagnostic verdict.
+
+    Thresholds (with hysteresis — condition must persist across 3+ samples):
+      CPU:       idle < 20% for 3 samples → DEGRADED; idle < 5% → CRITICAL
+      Memory:    available < 10% of total → DEGRADED; < 5% → CRITICAL
+      Swap:      used > 50% of total → DEGRADED; swap_out > 0 over last 3 → WARNING
+      Disk:      used > 85% → DEGRADED; > 95% → CRITICAL
+      I/O wait:  > 10% → DEGRADED; > 25% → CRITICAL
+      Pressure:  memory_some > 10 → DEGRADED; > 50 → CRITICAL
+      Services:  any dead → DEGRADED; arifos/a-forge dead → CRITICAL
+      Zombies:   > 5 → WARNING; > 20 → DEGRADED
+    """
+    import json as _json_mt
+    from pathlib import Path as _PathMt
+
+    state_path = _PathMt("/root/WELL/machine_state.json")
+    if not state_path.exists():
+        return _omega_well_output(
+            ok=False,
+            stage="000_OPS",
+            lane="AGI",
+            mode="machine",
+            verdict="HOLD",
+            error="machine_state.json not found — telemetry collector not running",
+            has_telemetry=False,
+            diagnosis="No machine telemetry available. Run machine_telemetry.py cron.",
+        )
+
+    try:
+        ms = _json_mt.loads(state_path.read_text())
+    except (_json_mt.JSONDecodeError, OSError) as exc:
+        return _omega_well_output(
+            ok=False,
+            stage="000_OPS",
+            lane="AGI",
+            mode="machine",
+            verdict="HOLD",
+            error=f"machine_state.json corrupt: {exc}",
+            has_telemetry=False,
+        )
+
+    cpu = ms.get("cpu", {})
+    mem = ms.get("memory", {})
+    disk = ms.get("disk", {})
+    pressure = ms.get("pressure", {})
+    services = ms.get("services", {})
+    docker_list = ms.get("docker", [])
+    history = ms.get("history", [])
+
+    # ── Hysteresis: check last 3 samples ──
+    recent = history[-3:] if len(history) >= 3 else history
+    samples = len(recent)
+
+    def _persists(check_fn, required: int = 3) -> bool:
+        """Check if condition holds across enough recent samples."""
+        if samples < required:
+            return check_fn(history[-1]) if history else False
+        return sum(1 for h in recent if check_fn(h)) >= required
+
+    # ── Diagnostics ──
+    issues = []
+    warnings = []
+
+    cpu_idle = cpu.get("idle_pct", 100)
+    if _persists(lambda h: h.get("cpu_idle_pct", 100) < 5):
+        issues.append(f"CPU CRITICAL: idle={cpu_idle}% sustained")
+    elif _persists(lambda h: h.get("cpu_idle_pct", 100) < 20):
+        issues.append(f"CPU DEGRADED: idle={cpu_idle}% sustained")
+    elif cpu_idle < 20:
+        warnings.append(f"CPU low: idle={cpu_idle}% (single sample)")
+
+    iowait = cpu.get("iowait_pct", 0)
+    if _persists(lambda h: h.get("cpu_iowait_pct", 0) > 25):
+        issues.append(f"I/O CRITICAL: iowait={iowait}% sustained")
+    elif _persists(lambda h: h.get("cpu_iowait_pct", 0) > 10):
+        issues.append(f"I/O DEGRADED: iowait={iowait}% sustained")
+    elif iowait > 10:
+        warnings.append(f"I/O wait elevated: iowait={iowait}%")
+
+    mem_total = max(mem.get("total_kb", 1), 1)
+    mem_avail_pct = mem.get("available_kb", 0) / mem_total * 100
+    if _persists(lambda h: h.get("mem_available_kb", mem_total) / mem_total * 100 < 5):
+        issues.append(f"Memory CRITICAL: {mem_avail_pct:.1f}% available")
+    elif _persists(
+        lambda h: h.get("mem_available_kb", mem_total) / mem_total * 100 < 10
+    ):
+        issues.append(f"Memory DEGRADED: {mem_avail_pct:.1f}% available")
+
+    swap_total = max(mem.get("swap_total_kb", 1), 1)
+    swap_used_pct = mem.get("swap_used_kb", 0) / swap_total * 100
+    if swap_used_pct > 50:
+        issues.append(f"Swap DEGRADED: {swap_used_pct:.0f}% used")
+
+    swap_out_recent = sum(h.get("swap_out_pages", 0) for h in recent) if recent else 0
+    if swap_out_recent > 0:
+        warnings.append(
+            f"Swap activity detected: {swap_out_recent} pages swapped out (last {samples} samples)"
+        )
+
+    major_faults = mem.get("major_faults", 0)
+    if major_faults > 1000:
+        warnings.append(f"Major page faults elevated: {major_faults}")
+
+    disk_pct = disk.get("root_used_pct", 0)
+    if disk_pct > 95:
+        issues.append(f"Disk CRITICAL: {disk_pct}% used")
+    elif disk_pct > 85:
+        issues.append(f"Disk DEGRADED: {disk_pct}% used")
+
+    mem_pressure = pressure.get("memory_some_avg60", 0)
+    if mem_pressure > 50:
+        issues.append(f"Memory pressure CRITICAL: {mem_pressure}")
+    elif mem_pressure > 10:
+        warnings.append(f"Memory pressure elevated: {mem_pressure}")
+
+    dead_services = [k for k, v in services.items() if not v.get("active")]
+    if dead_services:
+        critical_svcs = {"arifos", "a-forge"}
+        if any(s in critical_svcs for s in dead_services):
+            issues.append(f"CRITICAL service(s) DOWN: {dead_services}")
+        else:
+            issues.append(f"Service(s) DOWN: {dead_services}")
+
+    unhealthy_docker = [c["name"] for c in docker_list if not c.get("healthy")]
+    if unhealthy_docker:
+        warnings.append(f"Docker container(s) not healthy: {unhealthy_docker}")
+
+    zombies = ms.get("zombies", 0)
+    if zombies > 20:
+        issues.append(f"Zombie processes CRITICAL: {zombies}")
+    elif zombies > 5:
+        warnings.append(f"Zombie processes: {zombies}")
+
+    # ── Verdict ──
+    any_critical = any("CRITICAL" in i for i in issues)
+    any_degraded = any("DEGRADED" in i for i in issues) or dead_services
+
+    if any_critical:
+        verdict = "CRITICAL"
+        score = 20
+    elif any_degraded:
+        verdict = "DEGRADED"
+        score = 50
+    elif warnings:
+        verdict = "HEALTHY"
+        score = 80
+    else:
+        verdict = "HEALTHY"
+        score = 100
+
+    return _omega_well_output(
+        ok=not any_critical,
+        stage="000_OPS",
+        lane="AGI",
+        mode="machine",
+        verdict=verdict,
+        data={
+            "m_well_verdict": verdict,
+            "m_well_score": score,
+            "has_telemetry": True,
+            "telemetry_source": "machine_state.json",
+            "telemetry_age_seconds": _telemetry_age_seconds(ms),
+            "samples_for_hysteresis": samples,
+            "cpu_idle_pct": cpu_idle,
+            "iowait_pct": iowait,
+            "mem_available_pct": round(mem_avail_pct, 1),
+            "mem_available_gb": round(mem.get("available_kb", 0) / 1024**2, 1),
+            "swap_used_pct": round(swap_used_pct, 1),
+            "disk_used_pct": disk_pct,
+            "disk_free_gb": disk.get("root_free_gb", 0),
+            "services_active": sum(1 for v in services.values() if v.get("active")),
+            "services_total": len(services),
+            "dead_services": dead_services,
+            "docker_healthy": sum(1 for c in docker_list if c.get("healthy")),
+            "docker_total": len(docker_list),
+            "zombies": zombies,
+            "major_page_faults": major_faults,
+            "swap_out_pages_recent": swap_out_recent,
+            "issues": issues,
+            "warnings": warnings,
+            "diagnosis": "; ".join(issues)
+            if issues
+            else ("All clear" if not warnings else "; ".join(warnings)),
+        },
+    )
+
+
+def _telemetry_age_seconds(ms: dict) -> float:
+    """Age of telemetry snapshot in seconds."""
+    try:
+        import time as _time
+
+        ts = ms.get("timestamp_unix", 0)
+        return max(0, _time.time() - ts)
+    except Exception:
+        return -1
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
 
 # ── ALIAS_REGISTRY — Ω-WELL stage aliases → canonical tool mappings ────────────
@@ -12090,8 +12310,13 @@ if __name__ == "__main__":
         git_commit = "UNAVAILABLE"
         try:
             import subprocess as _sp
-            _r = _sp.run(["git", "-C", "/root/WELL", "rev-parse", "--short=7", "HEAD"],
-                         capture_output=True, text=True, timeout=3)
+
+            _r = _sp.run(
+                ["git", "-C", "/root/WELL", "rev-parse", "--short=7", "HEAD"],
+                capture_output=True,
+                text=True,
+                timeout=3,
+            )
             if _r.returncode == 0:
                 git_commit = _r.stdout.strip()
         except Exception:
