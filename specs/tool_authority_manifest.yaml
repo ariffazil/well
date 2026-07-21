@@ -9,10 +9,29 @@
 # DITEMPA BUKAN DIBERI — Intelligence is forged, not given.
 
 mcp: WELL
-schema_version: "2026.05.12"
+schema_version: "2026.07.21-autopilot"
 final_authority: "ARIF"
 irreversible_requires_human_ack: true
 self_approval_forbidden: true
+
+# ── Autopilot Configuration (F13 approved 2026-07-21) ────────────────────────
+autopilot:
+  c0_auto_policy:
+    enabled: true
+    description: "C0_AUTO actions execute without human intervention"
+    max_band: "A1"
+    decision_class: "C0"
+    tools_pre_approved: true
+  lease_consent_flow:
+    enabled: true
+    description: "WELL may request A-FORGE leases via consent button for C1+"
+    trigger_class: "C1"
+    ttl_seconds: 300
+  tool_pre_approval:
+    enabled: true
+    pre_approved_bands: ["A0", "A1"]
+    pre_approved_decision_classes: ["C0"]
+    require_judgment_bands: ["A2", "A3", "A4"]
 
 # ── Heartbeat ──────────────────────────────────────────────────────────────────
 heartbeat:
