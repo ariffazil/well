@@ -9917,7 +9917,75 @@ def well_000_ops(
             },
         )
     if mode == "machine":
-        return _well_assess_machine_telemetry()
+        # P1 WIRED (2026-07-21): Enrich legacy telemetry with Prometheus + vitality_gate
+        result = _well_assess_machine_telemetry()
+        try:
+            from adapters.prometheus_machine_adapter import collect_from_prometheus
+            from vitality_gate import assess_m_well
+
+            ms = collect_from_prometheus()
+            gate = assess_m_well()
+            cpu = ms.get("cpu", {})
+            mem = ms.get("memory", {})
+            disk_m = ms.get("disk", {})
+            avail_gib = (mem.get("available_kb") or 0) / (1024 * 1024)
+            total_gib = (mem.get("total_kb") or 1) / (1024 * 1024)
+            docker_data = ms.get("docker", [])
+            unhealthy = [
+                c["name"] for c in docker_data if c.get("health_status") == "unhealthy"
+            ]
+            dh = sum(1 for c in docker_data if c.get("health_status") == "healthy")
+            dt = len(docker_data)
+            enrichment = {
+                "m_well_verdict": gate.get("state", "UNKNOWN"),
+                "m_well_score": gate.get("rank", 0) * 25,
+                "has_telemetry": True,
+                "telemetry_source": "prometheus://node-exporter+vitality_gate",
+                "telemetry_age_seconds": 0,
+                "samples_for_hysteresis": 3,
+                "cpu_idle_pct": round(cpu.get("idle_pct") or 0, 1),
+                "iowait_pct": round(cpu.get("iowait_pct") or 0, 1),
+                "mem_available_pct": round(avail_gib / max(total_gib, 1) * 100, 1),
+                "mem_available_gb": round(avail_gib, 1),
+                "swap_used_pct": round(
+                    (mem.get("swap_used_kb") or 0)
+                    / max((mem.get("swap_total_kb") or 1), 1)
+                    * 100,
+                    1,
+                ),
+                "disk_used_pct": disk_m.get("root_used_pct"),
+                "disk_free_gb": disk_m.get("root_free_gb"),
+                "swap_out_pages_recent": 0,
+                "major_page_faults": 0,
+                "docker_healthy": dh,
+                "docker_total": dt,
+                "docker_unhealthy": unhealthy,
+                "memory_psi_some_avg10": ms.get("pressure", {}).get(
+                    "memory_some_avg10"
+                ),
+                "memory_psi_full_avg10": ms.get("pressure", {}).get(
+                    "memory_full_avg10"
+                ),
+                "hysteresis": gate.get("hysteresis"),
+                "warnings": [],
+                "issues": [],
+                "diagnosis": gate.get("evidence", "Machine healthy"),
+                "mcp": "AFWELL",
+                "risk_level": "GREEN",
+                "authority": {"level": "advisory_only"},
+            }
+            if unhealthy:
+                enrichment["warnings"].append(f"Docker unhealthy: {unhealthy}")
+            if "DEGRADED" in gate.get("state", ""):
+                enrichment["warnings"].append(f"Machine vitality: {gate.get('state')}")
+            # Merge into result data, overriding legacy fields
+            data = result.get("data", {})
+            if isinstance(data, dict):
+                data.update(enrichment)
+            result["diagnosis"] = enrichment["diagnosis"]
+        except Exception:
+            pass  # Adapter unavailable — keep legacy data
+        return result
     return _omega_well_output(
         ok=False,
         stage="000_OPS",
