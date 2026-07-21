@@ -1,0 +1,26 @@
+[Unit]
+Description=WELL WITNESS — Independent Substrate Observer
+After=network.target prometheus.service
+Wants=prometheus.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/WELL
+ExecStart=/root/WELL/.venv/bin/python3 /root/WELL/well_witness_http.py 18084
+Restart=on-failure
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=well-witness
+
+# Security hardening
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/var/witness
+ReadOnlyPaths=/root/WELL /proc /sys
+PrivateTmp=yes
+
+[Install]
+WantedBy=multi-user.target
