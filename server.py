@@ -17697,10 +17697,27 @@ if __name__ == "__main__":
             else "degraded"
         )
 
+        # ── Deployment identity (P0.0) — git commit of deployed runtime
+        source_commit = "UNKNOWN"
+        try:
+            import subprocess as _sp
+            _r = _sp.run(
+                ["git", "-C", "/root/WELL", "rev-parse", "--short=7", "HEAD"],
+                capture_output=True, text=True, timeout=3,
+            )
+            if _r.returncode == 0:
+                source_commit = _r.stdout.strip()
+        except Exception:
+            try:
+                source_commit = open("/root/WELL/.git_commit").read().strip()
+            except Exception:
+                pass
+
         return JSONResponse(
             {
                 # ── Canonical 7-field health schema (federation convention) ───
                 "status": health_status,
+                "source_commit": source_commit,
                 "final_authority": "ARIF",
                 "identity": "WELL",
                 "role": "Body / Human Intelligence",
