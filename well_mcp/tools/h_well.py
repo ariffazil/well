@@ -17,6 +17,7 @@ from datetime import datetime
 
 from ..transport.types import SubstrateState
 from ..replay.receipt import generate_replay_receipt
+from .evidence import build_unknown_result
 
 
 async def well_assess_homeostasis(
@@ -36,22 +37,17 @@ async def well_assess_homeostasis(
     decision_class: Literal["C1", "C2", "C3", "C4", "C5"] = "C3",
 ) -> dict:
     """Assess regulation, stability, and empathic balance under change."""
-    # TODO: Implement actual assessment logic
-    result = {
-        "verdict": "STABLE",
-        "confidence": 0.85,
-        "truth_class": "LIVE",
-        "evidence_label": "OBS",
-        "friction_score": 0.2,
-        "cost_estimate": 0.001,
-        "reversibility_class": "REVERSIBLE",
-        "novelty_tags": [],
-    }
+    result = build_unknown_result(
+        "well_assess_homeostasis",
+        missing=["sleep_telemetry", "hrv_data", "cognitive_assessment", "stress_measurement"],
+        note="No biometric telemetry available. Human homeostasis is UNKNOWN. Connect Health Connect or provide self-report.",
+    )
+    # TODO: P2 — wire to Health Connect sleep/HRV + self-report check-in
 
     # Generate replay receipt
     receipt = generate_replay_receipt(
         tool="well_assess_homeostasis",
-        session_id="test-session",
+        session_id="UNBOUND",
         actor_id=getattr(ctx, "actor_id", "unknown"),
         inputs={
             "mode": mode,
@@ -85,22 +81,17 @@ async def well_assess_livelihood(
     voluntary: Optional[bool] = None,
 ) -> dict:
     """Assess human wellness, role, dignity, support, and meaning."""
-    # TODO: Implement actual assessment logic
-    result = {
-        "verdict": "STABLE",
-        "confidence": 0.85,
-        "truth_class": "LIVE",
-        "evidence_label": "OBS",
-        "friction_score": 0.2,
-        "cost_estimate": 0.001,
-        "reversibility_class": "REVERSIBLE",
-        "novelty_tags": [],
-    }
+    result = build_unknown_result(
+        "well_assess_livelihood",
+        missing=["role_self_report", "cashflow_data", "purpose_assessment", "support_network"],
+        note="No livelihood self-report or WEALTH bridge data. Livelihood state is UNKNOWN.",
+    )
+    # TODO: P2 — add self-report check-in + WEALTH bridge for cashflow
 
     # Generate replay receipt
     receipt = generate_replay_receipt(
         tool="well_assess_livelihood",
-        session_id="test-session",
+        session_id="UNBOUND",
         actor_id=getattr(ctx, "actor_id", "unknown"),
         inputs={
             "mode": mode,
@@ -130,22 +121,17 @@ async def well_assess_sovereign_entropy(
     refusal_patterns: Optional[float] = None,
 ) -> dict:
     """Measure the sovereign's resistance to behavioral modeling."""
-    # TODO: Implement actual assessment logic
-    result = {
-        "verdict": "HIGH_ENTROPY",
-        "confidence": 0.85,
-        "truth_class": "LIVE",
-        "evidence_label": "OBS",
-        "friction_score": 0.2,
-        "cost_estimate": 0.001,
-        "reversibility_class": "REVERSIBLE",
-        "novelty_tags": [],
-    }
+    result = build_unknown_result(
+        "well_assess_sovereign_entropy",
+        missing=["behavioral_signals", "digital_footprint", "paradox_density"],
+        note="No behavioral signal data available. Sovereign entropy is UNKNOWN.",
+    )
+    # TODO: P3 — wire to agent telemetry + context-switching metrics
 
     # Generate replay receipt
     receipt = generate_replay_receipt(
         tool="well_assess_sovereign_entropy",
-        session_id="test-session",
+        session_id="UNBOUND",
         actor_id=getattr(ctx, "actor_id", "unknown"),
         inputs={
             "mode": mode,
@@ -171,22 +157,17 @@ async def well_guard_dignity(
     reductionism_risk: Optional[float] = None,
 ) -> dict:
     """Guard soul, personhood, meaning, and symbolic boundaries."""
-    # TODO: Implement actual dignity guard logic
-    result = {
-        "verdict": "PROTECTED",
-        "confidence": 0.85,
-        "truth_class": "LIVE",
-        "evidence_label": "OBS",
-        "friction_score": 0.2,
-        "cost_estimate": 0.001,
-        "reversibility_class": "REVERSIBLE",
-        "novelty_tags": [],
-    }
+    result = build_unknown_result(
+        "well_guard_dignity",
+        missing=["consent_record", "coercion_scan", "dignity_preservation_score"],
+        note="No consent grant or dignity signal data. Dignity boundary state is UNKNOWN.",
+    )
+    # TODO: P2 — implement consent management + coercion signal detection
 
     # Generate replay receipt
     receipt = generate_replay_receipt(
         tool="well_guard_dignity",
-        session_id="test-session",
+        session_id="UNBOUND",
         actor_id=getattr(ctx, "actor_id", "unknown"),
         inputs={
             "mode": mode,
@@ -211,22 +192,17 @@ async def well_validate_vitality(
     decision_class: Optional[str] = None,
 ) -> dict:
     """Validate vitality, readiness, and NIAT."""
-    # TODO: Implement actual vitality validation logic
-    result = {
-        "verdict": "READY",
-        "confidence": 0.85,
-        "truth_class": "LIVE",
-        "evidence_label": "OBS",
-        "friction_score": 0.2,
-        "cost_estimate": 0.001,
-        "reversibility_class": "REVERSIBLE",
-        "novelty_tags": [],
-    }
+    result = build_unknown_result(
+        "well_validate_vitality",
+        missing=["biometric_telemetry", "readiness_self_report", "fatigue_assessment"],
+        note="No verified body telemetry. Cannot assess vitality or readiness. Provide biometric data or confirm readiness manually.",
+    )
+    # TODO: P2 — wire to Health Connect + manual readiness check-in
 
     # Generate replay receipt
     receipt = generate_replay_receipt(
         tool="well_validate_vitality",
-        session_id="test-session",
+        session_id="UNBOUND",
         actor_id=getattr(ctx, "actor_id", "unknown"),
         inputs={
             "mode": mode,
@@ -250,7 +226,7 @@ async def well_medical_boundary(
     return {
         "boundary": "NON_DIAGNOSTIC",
         "message": "WELL is not a doctor, therapist, or diagnostic authority. For severe, persistent, or urgent symptoms, recommend professional care.",
-        "truth_class": "LIVE",
+        "truth_class": "ENFORCED",
     }
 
 
@@ -262,18 +238,17 @@ async def well_classify_state(
     stated_intent: Optional[str] = None,
 ) -> dict:
     """Classify human psychological state from message."""
-    # TODO: Implement actual classification logic
-    result = {
-        "state": "neutral",
-        "confidence": 0.85,
-        "truth_class": "LIVE",
-        "evidence_label": "OBS",
-    }
+    result = build_unknown_result(
+        "well_classify_state",
+        missing=["message_history", "baseline_profile", "clinical_context"],
+        note="No classification model or baseline. State classification is UNKNOWN. WELL is NON-DIAGNOSTIC.",
+    )
+    # TODO: P2 — implement text-based classification with explicit NON-DIAGNOSTIC boundary
 
     # Generate replay receipt
     receipt = generate_replay_receipt(
         tool="well_classify_state",
-        session_id="test-session",
+        session_id="UNBOUND",
         actor_id=getattr(ctx, "actor_id", "unknown"),
         inputs={
             "message": message,
@@ -294,19 +269,19 @@ async def well_dark_geometry_mirror(
     vitality_signals: Optional[dict] = None,
 ) -> dict:
     """Mirror language and behavioral signals for dark geometry patterns."""
-    # TODO: Implement actual pattern detection logic
-    result = {
-        "patterns_detected": [],
-        "signals": {},
-        "confidence": 0.85,
-        "truth_class": "LIVE",
-        "evidence_label": "OBS",
-    }
+    result = build_unknown_result(
+        "well_dark_geometry_mirror",
+        missing=["text_corpus", "behavioral_baseline", "vitality_signals"],
+        note="No text corpus or behavioral baseline. Dark geometry detection is UNKNOWN.",
+    )
+    result["patterns_detected"] = []
+    result["signals"] = {}
+    # TODO: P3 — implement pattern detection against baseline
 
     # Generate replay receipt
     receipt = generate_replay_receipt(
         tool="well_dark_geometry_mirror",
-        session_id="test-session",
+        session_id="UNBOUND",
         actor_id=getattr(ctx, "actor_id", "unknown"),
         inputs={
             "text_or_events": text_or_events,
@@ -327,18 +302,17 @@ async def well_sabar_latency(
     baseline_revision_latency: Optional[float] = None,
 ) -> dict:
     """Measure temporal compression between stimulus and response."""
-    # TODO: Implement actual latency measurement logic
-    result = {
-        "verdict": "NORMAL",
-        "confidence": 0.85,
-        "truth_class": "LIVE",
-        "evidence_label": "OBS",
-    }
+    result = build_unknown_result(
+        "well_sabar_latency",
+        missing=["event_timestamps", "baseline_latency", "response_log"],
+        note="No event timestamps or baseline latency data. SABAR latency is UNKNOWN.",
+    )
+    # TODO: P4 — wire to OpenTelemetry trace timestamps
 
     # Generate replay receipt
     receipt = generate_replay_receipt(
         tool="well_sabar_latency",
-        session_id="test-session",
+        session_id="UNBOUND",
         actor_id=getattr(ctx, "actor_id", "unknown"),
         inputs={
             "events": events,
@@ -358,18 +332,17 @@ async def well_trust_compression(
     baseline_trust_diversity: Optional[float] = None,
 ) -> dict:
     """Detect narrowing trust patterns."""
-    # TODO: Implement actual trust compression detection logic
-    result = {
-        "verdict": "NORMAL",
-        "confidence": 0.85,
-        "truth_class": "LIVE",
-        "evidence_label": "OBS",
-    }
+    result = build_unknown_result(
+        "well_trust_compression",
+        missing=["trust_events", "baseline_diversity", "interaction_log"],
+        note="No trust event log or diversity baseline. Trust compression is UNKNOWN.",
+    )
+    # TODO: P3 — wire to agent interaction logs
 
     # Generate replay receipt
     receipt = generate_replay_receipt(
         tool="well_trust_compression",
-        session_id="test-session",
+        session_id="UNBOUND",
         actor_id=getattr(ctx, "actor_id", "unknown"),
         inputs={
             "text": text,
@@ -390,18 +363,17 @@ async def well_niat_impact_mirror(
     witness_acceptance: Optional[str] = None,
 ) -> dict:
     """Compare declared niat with acknowledged impact."""
-    # TODO: Implement actual mirror logic
-    result = {
-        "verdict": "ALIGNED",
-        "confidence": 0.85,
-        "truth_class": "LIVE",
-        "evidence_label": "OBS",
-    }
+    result = build_unknown_result(
+        "well_niat_impact_mirror",
+        missing=["declared_niat", "acknowledged_impact", "witness_acceptance"],
+        note="No NIAT declaration or impact acknowledgment. NIAT mirror is UNKNOWN.",
+    )
+    # TODO: P3 — implement NIAT comparison logic
 
     # Generate replay receipt
     receipt = generate_replay_receipt(
         tool="well_niat_impact_mirror",
-        session_id="test-session",
+        session_id="UNBOUND",
         actor_id=getattr(ctx, "actor_id", "unknown"),
         inputs={
             "declared_niat": declared_niat,
@@ -421,18 +393,17 @@ async def well_correction_capacity(
     baseline_capacity: Optional[float] = None,
 ) -> dict:
     """Score observable correctability."""
-    # TODO: Implement actual scoring logic
-    result = {
-        "score": 0.85,
-        "confidence": 0.85,
-        "truth_class": "LIVE",
-        "evidence_label": "OBS",
-    }
+    result = build_unknown_result(
+        "well_correction_capacity",
+        missing=["correction_events", "baseline_capacity"],
+        note="No correction event history. Correction capacity is UNKNOWN.",
+    )
+    # TODO: P4 — track correction events from agent logs
 
     # Generate replay receipt
     receipt = generate_replay_receipt(
         tool="well_correction_capacity",
-        session_id="test-session",
+        session_id="UNBOUND",
         actor_id=getattr(ctx, "actor_id", "unknown"),
         inputs={
             "correction_events": correction_events,
@@ -447,7 +418,7 @@ async def well_correction_capacity(
     # Generate replay receipt
     receipt = generate_replay_receipt(
         tool="well_regulation_recovery",
-        session_id="test-session",
+        session_id="UNBOUND",
         actor_id=getattr(ctx, "actor_id", "unknown"),
         inputs={
             "activation_events": activation_events,

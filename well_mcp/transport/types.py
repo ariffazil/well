@@ -55,7 +55,14 @@ class MetabolicFlux(BaseModel):
 
 
 class ReplayReceipt(BaseModel):
-    """Typed replay receipt for audit trail."""
+    """Typed replay receipt for audit trail.
+
+    P0 TRUTH ENFORCEMENT (2026-07-21):
+      - truth_class now accepts STALE (no live telemetry)
+      - evidence_label now accepts NONE (no evidence available)
+      - reversibility_class now accepts UNKNOWN (not yet assessed)
+      - friction_score and cost_estimate are now Optional (None = unmeasured)
+    """
 
     tool: str
     timestamp: datetime
@@ -63,9 +70,9 @@ class ReplayReceipt(BaseModel):
     actor_id: str
     inputs: dict
     outputs: dict
-    truth_class: Literal["LIVE", "CACHED", "INFERRED"]
-    evidence_label: Literal["OBS", "DER", "INT", "SPEC"]
-    friction_score: float
-    cost_estimate: float
-    reversibility_class: Literal["REVERSIBLE", "IRREVERSIBLE"]
+    truth_class: Literal["LIVE", "CACHED", "INFERRED", "STALE"]
+    evidence_label: Literal["OBS", "DER", "INT", "SPEC", "NONE"]
+    friction_score: float | None = None
+    cost_estimate: float | None = None
+    reversibility_class: Literal["REVERSIBLE", "IRREVERSIBLE", "UNKNOWN"]
     novelty_tags: list[str]

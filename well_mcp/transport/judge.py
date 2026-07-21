@@ -38,8 +38,18 @@ def _local_floor_status(metabolized: Dict[str, Any]) -> Dict[str, str]:
     dignity_floor = metabolized.get("dignity_floor", {})
     substrate_canon = metabolized.get("substrate_canon", "human")
 
-    # F1 AMANAH — reversibility / backup
-    status["F1_amanah"] = "PASS" if flux < 0.85 else "HOLD"
+    # F1 AMANAH — reversibility / backup.
+    # Only claim PASS when flux is actually measured (not at default ~0.28).
+    # Default flux from stamp_metabolize with no real inputs is ~0.28.
+    if metabolized.get("readiness_verdict") == "UNKNOWN":
+        # Metabolize stage already determined no real evidence exists.
+        status["F1_amanah"] = "UNKNOWN"
+    elif flux is None:
+        status["F1_amanah"] = "UNKNOWN"
+    elif flux < 0.85:
+        status["F1_amanah"] = "PASS"
+    else:
+        status["F1_amanah"] = "HOLD"
 
     # F2 TRUTH — freshness / evidence
     confidence = metabolized.get("confidence", "MEDIUM")
@@ -73,11 +83,21 @@ def _local_floor_status(metabolized: Dict[str, Any]) -> Dict[str, str]:
     else:
         status["F8_law"] = "PASS"
 
-    # F9 ANTI-HANTU
-    status["F9_anti_hantu"] = "PASS"  # mirror does not claim consciousness
+    # F9 ANTI-HANTU — mirror does not claim consciousness.
+    # PASS only when substrate_canon is properly classified.
+    if substrate_canon in ("human", "machine", "governance"):
+        status["F9_anti_hantu"] = "PASS"
+    else:
+        status["F9_anti_hantu"] = "UNKNOWN"
 
-    # F10 ANTI-GHOST
-    status["F10_anti_ghost"] = "PASS"  # data is real
+    # F10 ANTI-GHOST — data provenance check.
+    # UNKNOWN when no evidence exists or signal_id is missing.
+    if metabolized.get("readiness_verdict") == "UNKNOWN":
+        status["F10_anti_ghost"] = "UNKNOWN"
+    elif metabolized.get("signal_id"):
+        status["F10_anti_ghost"] = "PASS"
+    else:
+        status["F10_anti_ghost"] = "UNKNOWN"
 
     # F11 AUDIT — traceability
     if metabolized.get("signal_id"):

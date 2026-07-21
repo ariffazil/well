@@ -15,6 +15,7 @@ from fastmcp import Context
 from typing import Literal, Optional
 
 from ..replay.receipt import generate_replay_receipt
+from .evidence import build_unknown_result
 
 
 async def well_classify_substrate(
@@ -27,18 +28,17 @@ async def well_classify_substrate(
     actor_id: str = "well-substrate",
 ) -> dict:
     """Substrate classification and boundary sensing."""
-    # TODO: Implement actual classification logic
-    result = {
-        "substrate_class": "HUMAN",
-        "confidence": 0.85,
-        "truth_class": "LIVE",
-        "evidence_label": "OBS",
-    }
+    result = build_unknown_result(
+        "well_classify_substrate",
+        missing=["substrate_signal", "boundary_probe", "classification_model"],
+        note="No classification model or substrate signal data. Substrate class is UNKNOWN.",
+    )
+    # TODO: P2 — implement substrate classification from session + identity metadata
 
     # Generate replay receipt
     receipt = generate_replay_receipt(
         tool="well_classify_substrate",
-        session_id="test-session",
+        session_id="UNBOUND",
         actor_id=actor_id,
         inputs={
             "mode": mode,
@@ -61,22 +61,17 @@ async def well_detect_boundary(
     peer: Optional[str] = None,
 ) -> dict:
     """Boundary detection across membrane, body, machine, and federation."""
-    # TODO: Implement actual boundary detection logic
-    result = {
-        "verdict": "INTACT",
-        "confidence": 0.85,
-        "truth_class": "LIVE",
-        "evidence_label": "OBS",
-        "friction_score": 0.2,
-        "cost_estimate": 0.001,
-        "reversibility_class": "REVERSIBLE",
-        "novelty_tags": [],
-    }
+    result = build_unknown_result(
+        "well_detect_boundary",
+        missing=["boundary_sensor", "membrane_state", "federation_topology"],
+        note="No boundary probe or membrane sensor data. Boundary state is UNKNOWN.",
+    )
+    # TODO: P3 — wire to federation health probes + consent boundary checks
 
     # Generate replay receipt
     receipt = generate_replay_receipt(
         tool="well_detect_boundary",
-        session_id="test-session",
+        session_id="UNBOUND",
         actor_id=getattr(ctx, "actor_id", "unknown"),
         inputs={
             "mode": mode,

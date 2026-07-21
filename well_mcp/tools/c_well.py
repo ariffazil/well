@@ -15,6 +15,7 @@ from fastmcp import Context
 from typing import Literal, Optional
 
 from ..replay.receipt import generate_replay_receipt
+from .evidence import build_unknown_result
 
 
 async def well_assess_metabolism(
@@ -27,22 +28,17 @@ async def well_assess_metabolism(
     internal_consistency: Optional[float] = None,
 ) -> dict:
     """Assess biological metabolism and system throughput across substrates."""
-    # TODO: Implement actual assessment logic
-    result = {
-        "verdict": "STABLE",
-        "confidence": 0.85,
-        "truth_class": "LIVE",
-        "evidence_label": "OBS",
-        "friction_score": 0.2,
-        "cost_estimate": 0.001,
-        "reversibility_class": "REVERSIBLE",
-        "novelty_tags": [],
-    }
+    result = build_unknown_result(
+        "well_assess_metabolism",
+        missing=["metabolic_sensor", "energy_data", "duty_load_measure", "mission_clarity"],
+        note="No metabolic sensor data. Coupled metabolism is UNKNOWN until telemetry pipeline is live.",
+    )
+    # TODO: P3 — wire to machine telemetry + human self-report for coupled metabolism
 
     # Generate replay receipt
     receipt = generate_replay_receipt(
         tool="well_assess_metabolism",
-        session_id="test-session",
+        session_id="UNBOUND",
         actor_id=getattr(ctx, "actor_id", "unknown"),
         inputs={
             "mode": mode,
@@ -64,24 +60,17 @@ async def well_compute_metabolic_flux(
     force_recompute: bool = False,
 ) -> dict:
     """Compute unified thermodynamic entropy rate."""
-    # TODO: Implement actual computation logic
-    result = {
-        "cognitive_entropy_rate": 0.3,
-        "machine_entropy": 0.2,
-        "unified_scalar": 0.25,
-        "compulsory_reallocation": False,
-        "system_hold": False,
-        "truth_class": "LIVE",
-        "friction_score": 0.2,
-        "cost_estimate": 0.001,
-        "reversibility_class": "REVERSIBLE",
-        "novelty_tags": [],
-    }
+    result = build_unknown_result(
+        "well_compute_metabolic_flux",
+        missing=["cognitive_telemetry", "machine_entropy_measure", "unified_scalar_input"],
+        note="No entropy measurement pipeline. Metabolic flux is UNKNOWN.",
+    )
+    # TODO: P1 — wire to Prometheus metrics + context pressure signals
 
     # Generate replay receipt
     receipt = generate_replay_receipt(
         tool="well_compute_metabolic_flux",
-        session_id="test-session",
+        session_id="UNBOUND",
         actor_id=getattr(ctx, "actor_id", "unknown"),
         inputs={"mode": mode, "force_recompute": force_recompute},
         outputs=result,
@@ -98,17 +87,18 @@ async def well_trace_lineage(
     reason: str = "state_checkpoint",
 ) -> dict:
     """Memory, trend, ledger, and vault chain tracing."""
-    # TODO: Implement actual lineage tracing logic
-    result = {
-        "entries": [],
-        "truth_class": "LIVE",
-        "evidence_label": "OBS",
-    }
+    result = build_unknown_result(
+        "well_trace_lineage",
+        missing=["memory_store", "event_log", "vault_chain"],
+        note="No lineage trace data. Memory chain is UNKNOWN.",
+    )
+    result["entries"] = []
+    # TODO: P3 — wire to VAULT999 + Supabase event log
 
     # Generate replay receipt
     receipt = generate_replay_receipt(
         tool="well_trace_lineage",
-        session_id="test-session",
+        session_id="UNBOUND",
         actor_id=getattr(ctx, "actor_id", "unknown"),
         inputs={
             "mode": mode,
@@ -130,18 +120,17 @@ async def well_measure_gradient(
     corroboration_count: int = 0,
 ) -> dict:
     """Measure chemical, energy, pressure, attention, and compute gradients."""
-    # TODO: Implement actual gradient measurement logic
-    result = {
-        "verdict": "NORMAL",
-        "confidence": 0.85,
-        "truth_class": "LIVE",
-        "evidence_label": "OBS",
-    }
+    result = build_unknown_result(
+        "well_measure_gradient",
+        missing=["evidence_source", "corroboration_data", "gradient_baseline"],
+        note="No evidence source or gradient baseline. Gradient measurement is UNKNOWN.",
+    )
+    # TODO: P3 — wire to OpenTelemetry metrics + evidence freshness tracking
 
     # Generate replay receipt
     receipt = generate_replay_receipt(
         tool="well_measure_gradient",
-        session_id="test-session",
+        session_id="UNBOUND",
         actor_id=getattr(ctx, "actor_id", "unknown"),
         inputs={
             "mode": mode,

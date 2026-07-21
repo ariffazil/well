@@ -34,8 +34,9 @@ FLUX_REGIMES = [
 
 
 def _flux_regime(flux: float) -> str:
-    if flux < 0:
-        return "STABLE"
+    """Classify metabolic flux into regime. UNKNOWN when flux is invalid."""
+    if flux is None or flux < 0:
+        return "UNKNOWN"
     for cap, label in FLUX_REGIMES:
         if flux < cap:
             return label
@@ -101,7 +102,23 @@ def stamp_metabolize(
     # 4. Propose readiness_verdict (not enforced; sovereign decides).
     flux_regime = _flux_regime(metabolic_flux)
 
-    if coupling < 0.15:
+    # When all inputs are still at their defaults, no real evidence exists.
+    # Force UNKNOWN rather than claiming STABLE from simulated values.
+    all_defaults = (
+        human_state == 0.70
+        and machine_state == 0.70
+        and governance_state == 0.85
+        and e1 == 0.30
+        and e2 == 0.20
+        and e3 == 0.20
+        and e4 == 0.30
+        and cognitive_entropy_rate == 0.30
+    )
+
+    if all_defaults:
+        readiness = "UNKNOWN"
+        flux_regime = "UNKNOWN"
+    elif coupling < 0.15:
         readiness = "CRITICAL"
     elif coupling < 0.40:
         readiness = "DEGRADED"
