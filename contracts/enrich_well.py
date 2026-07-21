@@ -22,8 +22,25 @@ from typing import Any
 
 SCHEMA_NAME = "MetabolicOutput"
 SCHEMA_VERSION = "1.0.0"
-SOURCE_COMMIT = "eb53b316"
 ADOPTION_STATUS = "PHASE_3"
+
+
+def _resolve_source_commit() -> str:
+    """Resolve source commit at import time from git, falling back to hardcoded."""
+    try:
+        import subprocess
+        from pathlib import Path
+
+        return subprocess.check_output(
+            ["git", "rev-parse", "--short", "HEAD"],
+            cwd=Path(__file__).resolve().parents[1],
+            text=True,
+        ).strip()
+    except Exception:
+        return "unknown"
+
+
+SOURCE_COMMIT = _resolve_source_commit()
 
 # Well-known contract hash — computed from canonical schema at schema creation
 CONTRACT_HASH = ""  # Empty until computed at first import
@@ -194,15 +211,19 @@ def build_metabolic_output(
                 # May be heavy; fall back to inline if fails
                 try:
                     _spec.loader.exec_module(_wmod)
-                    _to_federation_output = getattr(_wmod, "_to_federation_output", None)
+                    _to_federation_output = getattr(
+                        _wmod, "_to_federation_output", None
+                    )
                 except Exception:
                     _to_federation_output = None
     if _to_federation_output is None:
         # Last resort: identity wrap so tool does not crash
         def _to_federation_output(internal_result, tool_name=None):  # type: ignore
-            out = dict(internal_result) if isinstance(internal_result, dict) else {
-                "result": internal_result
-            }
+            out = (
+                dict(internal_result)
+                if isinstance(internal_result, dict)
+                else {"result": internal_result}
+            )
             out.setdefault("tool", tool_name or "well")
             out.setdefault("authority", "ADVISORY_ONLY")
             return out
