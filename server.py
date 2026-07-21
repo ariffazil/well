@@ -9936,6 +9936,28 @@ def well_000_ops(
             ]
             dh = sum(1 for c in docker_data if c.get("health_status") == "healthy")
             dt = len(docker_data)
+            # Docker + PSI: pull from vitality_gate evidence (adapter lacks these metrics)
+            gate_evidence = gate.get("evidence", "")
+            # Parse docker=3healthy/0unhealthy/5no-check from evidence
+            import re as _re
+
+            docker_match = _re.search(
+                r"docker=(\d+)healthy/(\d+)unhealthy/(\d+)no-check", gate_evidence
+            )
+            if docker_match:
+                dh = int(docker_match.group(1))
+                du = int(docker_match.group(2))
+                dt = dh + du + int(docker_match.group(3))
+            else:
+                dh, du, dt = 0, 0, 0
+
+            # Parse PSI from evidence: mem_psi_some10=X.X full10=Y.Y
+            psi_match = _re.search(
+                r"mem_psi_some10=([\d.]+)\s+full10=([\d.]+)", gate_evidence
+            )
+            psi_some = float(psi_match.group(1)) if psi_match else None
+            psi_full = float(psi_match.group(2)) if psi_match else None
+
             enrichment = {
                 "m_well_verdict": gate.get("state", "UNKNOWN"),
                 "m_well_score": gate.get("rank", 0) * 25,
@@ -9959,13 +9981,9 @@ def well_000_ops(
                 "major_page_faults": 0,
                 "docker_healthy": dh,
                 "docker_total": dt,
-                "docker_unhealthy": unhealthy,
-                "memory_psi_some_avg10": ms.get("pressure", {}).get(
-                    "memory_some_avg10"
-                ),
-                "memory_psi_full_avg10": ms.get("pressure", {}).get(
-                    "memory_full_avg10"
-                ),
+                "docker_unhealthy_count": du,
+                "memory_psi_some_avg10": psi_some,
+                "memory_psi_full_avg10": psi_full,
                 "hysteresis": gate.get("hysteresis"),
                 "warnings": [],
                 "issues": [],
