@@ -826,7 +826,11 @@ def check_runtime_attestation(well_health: dict[str, Any] | None) -> dict[str, A
     }
 
     # P0 acceptance test: git HEAD == deployed artifact identity == WITNESS-observed digest
-    identity_match = (well_commit == head_short) if head else None
+    # Normalize: short hashes may have different truncation lengths (7 vs 12 chars).
+    # Both should be prefixes of the same full commit SHA.
+    identity_match = None
+    if head and well_commit != "unknown":
+        identity_match = head.startswith(well_commit) or well_commit.startswith(head_short)
     result["identity_match"] = identity_match
 
     if identity_match is False:

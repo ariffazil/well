@@ -14360,18 +14360,55 @@ def well_check_repair(
     ctx: Context | None = None,
 ) -> dict[str, Any]:
     """Ω-WELL-07: Check repair, recovery, resilience, and forge cycle integrity."""
-    return _to_federation_output(
-        well_777_forge(
-            mode=mode,
-            task_description=task_description,
-            decision_class=decision_class,
-            source=source,
-            intensity=intensity,
-            outcome=outcome,
-            ctx=ctx,
-        ),
-        tool_name="well_check_repair",
+    result = well_777_forge(
+        mode=mode,
+        task_description=task_description,
+        decision_class=decision_class,
+        source=source,
+        intensity=intensity,
+        outcome=outcome,
+        ctx=ctx,
     )
+
+    # P4 WIRED (2026-07-21): Enrich with repair allowlist
+    try:
+        from repair_allowlist import (
+            get_repair_options,
+            get_allowlisted_services,
+            get_allowlisted_containers,
+            ALLOWLIST,
+        )
+
+        if task_description:
+            options = get_repair_options([task_description])
+            if options:
+                result["repair_options"] = options
+                result["recommendation"] = (
+                    f"Found {len(options)} matching repair option(s). "
+                    "All require arifOS judgment + A-FORGE lease."
+                )
+            else:
+                result["repair_options"] = []
+                result["no_match_note"] = f"No allowlist match for: {task_description}"
+        else:
+            result["allowlist_reference"] = {
+                "total_entries": len(ALLOWLIST),
+                "entries_by_band": {
+                    "A1_diagnosis": len([e for e in ALLOWLIST if e["band"] == "A1"]),
+                    "A2_allowlisted": len([e for e in ALLOWLIST if e["band"] == "A2"]),
+                    "A3_judgment_gated": len(
+                        [e for e in ALLOWLIST if e["band"] == "A3"]
+                    ),
+                    "A4_prohibited": len([e for e in ALLOWLIST if e["band"] == "A4"]),
+                },
+                "allowlisted_services": get_allowlisted_services(),
+                "allowlisted_containers": get_allowlisted_containers(),
+            }
+        result["repair_phase"] = "P4_BOUNDED_REPAIR"
+    except ImportError:
+        pass
+
+    return _to_federation_output(result, tool_name="well_check_repair")
 
 
 @mcp.tool()
