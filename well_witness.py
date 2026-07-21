@@ -25,6 +25,7 @@ from __future__ import annotations
 import json
 import hashlib
 import os
+import subprocess
 import sys
 import time
 import urllib.request
@@ -34,14 +35,52 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+# Optional: NATS publish support (graceful fallback if lib missing)
+try:
+    import nats as _nats_lib  # type: ignore
+    NATS_LIB_AVAILABLE = True
+except Exception:  # pragma: no cover
+    _nats_lib = None
+    NATS_LIB_AVAILABLE = False
+
 # ── Configuration ────────────────────────────────────────────────────────────
 WITNESS_DIR = Path("/var/witness")
 LEDGER_PATH = WITNESS_DIR / "ledger.jsonl"
-WELL_MACHINE_STATE = Path("/root/WELL/machine_state.json")
+SIGNALS_PATH = WITNESS_DIR / "signals.jsonl"  # append-only 888_HOLD ring buffer
+WELL_DIR = Path("/root/WELL")
+WELL_MACHINE_STATE = WELL_DIR / "machine_state.json"
 PROMETHEUS_URL = "http://127.0.0.1:9090"
 WELL_HEALTH_URL = "http://127.0.0.1:18083/health"
 QUERY_TIMEOUT_S = 3.0
 HISTORY_SIZE = 1000
+
+# Files whose working-tree contents WITNESS verifies against git HEAD.
+# These are the surfaces a substrate that rewrites WELL or its witness could touch.
+SOURCE_INTEGRITY_FILES = [
+    "well_witness.py",
+    "well_witness_http.py",
+    "server.py",  # canonical WELL server.py used by well.service ExecStart
+]
+
+# Federation systemd units WITNESS probes independently. Domain organs must all be
+# active for substrate governance to function; WITNESS itself is local (excluded from
+# its own escalation set so its own restart doesn't trigger HOLD against itself).
+FEDERATION_SERVICES = [
+    ("arifOS",    "arifos.service",         True),   # critical: kernel + judge
+    ("A-FORGE",   "a-forge.service",        True),   # critical: executor
+    ("A-FORGE-MCP", "a-forge-mcp.service",  True),   # MCP transport
+    ("GEOX",      "geox-mcp.service",       True),
+    ("WEALTH",    "wealth-organ.service",   True),
+    ("WELL",      "well.service",           True),   # the substrate WITNESS observes
+    ("AAA",       "aaa-a2a.service",        True),
+]
+
+# Telemetry freshness — matches WELL watchdog cadence (8am/8pm MYT) with buffer.
+TELEMETRY_MAX_AGE_S = 900  # 15 minutes
+
+# NATS — for sovereign signal escalation when WITNESS detects divergence.
+NATS_URL = "nats://127.0.0.1:4222"
+NATS_HOLD_SUBJECT = "witness.888_hold"
 
 
 def ensure_dir() -> None:
@@ -299,6 +338,372 @@ def check_consensus(
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# COMPONENT 1: SOURCE INTEGRITY HASHING
+# Adversarial posture: assume a hostile substrate may rewrite well_witness.py,
+# well_witness_http.py, or server.py to make them appear healthy. Git is the
+# independent source of truth. WITNESS computes the working-tree blob hash via
+# `git hash-object` and compares it against the blob SHA git has recorded at HEAD.
+# Any mismatch is a tampering signal — not a numeric, but a constitutional one.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+def _run_git(args: list[str], timeout: int = 5) -> str:
+    """Run a git command inside WELL_DIR. Returns stdout, '' on error."""
+    try:
+        return subprocess.check_output(
+            ["git", *args],
+            cwd=str(WELL_DIR),
+            stderr=subprocess.PIPE,
+            timeout=timeout,
+        ).decode().strip()
+    except Exception:
+        return ""
+
+
+def check_source_integrity() -> dict[str, Any]:
+    """Verify witness+witness_http+server.py match git HEAD blobs.
+
+    Returns per-file: actual git blob SHA (git hash-object) vs HEAD blob SHA
+    (git rev-parse HEAD:<path>). Mismatch ⇒ tampering evidence.
+    """
+    files = SOURCE_INTEGRITY_FILES
+    head = _run_git(["rev-parse", "HEAD"])
+    head_short = head[:12] if head else "unknown"
+
+    results: list[dict[str, Any]] = []
+    any_violation = False
+    git_unavailable = head == ""
+
+    for relpath in files:
+        full_path = WELL_DIR / relpath
+        if not full_path.exists():
+            results.append({
+                "file": relpath,
+                "exists": False,
+                "matches": False,
+                "violation": "MISSING",
+            })
+            any_violation = True
+            continue
+
+        # Working-tree blob SHA (independent of index/HEAD).
+        actual = _run_git(["hash-object", relpath])
+        # HEAD-recorded blob SHA.
+        expected = _run_git(["rev-parse", f"HEAD:{relpath}"])
+
+        matches = bool(actual) and bool(expected) and actual == expected
+        if not matches:
+            any_violation = True
+
+        results.append({
+            "file": relpath,
+            "exists": True,
+            "matches": matches,
+            "actual_blob_sha": actual[:12] if actual else "unreadable",
+            "head_blob_sha": expected[:12] if expected else "missing",
+            "violation": None if matches else (
+                "git_unavailable" if not actual or not expected
+                else "TAMPER_DETECTED"
+            ),
+        })
+
+    return {
+        "head_commit": head_short,
+        "files": results,
+        "files_total": len(results),
+        "files_intact": sum(1 for r in results if r.get("matches")),
+        "any_violation": any_violation,
+        "git_unavailable": git_unavailable,
+        "verdict": "TAMPER_DETECTED" if any_violation and not git_unavailable
+                    else "GIT_UNAVAILABLE" if git_unavailable
+                    else "INTACT",
+    }
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# COMPONENT 2: INDEPENDENT SERVICE PROBES (systemd)
+# Adversarial posture: WELL's status view of other organs might lie. WITNESS
+# asks systemd directly via `systemctl is-active`. If a critical organ is
+# inactive AND the consensus is divergent, escalate to 888_HOLD.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+def _systemd_active(unit: str) -> str:
+    """Return systemd is-active result. '' on error."""
+    try:
+        return subprocess.check_output(
+            ["systemctl", "is-active", unit],
+            stderr=subprocess.PIPE,
+            timeout=3,
+        ).decode().strip()
+    except Exception:
+        return ""
+
+
+def check_service_probes() -> dict[str, Any]:
+    """Probe each federation service independently via systemd.
+
+    Critical organs (kernel, executor, substrate layer) feed substrate governance.
+    If any are inactive, WITNESS escalates severity.
+    """
+    probes = []
+    inactive_critical: list[str] = []
+
+    for name, unit, critical in FEDERATION_SERVICES:
+        state = _systemd_active(unit)
+        active = state == "active"
+        probes.append({
+            "organ": name,
+            "unit": unit,
+            "state": state or "unknown",
+            "active": active,
+            "critical": critical,
+        })
+        if critical and not active:
+            inactive_critical.append(name)
+
+    return {
+        "probes": probes,
+        "total": len(probes),
+        "active": sum(1 for p in probes if p["active"]),
+        "inactive_critical": inactive_critical,
+        "any_critical_down": bool(inactive_critical),
+        "verdict": "CRITICAL_DOWN" if inactive_critical else "OK",
+    }
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# COMPONENT 3: TELEMETRY FRESHNESS CHECK
+# Adversarial posture: a stale machine_state.json means WITNESS cannot validate
+# WELL's claims. Freshness is itself a witness signal.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+def check_telemetry_freshness(max_age_s: int = TELEMETRY_MAX_AGE_S) -> dict[str, Any]:
+    """mtime check on WELL's machine_state.json.
+
+    The WELL watchdog writes machine_state.json twice daily. If it's stale, WITNESS
+    cannot cross-validate WELL's claims against /proc — so the consensus is
+    degraded (not held), but operators must know.
+    """
+    p = WELL_MACHINE_STATE
+    if not p.exists():
+        return {
+            "fresh": False,
+            "exists": False,
+            "age_seconds": None,
+            "max_age_seconds": max_age_s,
+            "mtime": None,
+            "violation": "MISSING",
+            "verdict": "MISSING",
+        }
+
+    try:
+        mtime_ts = p.stat().st_mtime
+        mtime_utc = datetime.fromtimestamp(mtime_ts, tz=timezone.utc)
+        age_s = (datetime.now(timezone.utc) - mtime_utc).total_seconds()
+    except OSError:
+        return {
+            "fresh": False,
+            "exists": True,
+            "age_seconds": None,
+            "max_age_seconds": max_age_s,
+            "mtime": None,
+            "violation": "STAT_ERROR",
+            "verdict": "STAT_ERROR",
+        }
+
+    fresh = age_s <= max_age_s
+    return {
+        "fresh": fresh,
+        "exists": True,
+        "age_seconds": age_s,
+        "max_age_seconds": max_age_s,
+        "mtime": mtime_utc.isoformat(),
+        "violation": None if fresh else "STALE",
+        "verdict": "FRESH" if fresh else "STALE",
+    }
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# COMPONENT 4: 888_HOLD NATS SIGNALLING
+# The sovereign signal channel. When consensus crosses into 888_HOLD severity
+# we publish on NATS subject witness.888_hold so that arifOS and AAA can react
+# without polling WITNESS. Publish failures fall back to a local signals.jsonl
+# ring buffer + stderr, so the signal never silently disappears.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+def _publish_nats_sync(subject: str, payload: bytes, timeout_s: float = 1.0) -> bool:
+    """Synchronous NATS publish. True on success, False on any failure."""
+    if not NATS_LIB_AVAILABLE:
+        return False
+    try:
+        # nats-py 2.x publish is a coroutine. Run it inline in our own loop.
+        import asyncio
+
+        async def _do() -> bool:
+            nc = await _nats_lib.connect(NATS_URL, connect_timeout=timeout_s)
+            try:
+                await nc.publish(subject, payload)
+                await nc.drain()
+                return True
+            finally:
+                try:
+                    await nc.close()
+                except Exception:
+                    pass
+
+        loop = asyncio.new_event_loop()
+        try:
+            return bool(loop.run_until_complete(asyncio.wait_for(_do(), timeout=timeout_s + 1)))
+        finally:
+            loop.close()
+    except Exception:
+        return False
+
+
+def signal_888_hold(severity: str, observation: dict[str, Any]) -> dict[str, Any]:
+    """If severity is 888_HOLD, publish to NATS. Always log to signals ring buffer.
+
+    Returns a small audit dict: nats_published(bool), nats_attempted(bool),
+    logged_path(str). Never raises.
+    """
+    audit = {
+        "nats_published": False,
+        "nats_attempted": False,
+        "logged_path": str(SIGNALS_PATH),
+    }
+
+    if severity != "888_HOLD":
+        return audit
+
+    payload = {
+        "signal": "witness_888_hold",
+        "ts": observation.get("timestamp"),
+        "seq": observation.get("seq"),
+        "prev_hash": observation.get("prev_hash"),
+        "hash": observation.get("hash"),
+        "well_self_reported": observation.get("well_self_reported"),
+        "consensus": observation.get("consensus", {}).get("verdict"),
+        "severity": severity,
+        "divergent": observation.get("consensus", {}).get("divergent_details", []),
+        "advanced": observation.get("advanced", {}),
+    }
+    blob = json.dumps(payload, default=str).encode()
+
+    # 1) Try NATS publish.
+    if NATS_LIB_AVAILABLE:
+        audit["nats_attempted"] = True
+        audit["nats_published"] = _publish_nats_sync(NATS_HOLD_SUBJECT, blob)
+
+    # 2) Always log to signals ring buffer (so the signal survives NATS outages).
+    try:
+        ensure_dir()
+        with open(SIGNALS_PATH, "a") as f:
+            f.write(
+                json.dumps(
+                    {**payload, "nats_published": audit["nats_published"]},
+                    default=str,
+                )
+                + "\n"
+            )
+    except OSError:
+        audit["logged_path"] = None
+
+    # 3) stderr — so operators see it immediately.
+    try:
+        sys.stderr.write(f"[888_HOLD] seq={payload['seq']} {payload['consensus']}\n")
+        sys.stderr.flush()
+    except OSError:
+        pass
+
+    return audit
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# COMPONENT 5: WITNESS SELF-CHECK
+# Adversarial posture: a witness that cannot read its own sources is worse than
+# no witness at all — it would emit blind 888_HOLD or blind OK. Run every sensor
+# once during observe() and report which channels are blind.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+def witness_self_check() -> dict[str, Any]:
+    """Can WITNESS see its own sources? Returns a per-channel readability matrix.
+
+    Any blind channel collapses self-trust. We mark `can_observe=False` if any
+    critical channel (proc, prometheus, source integrity) is unreadable.
+    """
+    proc = witness_read_machine()
+    prom = witness_read_prometheus()
+    well_ms = witness_read_well_machine_state()
+    well_health = witness_probe_well_health()
+    integrity = check_source_integrity()
+    services = check_service_probes()
+    freshness = check_telemetry_freshness()
+
+    channels = {
+        # /proc is always readable from userspace with no extra deps. If false,
+        # we are in a chroot/jail/container without /proc — report.
+        "proc_meminfo": bool(proc.get("memory", {}).get("available_kb")),
+        "proc_pressure": proc.get("pressure", {}).get("memory_some_avg10") is not None
+                         or proc.get("pressure", {}).get("memory_full_avg10") is not None,
+        # Prometheus may be down — that's degraded, not blind. Note for ops.
+        "prometheus": prom.get("memory_available_bytes") is not None,
+        # WELL machine_state.json may not exist yet. That's not blind — it's missing.
+        "well_machine_state": well_ms is not None,
+        # WELL health probe may fail if WELL itself is down. Not blind — degraded.
+        "well_health": well_health is not None,
+        # Source integrity requires git — that's the critical channel. If git isn't
+        # there, we have no independent truth source.
+        "source_integrity": integrity.get("git_unavailable") is False
+                            and integrity.get("any_violation") is False,
+        # NATS signalling may not be available. If it's down, our sovereign signal
+        # degrades — still observable, but operators must read stderr/signals.jsonl.
+        "nats_lib": NATS_LIB_AVAILABLE,
+        "telemetry_fresh": freshness.get("fresh"),
+        # Witness ledger must be writable — else we cannot hash-chain.
+        "ledger_writable": _ledger_writable_probe(),
+    }
+
+    # Critical channels: if any of these blind, WITNESS cannot perform its role.
+    critical_blind = [
+        name for name in ("proc_meminfo", "source_integrity")
+        if not channels[name]
+    ]
+    can_observe = len(critical_blind) == 0
+
+    return {
+        "channels": channels,
+        "critical_blind": critical_blind,
+        "degraded_blind": [
+            name for name, ok in channels.items()
+            if not ok and name not in critical_blind
+        ],
+        "can_observe": can_observe,
+        "verdict": "BLIND" if not can_observe
+                   else ("DEGRADED" if any(not v for v in channels.values()) else "OK"),
+    }
+
+
+def _ledger_writable_probe() -> bool:
+    """Probe whether /var/witness/ledger.jsonl is writable. Never raises."""
+    try:
+        ensure_dir()
+        if not LEDGER_PATH.exists():
+            # Try creating empty.
+            LEDGER_PATH.touch()
+        # Append-only probe: read last byte's mode hint via a 0-byte stat check.
+        # We deliberately do NOT write a probe entry — too noisy for hash chain.
+        with open(LEDGER_PATH, "a") as f:
+            pass
+        return True
+    except OSError:
+        return False
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # HASH-CHAIN LEDGER
 # ═══════════════════════════════════════════════════════════════════════════════
 
@@ -381,27 +786,39 @@ def verify_chain() -> dict[str, Any]:
 
 
 def observe() -> dict[str, Any]:
-    """Run one full observation cycle."""
+    """Run one full observation cycle (v1.1.0 — adds 5 advanced witness layers)."""
     ts = datetime.now(timezone.utc)
 
-    # Independent readings
+    # Independent readings (legacy /proc + Prometheus cross-reference)
     proc = witness_read_machine()
     prom = witness_read_prometheus()
     well_ms = witness_read_well_machine_state()
     well_health = witness_probe_well_health()
 
-    # Consensus check
+    # Consensus check (legacy)
     consensus = check_consensus(proc, prom, well_ms)
+
+    # ── 5 advanced witness layers (v1.1.0) ──────────────────────────────────
+    advanced = {
+        "source_integrity": check_source_integrity(),
+        "service_probes": check_service_probes(),
+        "telemetry_freshness": check_telemetry_freshness(),
+        "self_check": witness_self_check(),
+    }
+    # Component 5 (self-check) is also inside advanced for archival, but the
+    # integrity/version/critical_blind signals are factored into severity below.
+
+    advanced_severity = compute_advanced_severity(consensus, advanced)
 
     # WELL's self-reported state
     well_state = None
     if well_health:
         well_state = well_health.get("status")
 
-    # Build observation
+    # Build observation — version is bumped and final severity is the advanced one.
     observation = {
         "timestamp": ts.isoformat(),
-        "witness_version": "1.0.0",
+        "witness_version": "1.1.0",
         "sources": {
             "proc": "ok" if proc.get("memory", {}).get("available_kb") else "failed",
             "prometheus": "ok" if prom.get("memory_available_bytes") else "failed",
@@ -409,7 +826,7 @@ def observe() -> dict[str, Any]:
             "well_health": "ok" if well_health else "unreachable",
         },
         "well_self_reported": well_state,
-        "consensus": consensus,
+        "consensus": {**consensus, "severity": advanced_severity["final"]},
         "readings": {
             "proc": {
                 "mem_avail_pct": proc.get("memory", {}).get("available_pct"),
@@ -421,12 +838,82 @@ def observe() -> dict[str, Any]:
                 "load_1m": prom.get("load_1m"),
             },
         },
+        "advanced": advanced,
+        "advanced_severity": advanced_severity,
     }
 
-    # Ledger
+    # Hash-chain ledger
     entry_hash = ledger_append(observation)
 
+    # Sovereign signal escalation if final severity is 888_HOLD.
+    # signal_888_hold is non-blocking; failures fall back to ring buffer + stderr.
+    signal_audit = signal_888_hold(advanced_severity["final"], observation)
+    observation["signal"] = signal_audit
+
     return {**observation, "hash": entry_hash}
+
+
+def compute_advanced_severity(consensus: dict, advanced: dict) -> dict[str, Any]:
+    """Combine legacy consensus severity with the 5 advanced layers.
+
+    Only escalates — never lowers. Never invents urgency the data doesn't support.
+
+    Severity ladder: OK < DEGRADED < WARN < 888_HOLD.
+    """
+    order = {"OK": 0, "DEGRADED": 1, "WARN": 2, "888_HOLD": 3}
+    base = consensus.get("severity", "OK")
+    final = base
+    reasons: list[str] = []
+
+    def escalate_to(target: str, reason: str) -> None:
+        nonlocal final
+        if order[target] > order[final]:
+            final = target
+        if reason not in reasons:
+            reasons.append(reason)
+
+    # 1) Source integrity violation is a TAMPERING signal — escalate hard.
+    si = advanced["source_integrity"]
+    if si.get("any_violation") and not si.get("git_unavailable"):
+        escalate_to("888_HOLD", f"source_integrity:{si.get('verdict')}")
+    elif si.get("git_unavailable"):
+        escalate_to("WARN", "source_integrity:git_unavailable")
+
+    # 2) Self-check blindness — WITNESS itself is broken. Critical channels that
+    #    can't be read mean we cannot perform our role. Always 888_HOLD.
+    sc = advanced["self_check"]
+    if not sc.get("can_observe"):
+        escalate_to(
+            "888_HOLD",
+            f"self_check:{sc.get('verdict')}:{sc.get('critical_blind')}",
+        )
+
+    # 3) Stale telemetry — we cannot cross-validate WELL. Demote OK to DEGRADED.
+    tf = advanced["telemetry_freshness"]
+    if not tf.get("fresh"):
+        if final == "OK":
+            final = "DEGRADED"
+            reasons.append(f"telemetry_freshness:{tf.get('verdict')}")
+        else:
+            reasons.append(f"telemetry_freshness:stale:{tf.get('verdict')}")
+
+    # 4) Critical organ down alone isn't HOLD — but it amplifies existing warnings.
+    sp = advanced["service_probes"]
+    if sp.get("any_critical_down"):
+        if final in ("WARN", "DEGRADED"):
+            escalate_to(
+                "888_HOLD",
+                f"service_probes:{sp.get('inactive_critical')}",
+            )
+        else:
+            reasons.append(f"service_probes:down:{sp.get('inactive_critical')}")
+
+    return {
+        "base": base,
+        "final": final,
+        "reasons": reasons,
+        "order": order[final],
+    }
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
