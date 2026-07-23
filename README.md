@@ -1,19 +1,17 @@
 <!-- SOT-MANIFEST
-federation_release: v2026.07.20-ZEN-CONVERGENCE
-last_verified: 2026-07-20T16:25Z
-live_commit: 88e3d8a
+federation_release: v2026.07.23
+last_verified: 2026-07-23T22:00Z
+live_commit: 46b73e7
 port: 18083
-domain_law: SUBSTRATE_LAW
 mcp_tools_live: 8
 authority: REFLECT_ONLY — never diagnose
-health_status: DEGRADED (apex_scalars UNMEASURED — known, non-blocking)
+health_status: DEGRADED (apex_scalars UNMEASURED — known, non-blocking; owner summary stale)
 truth_rule: tools/list + /health beat any static count in prose
-a2a_agent_json: /root/WELL/.well-known/agent.json
 -->
 
 [![Agentic CI](https://github.com/ariffazil/well/actions/workflows/agentic-ci.yml/badge.svg?branch=main)](https://github.com/ariffazil/well/actions/workflows/agentic-ci.yml)
 [![🫀 REFLECT](https://img.shields.io/badge/%F0%9F%AB%80%20REFLECT-8%20tools-purple)](https://well.arif-fazil.com/mcp)
-[![Federation](https://img.shields.io/badge/Federation-v2026.07.19-0a7b83)](https://arifos.arif-fazil.com)
+[![Federation](https://img.shields.io/badge/Federation-v2026.07.23-0a7b83)](https://arifos.arif-fazil.com)
 [![License](https://img.shields.io/github/license/ariffazil/well?label=License)](LICENSE)
 
 # WELL — Human Readiness Mirror
