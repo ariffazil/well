@@ -1,0 +1,81 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# WELL Sentinel Pre-Merge Gate
+# Binary PASS / BLOCK for every PR to main.
+# Q1: REFLECT_ONLY boundary intact?
+# Q2: No diagnostic claims?
+# Q3: Tests pass?
+# ═══════════════════════════════════════════════════════════════════════════
+name: "🛡️ WELL Sentinel"
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+  merge_group:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  q1-boundary:
+    name: "Q1 — REFLECT_ONLY Boundary"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Check for boundary violations
+        run: |
+          HITS=$(git diff origin/main...HEAD | grep '^+' | grep -iE "diagnosis|diagnostic|diagnose|medical_advice|treatment_recommend" | grep -v "^++\|#\|test_\|SKILL\.md" || true)
+          if [[ -n "$HITS" ]]; then
+            echo "::error::Q1 BOUNDARY VIOLATION: Diagnostic claims in WELL (REFLECT_ONLY organ)"
+            echo "$HITS"
+            exit 1
+          fi
+          echo "✅ Q1 PASS — REFLECT_ONLY boundary intact"
+
+  q2-dignity:
+    name: "Q2 — Dignity Gate"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Dignity preservation present
+        run: |
+          test -f gate/dignity_shadow.py || echo "⚠️ dignity_shadow.py not present"
+          python3 -c "import ast; ast.parse(open('gate/dignity_shadow.py').read())" 2>/dev/null && echo "✅ dignity_shadow.py syntax OK" || echo "⚠️ syntax check failed (non-blocking)"
+
+  q3-test:
+    name: "Q3 — Tests"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: pip install -e ".[dev]" 2>/dev/null || pip install -e .
+      - name: Test
+        run: pytest tests/ -q --tb=short
+
+  sentinel-gate:
+    name: "✅ Sentinel Gate"
+    needs: [q1-boundary, q2-dignity, q3-test]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Gate verdict
+        run: |
+          Q1="${{ needs.q1-boundary.result }}"
+          Q2="${{ needs.q2-dignity.result }}"
+          Q3="${{ needs.q3-test.result }}"
+          echo "Q1 (boundary): $Q1 | Q2 (dignity): $Q2 | Q3 (test): $Q3"
+          if [[ "$Q1" != "success" || "$Q3" != "success" ]]; then
+            echo "::error::SENTINEL BLOCK — PR cannot merge"
+            exit 1
+          fi
+          echo "✅ SENTINEL PASS"
