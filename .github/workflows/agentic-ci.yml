@@ -56,6 +56,7 @@ jobs:
             bash scripts/check_protocol_alignment.sh
           elif [ -f AAA/scripts/check_protocol_alignment.sh ]; then
             bash AAA/scripts/check_protocol_alignment.sh
+          fi
       - name: Validate FEDERATION.md contract
         run: |
           test -f FEDERATION.md || (echo "❌ Missing FEDERATION.md" && exit 1)
