@@ -14659,7 +14659,7 @@ def well_validate_vitality(
 
 @mcp.tool()
 def well_assess_livelihood(
-    mode: str = "role",  # CHAOS FIX: "human" not in VALID_MODES ["role","meaning","dignity"]; first implemented
+    mode: str = "role",  # CHAOS FIX: "human" not in VALID_MODES ["role","meaning","dignity","population"]; first implemented
     subject: str | None = None,
     substrate_class: str | None = None,
     energy_level: float | None = None,
@@ -14674,14 +14674,30 @@ def well_assess_livelihood(
     mission_clarity: float | None = None,
     cashflow_status: str | None = None,
     internal_consistency: float | None = None,
-    # ZEN FIX (2026-07-12): Choice vs coercion dimension.
-    # "voluntary" indicates whether the burden is chosen or imposed.
-    # Sandow chose to commodify his body. Cyr had to — his family needed income.
-    # The moral reality is completely different even when the burden score is the same.
     voluntary: bool | None = None,
+    # ── Sovereign-population mode inputs (P1, 2026-07-24) ──
+    real_median_income: float | None = None,
+    housing_food_burden_pct: float | None = None,
+    household_debt_service_pct: float | None = None,
+    healthy_life_expectancy_years: float | None = None,
+    education_outcomes_score: float | None = None,
+    social_mobility_score: float | None = None,
+    youth_underemployment_pct: float | None = None,
+    family_support_burden_score: float | None = None,
+    inequality_gini: float | None = None,
+    public_trust_score: float | None = None,
+    regional_inclusion_score: float | None = None,
+    # ── Evidence provenance ──
+    data_source: str | None = None,
     ctx: Context | None = None,
 ) -> dict[str, Any]:
     """Ω-WELL-09: Assess human wellness, role, dignity, support, and meaning.
+
+    Modes:
+      role       — individual role/duty assessment
+      meaning    — purpose alignment assessment
+      dignity    — dignity preservation assessment
+      population — sovereign-population aggregate assessment (P1 2026-07-24)
 
     ZEN ADDITION (2026-07-12): The voluntary parameter distinguishes chosen burden
     from imposed burden. When voluntary=True, the role burden is an expression of
@@ -14689,7 +14705,7 @@ def well_assess_livelihood(
     structural capture. Same burden score, completely different moral reality.
     """
     mode = mode.lower() if isinstance(mode, str) else mode
-    VALID_MODES = ["role", "meaning", "dignity"]
+    VALID_MODES = ["role", "meaning", "dignity", "population"]
     if mode not in VALID_MODES:
         return {
             "error": "UNKNOWN_MODE",
@@ -14697,6 +14713,137 @@ def well_assess_livelihood(
             "tool": "well_assess_livelihood",
             "received": mode,
         }
+
+    # ── POPULATION MODE — sovereign aggregate assessment ───────────────
+    if mode == "population":
+        pop_inputs = {
+            "real_median_income": real_median_income,
+            "housing_food_burden_pct": housing_food_burden_pct,
+            "household_debt_service_pct": household_debt_service_pct,
+            "healthy_life_expectancy_years": healthy_life_expectancy_years,
+            "education_outcomes_score": education_outcomes_score,
+            "social_mobility_score": social_mobility_score,
+            "youth_underemployment_pct": youth_underemployment_pct,
+            "family_support_burden_score": family_support_burden_score,
+            "inequality_gini": inequality_gini,
+            "public_trust_score": public_trust_score,
+            "regional_inclusion_score": regional_inclusion_score,
+        }
+        provided = {k: v for k, v in pop_inputs.items() if v is not None}
+        provided_count = len(provided)
+
+        if provided_count == 0:
+            return _inject_apex(
+                _to_federation_output(
+                    {
+                        "ok": False,
+                        "tool": "well_assess_livelihood",
+                        "mode": "population",
+                        "observation": {
+                            "status": "UNKNOWN",
+                            "reason": "No population data provided. Requires sovereign inputs.",
+                            "population_inputs_available": 0,
+                            "population_inputs_total": len(pop_inputs),
+                        },
+                        "uncertainty": 1.0,
+                        "signal": "insufficient_data",
+                        "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
+                        "human_judge_required": False,
+                        "boundary_notice": "WELL reflects population data; never issues policy or constitutional verdicts.",
+                    },
+                    tool_name="well_assess_livelihood",
+                ),
+                "well_assess_livelihood",
+            )
+
+        epistemic_tag = (
+            "INTERPRETED" if provided_count < len(pop_inputs) else "OBSERVED"
+        )
+        if data_source and data_source.lower() in (
+            "verified",
+            "statistical_authority",
+            "census",
+        ):
+            epistemic_tag = "OBSERVED"
+
+        stresses: list[dict[str, Any]] = []
+        if real_median_income is not None and real_median_income < 50000:
+            stresses.append(
+                {
+                    "dimension": "income_pressure",
+                    "severity": "HIGH" if real_median_income < 30000 else "MODERATE",
+                }
+            )
+        if housing_food_burden_pct is not None and housing_food_burden_pct > 30:
+            stresses.append(
+                {
+                    "dimension": "cost_of_living",
+                    "severity": "CRITICAL" if housing_food_burden_pct > 50 else "HIGH",
+                }
+            )
+        if youth_underemployment_pct is not None and youth_underemployment_pct > 15:
+            stresses.append(
+                {
+                    "dimension": "youth_opportunity",
+                    "severity": "HIGH"
+                    if youth_underemployment_pct > 25
+                    else "MODERATE",
+                }
+            )
+        if inequality_gini is not None:
+            if inequality_gini > 0.5:
+                stresses.append({"dimension": "inequality", "severity": "CRITICAL"})
+            elif inequality_gini > 0.4:
+                stresses.append({"dimension": "inequality", "severity": "HIGH"})
+
+        composite_score = None
+        numeric_values = [v for v in provided.values() if isinstance(v, (int, float))]
+        if numeric_values:
+            composite_score = sum(numeric_values) / len(numeric_values)
+
+        return _inject_apex(
+            _to_federation_output(
+                {
+                    "ok": len(stresses) < 2,
+                    "tool": "well_assess_livelihood",
+                    "mode": "population",
+                    "observation": {
+                        "epistemic_tag": epistemic_tag,
+                        "data_source": data_source or "user_reported",
+                        "population_inputs_provided": provided_count,
+                        "population_inputs_total": len(pop_inputs),
+                        "missing_inputs": sorted(
+                            set(pop_inputs.keys()) - set(provided.keys())
+                        ),
+                        "provided_data": provided,
+                        "stress_dimensions": stresses,
+                        "composite_score": composite_score,
+                        "sovereign_population_readyness": (
+                            "READY_FOR_WEALTH_ECONOMIC"
+                            if provided_count >= 8
+                            else "PARTIAL"
+                            if provided_count >= 4
+                            else "INSUFFICIENT"
+                        ),
+                    },
+                    "uncertainty": 0.3 if provided_count < len(pop_inputs) else 0.15,
+                    "signal": (
+                        "attention_needed"
+                        if len(stresses) > 1
+                        else "advisory"
+                        if len(stresses) == 1
+                        else "stable"
+                    ),
+                    "w0": "OPERATOR_VETO_INTACT / HIERARCHY_INVARIANT",
+                    "human_judge_required": False,
+                    "boundary_notice": "WELL reflects population data; never issues policy or constitutional verdicts. WEALTH may derive economic consequences.",
+                },
+                tool_name="well_assess_livelihood",
+            ),
+            "well_assess_livelihood",
+        )
+
+    # ── INDIVIDUAL MODES (role, meaning, dignity) ─────────────────────
     # Route through well_333_mind(mode="human") which already implements
     # well_livelihood_role_check, well_livelihood_meaning_check,
     # well_livelihood_dignity_check, well_livelihood_energy_check,
