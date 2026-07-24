@@ -1,13 +1,15 @@
 <!-- SOT-MANIFEST
 federation_release: v2026.07.24
-last_verified: 2026-07-24T07:45Z
-live_commit: 31e8af2
+last_verified: 2026-07-24T16:00Z
+live_commit: 7bd53cf
 port: 18083
 mcp_tools_live: 8
 authority: REFLECT_ONLY — never diagnose, never adjudicate
 health_status: DEGRADED (apex_scalars UNMEASURED — known, non-blocking)
 truth_rule: tools/list + /health beat any static count in prose
 -->
+
+**SOT:** 2026-07-24 | **seal_seq:** `7bd53cf`
 
 [![Agentic CI](https://github.com/ariffazil/well/actions/workflows/agentic-ci.yml/badge.svg?branch=main)](https://github.com/ariffazil/well/actions/workflows/agentic-ci.yml)
 [![🫀 REFLECT](https://img.shields.io/badge/%F0%9F%AB%80%20REFLECT-8%20tools-purple)](https://well.arif-fazil.com/mcp)
