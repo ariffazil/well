@@ -90,6 +90,31 @@ WELL observes readiness through three lenses:
 
 These three dimensions form the organizing framework for every WELL assessment. A substrate that passes Autonomic but fails Boundary is not ready. A substrate that passes Cognitive but fails Autonomic is not ready. Readiness requires all three.
 
+```mermaid
+graph TB
+    subgraph ABC [🫀 WELL — ABC Trinity]
+        A[A — Autonomic<br/>Can the substrate sustain?<br/>Sleep · HRV · Stress · Fatigue]
+        B[B — Boundary<br/>Is dignity at risk?<br/>Consent · Coercion · Reductionism]
+        C[C — Cognitive<br/>Can it reason clearly?<br/>Clarity · Decision Fatigue · Emotional State]
+    end
+    A -->|probe| V{well_validate_vitality<br/>Readiness Verdict}
+    B -->|probe| V
+    C -->|probe| V
+    V -->|🟢 GREEN| PROCEED[✅ Proceed<br/>Substrate Ready]
+    V -->|🟡 YELLOW| CAUTION[⚠️ Caution<br/>Degraded — Surface to Human]
+    V -->|🔴 RED| HOLD[⛔ HOLD<br/>Do Not Proceed]
+    V -->|evidence| ARIFOS{⚖️ arifOS Judge}
+    ARIFOS --> VAULT[(VAULT999)]
+    
+    subgraph SUBSTRATES [Substrates Measured]
+        HUMAN[👤 Human] 
+        MACHINE[🖥️ Machine]
+        INST[🏛️ Institution]
+        AGENT[🤖 Agent]
+    end
+    HUMAN & MACHINE & INST & AGENT --> ABC
+```
+
 ---
 
 ## 3. Federation Position
